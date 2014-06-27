@@ -12,7 +12,9 @@ TEST_IMAGES = {
                                         dtype=np.uint8),
     'grayscale-whitetop-2x2': np.array([[255, 255],
                                         [0, 0]],
-                                       dtype=np.uint8)
+                                       dtype=np.uint8),
+    'color-bluegray-1x1': np.array([[[160,200,240]]],
+                                   dtype=np.uint8)
 }
 
 
@@ -74,7 +76,9 @@ class TestHoppers(object):
 
     def test_scale_by_factor_of_3(self):
 
-        source = FakeSource(TEST_IMAGES['grayscale-blackfill-1x1'])
+        source = FakeSource(
+            TEST_IMAGES['grayscale-blackfill-1x1'].copy()
+        )
         hop = hoppers.HopperScale(source, factor=3)
         for output_image in hop:
             nt.assert_true(np.array_equal(
@@ -82,16 +86,30 @@ class TestHoppers(object):
                 output_image)
             )
 
-
         whitetop_times_3 = cv2.resize(
-            TEST_IMAGES['grayscale-whitetop-2x2'],
-            (6,6)
+            TEST_IMAGES['grayscale-whitetop-2x2'].copy(),
+            (6, 6)
         )
-        source = FakeSource(TEST_IMAGES['grayscale-whitetop-2x2'])
+        source = FakeSource(
+            TEST_IMAGES['grayscale-whitetop-2x2'].copy()
+        )
         hop = hoppers.HopperScale(source, factor=3)
         for output_image in hop:
             nt.assert_true(np.array_equal(
                 whitetop_times_3,
+                output_image)
+            )
+
+    def test_grayscale(self):
+        three_channel = TEST_IMAGES['color-bluegray-1x1']
+
+        source = FakeSource(three_channel.copy())
+
+        hop = hoppers.HopperConvertToGrayscale(source)
+        for output_image in hop:
+            print output_image
+            nt.assert_true(np.array_equal(
+                np.array([[207]]),
                 output_image)
             )
 
