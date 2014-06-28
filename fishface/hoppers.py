@@ -34,7 +34,7 @@ class Hopper(object):
     .next() method is called.
     """
 
-    def __init__(self, source, *args, **kwargs):
+    def __init__(self, source):
         self._source = source
 
     def __iter__(self):
@@ -51,6 +51,7 @@ class Hopper(object):
     def _process(self, image):
         return image
 
+
 class HopperScale(Hopper):
     """
     Scale a numpy image by a factor or a specific pixel size tuple.
@@ -64,9 +65,9 @@ class HopperScale(Hopper):
     are given, factor takes precedence over new_size.
     """
 
-    def __init__(self, source, factor=None, new_size=None, *args, **kwargs):
-        super(HopperConvertToGrayscale, self).__init__(self, source)
-        self._source = source
+    def __init__(self, source, factor=None,
+                 new_size=None, *args):
+        super(HopperScale, self).__init__(source)
 
         try:
             arg_zero = args[0]
@@ -86,12 +87,13 @@ class HopperScale(Hopper):
         self._factor = float(factor)
 
         if not self._new_size and not self._factor:
-            raise Exception("No valid scaling factor or new size found.")
+            raise Exception("No valid scaling factor or size found.")
 
     def _process(self, image):
         if not self._new_size and self._factor:
-            self._new_size = int(image.shape[0]*self._factor), int(image.shape[1]*self._factor)
-        result = cv2.resize(image,self._new_size)
+            self._new_size = (int(image.shape[0]*self._factor),
+                              int(image.shape[1]*self._factor))
+        result = cv2.resize(image, self._new_size)
 
         return result
 
@@ -101,12 +103,15 @@ class HopperConvertToGrayscale(Hopper):
     Convert a numpy image to a single color channel image.
     """
 
-    def __init__(self, source, *args, **kwargs):
-        super(HopperConvertToGrayscale, self).__init__(self, source)
-        self._source = source
+    def __init__(self, source):
+        super(HopperConvertToGrayscale, self).__init__(source)
 
     def _process(self, image):
         if len(image.shape) == 3 and image.shape[2] == 3:
             result = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        elif len(image.shape) == 1:
+            result = image
+        else:
+            result = False
 
         return result
