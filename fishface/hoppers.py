@@ -69,6 +69,8 @@ class HopperScale(Hopper):
                  new_size=None, *args):
         super(HopperScale, self).__init__(source)
 
+        # Look for an extra positional argument, figure out whether it's
+        # a factor or a new_size, and react accordingly.
         try:
             arg_zero = args[0]
         except IndexError:
@@ -113,5 +115,29 @@ class HopperConvertToGrayscale(Hopper):
             result = image
         else:
             result = False
+
+        return result
+
+
+class HopperThreshold(Hopper):
+    """
+    Threshold an image leaving pixels either white or black.
+
+    :param thresh int: An integer in the range 0-255.
+
+    Any pixel with a value greater than the threshold is set to max
+    brightness, and all other pixels are colored black.
+    """
+
+    def __init__(self, source, thresh):
+        super(HopperThreshold, self).__init__(source)
+        self._thresh = thresh
+
+    def _process(self, image):
+        returned_thresh, result = cv2.threshold(image,
+                               thresh=self._thresh,
+                               maxval=255,
+                               type=cv2.THRESH_BINARY
+        )
 
         return result
