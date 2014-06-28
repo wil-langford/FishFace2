@@ -13,7 +13,10 @@ TEST_IMAGES = {
     'grayscale-whitetop-2x2': np.array([[255, 255],
                                         [0, 0]],
                                        dtype=np.uint8),
-    'color-bluegray-1x1': np.array([[[160,200,240]]],
+    'grayscale-fourtone-2x2': np.array([[255, 196],
+                                        [128, 64]],
+                                       dtype=np.uint8),
+    'color-bluegray-1x1': np.array([[[160, 200, 240]]],
                                    dtype=np.uint8)
 }
 
@@ -107,12 +110,26 @@ class TestHoppers(object):
 
         hop = hoppers.HopperConvertToGrayscale(source)
         for output_image in hop:
-            print output_image
             nt.assert_true(np.array_equal(
                 np.array([[207]]),
                 output_image)
             )
 
+    def test_threshold(self):
+        source = FakeSource(TEST_IMAGES['grayscale-fourtone-2x2'])
+
+        for thresh in range(60, 255, 64):
+            hop = hoppers.HopperThreshold(source, thresh)
+            for output_image in hop:
+                compare_to = TEST_IMAGES['grayscale-fourtone-2x2']
+                compare_to[compare_to>thresh] = 255
+                compare_to[compare_to<255] = 0
+                print "COMPARE\n", compare_to
+                print "OUTPUT\n", output_image
+                nt.assert_true(np.array_equal(
+                    compare_to,
+                    output_image)
+                )
 
 
     # def test_return_true(self):
