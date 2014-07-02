@@ -2,23 +2,9 @@ import hoppers
 import nose.tools as nt
 import numpy as np
 import cv2
+import nose_const
 
-TEST_IMAGES = {
-    'grayscale-blackfill-1x1': np.array([[0]],
-                                        dtype=np.uint8),
-    'grayscale-blackfill-3x3': np.array([[0, 0, 0],
-                                         [0, 0, 0],
-                                         [0, 0, 0]],
-                                        dtype=np.uint8),
-    'grayscale-whitetop-2x2': np.array([[255, 255],
-                                        [0, 0]],
-                                       dtype=np.uint8),
-    'grayscale-fourtone-2x2': np.array([[255, 196],
-                                        [128, 64]],
-                                       dtype=np.uint8),
-    'color-bluegray-1x1': np.array([[[160, 200, 240]]],
-                                   dtype=np.uint8)
-}
+TEST_IMAGES = nose_const.TEST_IMAGES
 
 
 class FakeSource(object):
