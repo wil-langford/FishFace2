@@ -36,6 +36,7 @@ class Hopper(object):
 
     def __init__(self, source):
         self._source = source
+        self.spec = ("null", {})
 
     def __iter__(self):
         return self
@@ -91,6 +92,9 @@ class HopperScale(Hopper):
         if not self._new_size and not self._factor:
             raise Exception("No valid scaling factor or size found.")
 
+        self.spec = ("scale", {"new_size": self._new_size,
+                                "factor": self._factor})
+
     def _process(self, image):
         if not self._new_size and self._factor:
             new_size = (int(image.shape[0]*self._factor),
@@ -112,6 +116,8 @@ class HopperConvertToGrayscale(Hopper):
 
     def __init__(self, source):
         super(HopperConvertToGrayscale, self).__init__(source)
+
+        self.spec = ("grayscale", {})
 
     def _process(self, image):
         if len(image.shape) == 3 and image.shape[2] == 3:
@@ -137,6 +143,8 @@ class HopperThreshold(Hopper):
     def __init__(self, source, thresh):
         super(HopperThreshold, self).__init__(source)
         self._thresh = thresh
+
+        self.spec = ("threshold", {"thresh": thresh})
 
     def _process(self, image):
         returned_thresh, result = cv2.threshold(image,
