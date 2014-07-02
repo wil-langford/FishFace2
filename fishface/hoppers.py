@@ -93,9 +93,14 @@ class HopperScale(Hopper):
 
     def _process(self, image):
         if not self._new_size and self._factor:
-            self._new_size = (int(image.shape[0]*self._factor),
+            new_size = (int(image.shape[0]*self._factor),
                               int(image.shape[1]*self._factor))
-        result = cv2.resize(image, self._new_size)
+        elif self._new_size:
+            new_size = self._new_size
+
+        # The size tuple has to be reversed to fit cv2.resize's
+        # size specification.
+        result = cv2.resize(image, tuple(reversed(new_size)))
 
         return result
 
@@ -141,3 +146,11 @@ class HopperThreshold(Hopper):
         )
 
         return result
+
+
+CLASS_IDS = {
+    "null": Hopper,
+    "scale": HopperScale,
+    "grayscale": HopperConvertToGrayscale,
+    "threshold": HopperThreshold
+}
