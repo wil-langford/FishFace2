@@ -7,24 +7,9 @@ import cv2
 import os
 import tempfile
 import shutil
+import nose_const
 
-TEST_IMAGES = {
-    'grayscale-blackfill-1x1': np.array([[0]],
-                                        dtype=np.uint8),
-    'grayscale-blackfill-3x3': np.array([[0, 0, 0],
-                                         [0, 0, 0],
-                                         [0, 0, 0]],
-                                        dtype=np.uint8),
-    'grayscale-whitetop-2x2': np.array([[255, 255],
-                                        [0, 0]],
-                                       dtype=np.uint8),
-    'grayscale-fourtone-2x2': np.array([[255, 196],
-                                        [128, 64]],
-                                       dtype=np.uint8),
-    'color-bluegray-1x1': np.array([[[160, 200, 240]]],
-                                   dtype=np.uint8)
-}
-
+TEST_IMAGES = nose_const.TEST_IMAGES
 
 class TestHopperChain(object):
     """
@@ -53,19 +38,31 @@ class TestHopperChain(object):
             image_path = os.path.join(self._tmp_dir, image_name + ".jpg")
             cv2.imwrite(image_path, TEST_IMAGES[image_name])
 
+        self._sources = dict()
+        for test_image_name in TEST_IMAGES:
+            self._sources[test_image_name] = hopperchain.ImageSource(
+                [TEST_IMAGES[test_image_name]]
+            )
+
+        self.inv_chain = hopperchain.HopperChain(
+            (("invert", {}),
+             ("invert", {}),
+             ("invert", {})),
+            source_obj=self._sources['grayscale-blackfill-1x1']
+        )
+
+
     def teardown(self):
         """
         This method is run once after _each_ test method is executed
         """
         shutil.rmtree(self._tmp_dir)
 
-    def test_imagesource_by_dir(self):
+    def test_filesource_by_dir(self):
         file_list = hopperchain._find_jpgs_in_dir(self._tmp_dir)
-        source = hopperchain.ImageSource(file_list=file_list)
+        source = hopperchain.FileSource(file_list=file_list)
         for image in source:
             nt.assert_is_instance(image, np.ndarray)
-            print
-
 
     def test_gray_scalehalf_thresh100_hopperchain(self):
         chain_spec = (
@@ -82,6 +79,18 @@ class TestHopperChain(object):
             file_handle, file_name = tempfile.mkstemp(suffix=".jpg",
                                                       dir=out_tmp_dir)
             cv2.imwrite(file_name, output_image)
+
+    def test_hopper_insert(self):
+        pass
+
+    def test_hopper_delete(self):
+        pass
+
+    def test_hopper_set(self):
+        pass
+
+    def test_hopper_get(self):
+        pass
 
     # def test_return_true(self):
     #     a = A()

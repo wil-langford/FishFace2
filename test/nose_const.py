@@ -4,6 +4,8 @@
 Some constants used by the nosetests.
 """
 
+import numpy as np
+
 TEST_IMAGES = {
     'grayscale-blackfill-1x1': np.array([[0]],
                                         dtype=np.uint8),
