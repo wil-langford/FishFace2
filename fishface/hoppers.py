@@ -35,7 +35,7 @@ class Hopper(object):
     """
 
     def __init__(self, source):
-        self._source = source
+        self.source = source
         self.spec = ("null", {})
 
     def __iter__(self):
@@ -44,13 +44,16 @@ class Hopper(object):
     def next(self):
         """Returns the next image after the hopper processes it."""
         try:
-            image = self._source.next()
+            image = self.source.next()
         except StopIteration:
             raise
         return self._process(image)
 
     def _process(self, image):
         return image
+
+    def set_source(self, source):
+        self.source = source
 
 
 class HopperScale(Hopper):
