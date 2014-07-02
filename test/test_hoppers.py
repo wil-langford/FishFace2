@@ -117,6 +117,15 @@ class TestHoppers(object):
                     output_image)
                 )
 
+    def test_invert(self):
+        source = FakeSource(TEST_IMAGES['grayscale-blackfill-1x1'])
+
+        hop = hoppers.HopperInvert(source)
+        for output_image in hop:
+            nt.assert_true(np.array_equal(
+                TEST_IMAGES['grayscale-whitefill-1x1'],
+                output_image)
+            )
 
     # def test_return_true(self):
     #     a = A()

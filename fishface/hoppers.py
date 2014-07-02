@@ -13,7 +13,7 @@ subsystem of FishFace:
       ImageFrame passes through it.
 * HopperChain
     - A sequence of hoppers together with parameters for each.
-    - A HopperChain takes an ImageSource object and returns
+    - A HopperChain takes an FileSource object and returns
       processed images.
 """
 
@@ -158,10 +158,24 @@ class HopperThreshold(Hopper):
 
         return result
 
+class HopperInvert(Hopper):
+    """
+    """
+
+    def __init__(self, source):
+        super(HopperInvert, self).__init__(source)
+
+        self.spec = ("invert", {})
+
+    def _process(self, image):
+        result = 255 - image
+        return result
+
 
 CLASS_IDS = {
     "null": Hopper,
     "scale": HopperScale,
     "grayscale": HopperConvertToGrayscale,
-    "threshold": HopperThreshold
+    "threshold": HopperThreshold,
+    "invert": HopperInvert
 }
