@@ -13,7 +13,7 @@ subsystem of FishFace:
       ImageFrame passes through it.
 * HopperChain
     - A sequence of hoppers together with parameters for each.
-    - A HopperChain takes an ImageSource object and returns
+    - A HopperChain takes an FileSource object and returns
       processed images.
 """
 
@@ -35,7 +35,8 @@ class Hopper(object):
     """
 
     def __init__(self, source):
-        self._source = source
+        self.source = source
+        self.spec = ("null", {})
 
     def __iter__(self):
         return self
@@ -43,13 +44,16 @@ class Hopper(object):
     def next(self):
         """Returns the next image after the hopper processes it."""
         try:
-            image = self._source.next()
+            image = self.source.next()
         except StopIteration:
             raise
         return self._process(image)
 
     def _process(self, image):
         return image
+
+    def set_source(self, source):
+        self.source = source
 
 
 class HopperScale(Hopper):
@@ -91,11 +95,19 @@ class HopperScale(Hopper):
         if not self._new_size and not self._factor:
             raise Exception("No valid scaling factor or size found.")
 
+        self.spec = ("scale", {"new_size": self._new_size,
+                                "factor": self._factor})
+
     def _process(self, image):
         if not self._new_size and self._factor:
-            self._new_size = (int(image.shape[0]*self._factor),
+            new_size = (int(image.shape[0]*self._factor),
                               int(image.shape[1]*self._factor))
-        result = cv2.resize(image, self._new_size)
+        elif self._new_size:
+            new_size = self._new_size
+
+        # The size tuple has to be reversed to fit cv2.resize's
+        # size specification.
+        result = cv2.resize(image, tuple(reversed(new_size)))
 
         return result
 
@@ -107,6 +119,8 @@ class HopperConvertToGrayscale(Hopper):
 
     def __init__(self, source):
         super(HopperConvertToGrayscale, self).__init__(source)
+
+        self.spec = ("grayscale", {})
 
     def _process(self, image):
         if len(image.shape) == 3 and image.shape[2] == 3:
@@ -133,6 +147,8 @@ class HopperThreshold(Hopper):
         super(HopperThreshold, self).__init__(source)
         self._thresh = thresh
 
+        self.spec = ("threshold", {"thresh": thresh})
+
     def _process(self, image):
         returned_thresh, result = cv2.threshold(image,
                                thresh=self._thresh,
@@ -141,3 +157,25 @@ class HopperThreshold(Hopper):
         )
 
         return result
+
+class HopperInvert(Hopper):
+    """
+    """
+
+    def __init__(self, source):
+        super(HopperInvert, self).__init__(source)
+
+        self.spec = ("invert", {})
+
+    def _process(self, image):
+        result = 255 - image
+        return result
+
+
+CLASS_IDS = {
+    "null": Hopper,
+    "scale": HopperScale,
+    "grayscale": HopperConvertToGrayscale,
+    "threshold": HopperThreshold,
+    "invert": HopperInvert
+}
