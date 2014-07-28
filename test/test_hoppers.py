@@ -1,3 +1,5 @@
+import imp
+imp.load_source('hoppers','../fishface/hoppers.py')
 import hoppers
 import nose.tools as nt
 import numpy as np

@@ -1,3 +1,6 @@
+import imp
+imp.load_source('hoppers','../fishface/hoppers.py')
+imp.load_source('hopperchain', '../fishface/hopperchain.py')
 import glob
 import hoppers
 import hopperchain
