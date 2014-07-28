@@ -65,7 +65,7 @@ class FileSource(object):
 
 class ImageSource(object):
     """
-    Feed an iterable of numpy arrays into a HopperChain.
+    Feed an iterable of numpy arrays into the start of a HopperChain.
 
     :param file_list iter: A list of image filenames to read. If the
                            file_dir parameter is given, the file_list
@@ -114,7 +114,7 @@ class HopperChain(object):
     first hopper in the chain is the FileSource, and the source for
     each hopper after that is the previous hopper.
 
-    Output of the HopperChain itself is via the iterable interface.
+    Output of the HopperChain itself is via the iterable protocol.
     That is, "for output_image in hopper_chain: ..."
     """
 
