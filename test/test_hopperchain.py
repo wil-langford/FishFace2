@@ -1,12 +1,8 @@
-import imp
-import glob
+import sys
+sys.path.append('../fishface')
 
-imp.load_source('hoppers','../fishface/hoppers.py')
 import hoppers
-
-imp.load_source('hopperchain', '../fishface/hopperchain.py')
 import hopperchain
-
 import nose.tools as nt
 import numpy as np
 import cv2
