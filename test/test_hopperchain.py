@@ -63,7 +63,7 @@ class TestHopperChain(object):
     def test_filesource_by_dir(self):
         file_list = hopperchain._find_jpgs_in_dir(self._tmp_dir)
         source = hopperchain.FileSource(file_list=file_list)
-        for image in source:
+        for image, meta_data in source:
             nt.assert_is_instance(image, np.ndarray)
 
     def test_gray_scalehalf_thresh100_hopperchain(self):
@@ -77,7 +77,7 @@ class TestHopperChain(object):
                                             source_dir="../eph/")
 
         out_tmp_dir = tempfile.mkdtemp(prefix="FishFaceTESTOUT_")
-        for output_image in hop_chain:
+        for output_image, meta_data in hop_chain:
             file_handle, file_name = tempfile.mkstemp(suffix=".jpg",
                                                       dir=out_tmp_dir)
             cv2.imwrite(file_name, output_image)

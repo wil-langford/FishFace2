@@ -44,10 +44,10 @@ class Hopper(object):
     def next(self):
         """Returns the next image after the hopper processes it."""
         try:
-            image = self.source.next()
+            image, meta_data = self.source.next()
         except StopIteration:
             raise
-        return self._process(image)
+        return (self._process(image), meta_data)
 
     def _process(self, image):
         return image
