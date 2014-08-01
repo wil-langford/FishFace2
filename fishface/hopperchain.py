@@ -219,12 +219,12 @@ class HopperChain(object):
 
 
     def delete_hoppers(self, position, number=1):
-        if position+number > self.len():
+        if position+number > len(self):
             raise Exception("Cannot remove {} hoppers from position " +
                             "{}, because only {} hoppers exist at " +
                             "that location".format(number,
                                               position,
-                                              self.len() - position + 1
+                                              len(self) - position + 1
                                               )
         )
 
