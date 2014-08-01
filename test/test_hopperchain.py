@@ -13,6 +13,7 @@ import nose_const
 
 TEST_IMAGES = nose_const.TEST_IMAGES
 
+
 class TestHopperChain(object):
     """
     Tests for the HopperChain module.
@@ -21,23 +22,24 @@ class TestHopperChain(object):
     def setup_class(cls):
         """
         This method is run once for each class _before_ any
-        tests are run
+        tests are run.
         """
 
     @classmethod
     def teardown_class(cls):
         """
         This method is run once for each class _after_ all
-        tests are run
+        tests are run.
         """
 
     def setUp(self):
         """
-        This method is run once before _each_ test method is executed
+        This method is run once before _each_ test method is executed.
         """
         self._tmp_dir = tempfile.mkdtemp(prefix="FishFaceTEST_")
         for image_name in TEST_IMAGES:
-            image_path = os.path.join(self._tmp_dir, image_name + ".jpg")
+            image_path = os.path.join(self._tmp_dir,
+                                      image_name + ".jpg")
             cv2.imwrite(image_path, TEST_IMAGES[image_name])
 
         self._sources = dict()
@@ -52,7 +54,6 @@ class TestHopperChain(object):
              ("invert", {})),
             source_obj=self._sources['grayscale-blackfill-1x1']
         )
-
 
     def teardown(self):
         """
@@ -83,16 +84,91 @@ class TestHopperChain(object):
             cv2.imwrite(file_name, output_image)
 
     def test_hopper_insert(self):
-        pass
+        chain_spec = (
+            ("invert", {}),
+            ("invert", {}),
+        )
+
+        hop_chain = hopperchain.HopperChain(chain_spec,
+                                            source_dir="../eph/")
+        hop_chain.insert_hoppers(
+            1,
+            (
+                ("null", {}),
+                ("null", {}),
+            )
+        )
+
+        nt.assert_equal(4, len(hop_chain))
+
+        hopper_classes = [hoppers.CLASS_IDS[short_name]
+                          for short_name in
+                          'invert null null invert'.split(' ')]
+        for hop, cls in zip(hop_chain._hopper_list, hopper_classes):
+            nt.assert_is_instance(hop, cls)
 
     def test_hopper_delete(self):
-        pass
+        chain_spec = (
+            ("invert", {}),
+            ("null", {}),
+            ("invert", {}),
+            ("invert", {}),
+            ("null", {}),
+            ("invert", {}),
+        )
 
-    def test_hopper_set(self):
-        pass
+        hop_chain = hopperchain.HopperChain(chain_spec,
+                                            source_dir="../eph/")
+
+        nt.assert_equal(6, len(hop_chain))
+
+        hopper_classes = [hoppers.CLASS_IDS[short_name]
+                          for short_name in
+                          'invert invert null invert'.split(' ')]
+        hop_chain.delete_hoppers(1, 2)
+        for hop, cls in zip(hop_chain._hopper_list, hopper_classes):
+            nt.assert_is_instance(hop, cls)
+
+        nt.assert_equal(4, len(hop_chain))
 
     def test_hopper_get(self):
-        pass
+        chain_spec = (
+            ("invert", {}),
+            ("null", {}),
+            ("invert", {}),
+            ("null", {}),
+            ("invert", {}),
+            ("null", {}),
+        )
+
+        hop_chain = hopperchain.HopperChain(chain_spec,
+                                            source_dir="../eph/")
+
+        hopper_class_strs = 'invert null'.split(' ')
+        for i in range(len(hop_chain)):
+            nt.assert_equal(
+                hop_chain.get_hopper(i)[0],
+                hopper_class_strs[i % 2]
+            )
+
+    def test_hopper_set(self):
+        chain_spec = (
+            ("invert", {}),
+            ("null", {}),
+            ("invert", {}),
+            ("null", {}),
+            ("invert", {}),
+            ("null", {}),
+        )
+
+        hop_chain = hopperchain.HopperChain(chain_spec,
+                                            source_dir="../eph/")
+
+        for i in range(0, 6, 2):
+            hop_chain.set_hopper(i, 'null', {})
+
+        for i in range(len(hop_chain)):
+            nt.assert_equal(hop_chain.get_hopper(i)[0], 'null')
 
     # def test_return_true(self):
     #     a = A()
