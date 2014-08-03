@@ -60,7 +60,13 @@ class FileSource(object):
 
         image = cv2.imread(filename)
 
-        return image
+        return (
+            image,
+            {
+                'source_type': 'ImageSource',
+                'source_filename': filename,
+            }
+        )
 
 
 class ImageSource(object):
@@ -91,7 +97,12 @@ class ImageSource(object):
         except IndexError:
             raise StopIteration
 
-        return image
+        return (
+            image,
+            {
+                'source_type': 'ImageSource'
+            }
+        )
 
 
 class HopperChain(object):
@@ -141,10 +152,10 @@ class HopperChain(object):
     def next(self):
         """Returns the next image after the chain processes it."""
         try:
-            image = self._hopper_list[-1].next()
+            image, meta_data = self._hopper_list[-1].next()
         except StopIteration:
             raise
-        return image
+        return (image, meta_data)
 
     def chain_spec(self):
         return tuple(hop.spec for hop in self._hopper_list)

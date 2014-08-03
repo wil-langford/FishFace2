@@ -27,7 +27,7 @@ class FakeSource(object):
     def next(self):
         if self._first_run:
             self._first_run = False
-            return self._array
+            return (self._array, dict())
         else:
             raise StopIteration
 
@@ -60,7 +60,7 @@ class TestHoppers(object):
     def test_hopper_base(self):
         source = FakeSource(TEST_IMAGES['grayscale-blackfill-1x1'])
         hop = hoppers.Hopper(source)
-        for output_image in hop:
+        for output_image, meta_data in hop:
             nt.assert_true(np.array_equal(
                 TEST_IMAGES['grayscale-blackfill-1x1'],
                 output_image)
@@ -72,7 +72,7 @@ class TestHoppers(object):
             TEST_IMAGES['grayscale-blackfill-1x1'].copy()
         )
         hop = hoppers.HopperScale(source, factor=3)
-        for output_image in hop:
+        for output_image, meta_data in hop:
             nt.assert_true(np.array_equal(
                 TEST_IMAGES['grayscale-blackfill-3x3'],
                 output_image)
@@ -86,7 +86,7 @@ class TestHoppers(object):
             TEST_IMAGES['grayscale-whitetop-2x2'].copy()
         )
         hop = hoppers.HopperScale(source, factor=3)
-        for output_image in hop:
+        for output_image, meta_data in hop:
             nt.assert_true(np.array_equal(
                 whitetop_times_3,
                 output_image)
@@ -98,7 +98,7 @@ class TestHoppers(object):
         source = FakeSource(three_channel.copy())
 
         hop = hoppers.HopperConvertToGrayscale(source)
-        for output_image in hop:
+        for output_image, meta_data in hop:
             nt.assert_true(np.array_equal(
                 np.array([[207]]),
                 output_image)
@@ -109,7 +109,7 @@ class TestHoppers(object):
 
         for thresh in range(60, 255, 64):
             hop = hoppers.HopperThreshold(source, thresh)
-            for output_image in hop:
+            for output_image, meta_data in hop:
                 compare_to = TEST_IMAGES['grayscale-fourtone-2x2']
                 compare_to[compare_to>thresh] = 255
                 compare_to[compare_to<255] = 0
@@ -124,7 +124,7 @@ class TestHoppers(object):
         source = FakeSource(TEST_IMAGES['grayscale-blackfill-1x1'])
 
         hop = hoppers.HopperInvert(source)
-        for output_image in hop:
+        for output_image, meta_data in hop:
             nt.assert_true(np.array_equal(
                 TEST_IMAGES['grayscale-whitefill-1x1'],
                 output_image)
@@ -147,7 +147,7 @@ class TestHoppers(object):
 
 def main():
     source = FakeSource(TEST_IMAGES['grayscale-blackfill-1x1'])
-    for image in source:
+    for image, meta_data in source:
         print image
 
 
