@@ -41,6 +41,9 @@ class Hopper(object):
     def __iter__(self):
         return self
 
+    def __str__(self):
+        return "Hopper"
+
     def next(self):
         """Returns the next image after the hopper processes it."""
         try:
@@ -111,6 +114,11 @@ class HopperScale(Hopper):
 
         return result
 
+    def __str__(self):
+        return "HopperScale:newsize={}:factor={}:".format(
+            self._new_size, self._factor
+        )
+
 
 class HopperConvertToGrayscale(Hopper):
     """
@@ -131,6 +139,9 @@ class HopperConvertToGrayscale(Hopper):
             result = False
 
         return result
+
+    def __str__(self):
+        return "HopperConvertToGrayscale"
 
 
 class HopperThreshold(Hopper):
@@ -158,6 +169,9 @@ class HopperThreshold(Hopper):
 
         return result
 
+    def __str__(self):
+        return "HopperThreshold:threshold={}".format(self._thresh)
+
 class HopperInvert(Hopper):
     """
     """
@@ -171,6 +185,8 @@ class HopperInvert(Hopper):
         result = 255 - image
         return result
 
+    def __str__(self):
+        return "HopperInvert"
 
 CLASS_IDS = {
     "null": Hopper,

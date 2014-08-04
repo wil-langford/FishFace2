@@ -143,7 +143,6 @@ class HopperChain(object):
 
         self._hopper_list = list()
         self._orig_chain_spec = chain_spec
-        print chain_spec
         self.append_hoppers(chain_spec)
 
     def __iter__(self):
@@ -161,7 +160,6 @@ class HopperChain(object):
         return tuple(hop.spec for hop in self._hopper_list)
 
     def append_hoppers(self, chain_spec):
-        print chain_spec
         for hopper_class_str, hopper_param in chain_spec:
             if len(self._hopper_list) == 0:
                 source = self._image_source
@@ -230,12 +228,12 @@ class HopperChain(object):
 
 
     def delete_hoppers(self, position, number=1):
-        if position+number > self.len():
+        if position+number > len(self):
             raise Exception("Cannot remove {} hoppers from position " +
                             "{}, because only {} hoppers exist at " +
                             "that location".format(number,
                                               position,
-                                              self.len() - position + 1
+                                              len(self) - position + 1
                                               )
         )
 

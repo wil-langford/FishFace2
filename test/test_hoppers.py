@@ -37,24 +37,24 @@ class TestHoppers(object):
     def setup_class(cls):
         """
         This method is run once for each class _before_ any
-        tests are run
+        tests are run.
         """
 
     @classmethod
     def teardown_class(cls):
         """
         This method is run once for each class _after_ all
-        tests are run
+        tests are run.
         """
 
     def setUp(self):
         """
-        This method is run once before _each_ test method is executed
+        This method is run once before _each_ test method is executed.
         """
 
     def teardown(self):
         """
-        This method is run once after _each_ test method is executed
+        This method is run once after _each_ test method is executed.
         """
 
     def test_hopper_base(self):
