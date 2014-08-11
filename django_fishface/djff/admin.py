@@ -21,3 +21,25 @@ class ExperimentAdmin(admin.ModelAdmin):
     search_fields = ['question_text']
 
 admin.site.register(models.Experiment, ExperimentAdmin)
+
+
+class ImageAnalysisInline(admin.TabularInline):
+    model = models.ImageAnalysis
+
+
+class ImageAdmin(admin.ModelAdmin):
+    fieldsets = [
+        ('Image Information', {
+            'fields': [
+                'dtg_capture',
+                'species',
+                'voltage',
+                'filename',
+            ]
+        })
+    ]
+    inlines = [ImageAnalysisInline]
+    list_display = ('species', 'voltage', 'dtg_capture')
+    list_filter = ('species', 'dtg_capture')
+
+admin.site.register(models.Image, ImageAdmin)
