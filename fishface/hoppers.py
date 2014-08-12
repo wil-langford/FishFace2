@@ -35,6 +35,7 @@ def spec_to_string(spec):
 
     return spec_str
 
+
 def string_to_spec(string):
     """
     Takes a string produced by spec_to_string and returns a hopper spec.
@@ -44,7 +45,7 @@ def string_to_spec(string):
     spec_kwargs = dict()
     spec_tokens = string.split(':')
     name = spec_tokens[0]
-    if len(spec_tokens)>1:
+    if len(spec_tokens) > 1:
         for spec_kwarg in spec_tokens[1:]:
             key, value = spec_kwarg.split('=')
             spec_kwargs[key] = value
@@ -134,9 +135,12 @@ class HopperScale(Hopper):
     def _process(self, image):
         if not self._new_size and self._factor:
             new_size = (int(image.shape[0]*self._factor),
-                              int(image.shape[1]*self._factor))
+                        int(image.shape[1]*self._factor))
         elif self._new_size:
             new_size = self._new_size
+        else:
+            raise Exception("New image size was not specified and " +
+                            "and can't be calculated.")
 
         # The size tuple has to be reversed to fit cv2.resize's
         # size specification.
@@ -144,13 +148,15 @@ class HopperScale(Hopper):
 
         return result
 
-
     @property
     def spec(self):
-        return ('scale', {
+        return (
+            'scale',
+            {
             'new_size': self._new_size,
             'factor': self._factor
-        })
+            }
+        )
 
 
 class HopperConvertToGrayscale(Hopper):
@@ -191,10 +197,11 @@ class HopperThreshold(Hopper):
         self._thresh = thresh
 
     def _process(self, image):
-        returned_thresh, result = cv2.threshold(image,
-                               thresh=self._thresh,
-                               maxval=255,
-                               type=cv2.THRESH_BINARY
+        returned_thresh, result = cv2.threshold(
+            image,
+            thresh=self._thresh,
+            maxval=255,
+            type=cv2.THRESH_BINARY
         )
 
         return result
@@ -204,6 +211,7 @@ class HopperThreshold(Hopper):
         return ('threshold', {
             'thresh': self._thresh
         })
+
 
 class HopperInvert(Hopper):
     """
@@ -228,4 +236,3 @@ CLASS_IDS = {
     "threshold": HopperThreshold,
     "invert": HopperInvert
 }
-
