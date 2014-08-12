@@ -11,8 +11,9 @@ import glob
 
 
 def _find_jpgs_in_dir(directory):
-    return (glob.glob(os.path.join(directory, "*.jpg")) +
-            glob.glob(os.path.join(directory, "*.jpeg"))
+    return (
+        glob.glob(os.path.join(directory, "*.jpg")) +
+        glob.glob(os.path.join(directory, "*.jpeg"))
     )
 
 
@@ -151,7 +152,7 @@ class HopperChain(object):
             self._image_source = source_obj
         elif source_list is not None or source_dir is not None:
             self._image_source = FileSource(file_list=source_list,
-                                       file_dir=source_dir)
+                                            file_dir=source_dir)
         else:
             raise Exception("You must specify a source for the " +
                             "HopperChain.")
@@ -169,7 +170,7 @@ class HopperChain(object):
             image, meta_data = self._hopper_list[-1].next()
         except StopIteration:
             raise
-        return (image, meta_data)
+        return image, meta_data
 
     @property
     def spec(self):
@@ -221,7 +222,7 @@ class HopperChain(object):
             number = len(chain_spec)
 
         for i in range(number):
-            if i+position==0:
+            if i+position == 0:
                 source = self._image_source
             else:
                 source = self._hopper_list[i+position-1]
@@ -233,21 +234,24 @@ class HopperChain(object):
                 hopper_class = hoppers.Hopper
                 hopper_params = {}
 
-            self._hopper_list.insert(position+i,
-                                     hopper_class(source,
-                                                  **hopper_params)
+            self._hopper_list.insert(
+                position+i,
+                hopper_class(
+                    source,
+                    **hopper_params
+                )
             )
-
 
     def delete_hoppers(self, position, number=1):
         if position+number > len(self):
             raise Exception("Cannot remove {} hoppers from position " +
                             "{}, because only {} hoppers exist at " +
-                            "that location".format(number,
-                                              position,
-                                              len(self) - position + 1
-                                              )
-        )
+                            "that location".format(
+                                number,
+                                position,
+                                len(self) - position + 1
+                            )
+                            )
 
         if position == 0:
             source = self._image_source
