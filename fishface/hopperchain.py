@@ -236,6 +236,13 @@ class HopperChain(object):
             )
 
     def get_hopper(self, index):
+        """
+        Gets a specific hopper spec from the list of hoppers
+        in the chain.
+
+        :param index: The index of the hopper to retrieve.
+        :return: The spec of the retrieved hopper.
+        """
         return self._hopper_list[index].spec
 
     def set_hopper(self, index, hopper_class_str, hopper_param):
