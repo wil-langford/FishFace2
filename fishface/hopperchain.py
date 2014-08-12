@@ -9,10 +9,12 @@ import cv2
 import os
 import glob
 
-def _find_jpgs_in_dir(dir):
-    return (glob.glob(os.path.join(dir,"*.jpg")) +
-            glob.glob(os.path.join(dir,"*.jpeg"))
+
+def _find_jpgs_in_dir(directory):
+    return (glob.glob(os.path.join(directory, "*.jpg")) +
+            glob.glob(os.path.join(directory, "*.jpeg"))
     )
+
 
 def string_to_spec(string):
     spec = list()
@@ -20,6 +22,7 @@ def string_to_spec(string):
     for spec_string in hopper_spec_strings:
         spec.append(hoppers.string_to_spec(spec_string))
     return spec
+
 
 def spec_to_string(spec):
     return '#'.join([hoppers.spec_to_string(hop_spec) for
