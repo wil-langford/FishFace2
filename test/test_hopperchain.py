@@ -172,7 +172,7 @@ class TestHopperChain(object):
                                             source_dir="../eph/")
 
         for i in range(0, 6, 2):
-            hop_chain.set_hopper(i, 'null', {})
+            hop_chain.set_hopper(i, ('null', {}))
 
         for i in range(len(hop_chain)):
             nt.assert_equal(hop_chain.get_hopper(i)[0], 'null')
