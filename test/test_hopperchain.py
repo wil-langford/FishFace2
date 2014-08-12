@@ -70,12 +70,16 @@ class TestHopperChain(object):
     def test_gray_scalehalf_thresh100_hopperchain(self):
         chain_spec = (
             ("grayscale", {}),
-            ("scale", {"factor": 0.5}),
+            ("scale", {'new_size': None, "factor": 0.5}),
             ("threshold", {"thresh": 100})
         )
 
         hop_chain = hopperchain.HopperChain(chain_spec,
                                             source_dir="../eph/")
+        nt.assert_equal(
+            chain_spec,
+            hop_chain.spec
+        )
 
         out_tmp_dir = tempfile.mkdtemp(prefix="FishFaceTESTOUT_")
         for output_image, meta_data in hop_chain:
@@ -91,6 +95,8 @@ class TestHopperChain(object):
 
         hop_chain = hopperchain.HopperChain(chain_spec,
                                             source_dir="../eph/")
+        nt.assert_equal(chain_spec, hop_chain.spec)
+
         hop_chain.insert_hoppers(
             1,
             (
@@ -119,6 +125,7 @@ class TestHopperChain(object):
 
         hop_chain = hopperchain.HopperChain(chain_spec,
                                             source_dir="../eph/")
+        nt.assert_equal(chain_spec, hop_chain.spec)
 
         nt.assert_equal(6, len(hop_chain))
 

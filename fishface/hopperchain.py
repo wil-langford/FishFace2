@@ -14,6 +14,18 @@ def _find_jpgs_in_dir(dir):
             glob.glob(os.path.join(dir,"*.jpeg"))
     )
 
+def string_to_spec(string):
+    spec = list()
+    hopper_spec_strings = string.split('#')
+    for spec_string in hopper_spec_strings:
+        spec.append(hoppers.string_to_spec(spec_string))
+    return spec
+
+def spec_to_string(spec):
+    return '#'.join([hoppers.spec_to_string(hop_spec) for
+                     hop_spec in spec])
+
+
 class FileSource(object):
     """
     Get images from the filesystem into a HopperChain.
@@ -156,7 +168,8 @@ class HopperChain(object):
             raise
         return (image, meta_data)
 
-    def chain_spec(self):
+    @property
+    def spec(self):
         return tuple(hop.spec for hop in self._hopper_list)
 
     def append_hoppers(self, chain_spec):
@@ -175,9 +188,6 @@ class HopperChain(object):
                 )
             )
 
-            self._hopper_list[-1].spec = (hopper_class_str,
-                                          hopper_param)
-
     def get_hopper(self, index):
         return self._hopper_list[index].spec
 
@@ -192,7 +202,6 @@ class HopperChain(object):
         self._hopper_list[index] = hopper_class(source, **hopper_param)
 
         new_hopper = self._hopper_list[index]
-        new_hopper.spec = (hopper_class_str, hopper_param)
 
         try:
             self._hopper_list[index+1].set_source(new_hopper)

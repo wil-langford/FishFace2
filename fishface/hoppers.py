@@ -22,6 +22,36 @@ import cv2
 __author__ = 'wil-langford'
 
 
+def spec_to_string(spec):
+    """
+    Takes a hopper spec and turns it into a string.
+
+    :param spec tuple: A pair.  1st element: hopper short name. 2nd
+                       element: hopper parameters.
+    """
+    spec_str = spec[0]
+    for key in spec[1]:
+        spec_str += ":{}={}".format(key, spec[1][key])
+
+    return spec_str
+
+def string_to_spec(string):
+    """
+    Takes a string produced by spec_to_string and returns a hopper spec.
+
+    :param string str:
+    """
+    spec_kwargs = dict()
+    spec_tokens = string.split(':')
+    name = spec_tokens[0]
+    if len(spec_tokens)>1:
+        for spec_kwarg in spec_tokens[1:]:
+            key, value = spec_kwarg.split('=')
+            spec_kwargs[key] = value
+
+    return (name, spec_kwargs)
+
+
 class Hopper(object):
     """
     This is the base class for the various hoppers.
@@ -36,13 +66,16 @@ class Hopper(object):
 
     def __init__(self, source):
         self.source = source
-        self.spec = ("null", {})
 
     def __iter__(self):
         return self
 
     def __str__(self):
-        return "Hopper"
+        return spec_to_string(self.spec)
+
+    @property
+    def spec(self):
+        return ('null', dict())
 
     def next(self):
         """Returns the next image after the hopper processes it."""
@@ -98,9 +131,6 @@ class HopperScale(Hopper):
         if not self._new_size and not self._factor:
             raise Exception("No valid scaling factor or size found.")
 
-        self.spec = ("scale", {"new_size": self._new_size,
-                                "factor": self._factor})
-
     def _process(self, image):
         if not self._new_size and self._factor:
             new_size = (int(image.shape[0]*self._factor),
@@ -114,10 +144,13 @@ class HopperScale(Hopper):
 
         return result
 
-    def __str__(self):
-        return "HopperScale:newsize={}:factor={}:".format(
-            self._new_size, self._factor
-        )
+
+    @property
+    def spec(self):
+        return ('scale', {
+            'new_size': self._new_size,
+            'factor': self._factor
+        })
 
 
 class HopperConvertToGrayscale(Hopper):
@@ -127,8 +160,6 @@ class HopperConvertToGrayscale(Hopper):
 
     def __init__(self, source):
         super(HopperConvertToGrayscale, self).__init__(source)
-
-        self.spec = ("grayscale", {})
 
     def _process(self, image):
         if len(image.shape) == 3 and image.shape[2] == 3:
@@ -140,8 +171,9 @@ class HopperConvertToGrayscale(Hopper):
 
         return result
 
-    def __str__(self):
-        return "HopperConvertToGrayscale"
+    @property
+    def spec(self):
+        return ('grayscale', dict())
 
 
 class HopperThreshold(Hopper):
@@ -158,8 +190,6 @@ class HopperThreshold(Hopper):
         super(HopperThreshold, self).__init__(source)
         self._thresh = thresh
 
-        self.spec = ("threshold", {"thresh": thresh})
-
     def _process(self, image):
         returned_thresh, result = cv2.threshold(image,
                                thresh=self._thresh,
@@ -169,8 +199,11 @@ class HopperThreshold(Hopper):
 
         return result
 
-    def __str__(self):
-        return "HopperThreshold:threshold={}".format(self._thresh)
+    @property
+    def spec(self):
+        return ('threshold', {
+            'thresh': self._thresh
+        })
 
 class HopperInvert(Hopper):
     """
@@ -179,14 +212,14 @@ class HopperInvert(Hopper):
     def __init__(self, source):
         super(HopperInvert, self).__init__(source)
 
-        self.spec = ("invert", {})
-
     def _process(self, image):
         result = 255 - image
         return result
 
-    def __str__(self):
-        return "HopperInvert"
+    @property
+    def spec(self):
+        return ('invert', dict())
+
 
 CLASS_IDS = {
     "null": Hopper,
@@ -195,3 +228,4 @@ CLASS_IDS = {
     "threshold": HopperThreshold,
     "invert": HopperInvert
 }
+
