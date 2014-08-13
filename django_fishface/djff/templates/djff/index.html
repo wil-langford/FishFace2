@@ -1,0 +1,9 @@
+{% if hopperchain_list %}
+    <ul>
+        {% for chain in hopperchain_list %}
+            <li>{{ hopperchain.hopperchain_name }}</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>No hopperchains have been stored.</p>
+{% endif %}
