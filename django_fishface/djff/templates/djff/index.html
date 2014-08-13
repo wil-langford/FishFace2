@@ -1,7 +1,10 @@
 {% if hopperchain_list %}
     <ul>
         {% for chain in hopperchain_list %}
-            <li>{{ hopperchain.hopperchain_name }}</li>
+            <li>{{ chain.hopperchain_name }}</li>
+            <ul>
+                <li>{{ chain.hopperchain_spec }}</li>
+            </ul>
         {% endfor %}
     </ul>
 {% else %}

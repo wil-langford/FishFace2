@@ -4,8 +4,15 @@ import numpy as np
 import south.modelsinspector as smi
 import fishface.hopperchain as hc
 
-class HopperchainSpecField(models.TextField):
+
+class HopperchainSpecField(models.Field):
     __metaclass__ = models.SubfieldBase
+
+    def __init__(self, *args, **kwargs):
+        super(HopperchainSpecField, self).__init__(*args, **kwargs)
+
+    def get_internal_type(self):
+        return 'TextField'
 
     def to_python(self, value):
         if isinstance(value, basestring):
@@ -14,12 +21,13 @@ class HopperchainSpecField(models.TextField):
             raise Exception("Can't convert non-strings to hopperchain" +
                             "specs.")
 
-    def get_db_prep_value(self, value):
+    def get_prep_value(self, value):
         return hc.spec_to_string(value)
+
 smi.add_introspection_rules([], [r"^djff.fields.HopperchainSpecField"])
 
 
-class PickleField(models.TextField):
+class PickleField(models.Field):
     __metaclass__ = models.SubfieldBase
 
     def __init__(self, *args, **kwargs):
