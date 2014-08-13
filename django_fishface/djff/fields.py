@@ -17,9 +17,8 @@ class HopperchainSpecField(models.Field):
     def to_python(self, value):
         if isinstance(value, basestring):
             return hc.string_to_spec(value)
-        else:
-            raise Exception("Can't convert non-strings to hopperchain" +
-                            "specs.")
+
+        return value
 
     def get_prep_value(self, value):
         return hc.spec_to_string(value)
