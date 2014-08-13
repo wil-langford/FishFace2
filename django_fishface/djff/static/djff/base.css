@@ -1,0 +1,32 @@
+html, body
+{
+    height: 100%;
+}
+
+body
+{
+    background: #FFDDBB;
+    font: 14px/1.333 sans-serif;
+    color: #000000;
+}
+
+header
+{
+    min-width: 100%;
+    min-height: 25em;
+    background-color: #20A020;
+}
+
+#sidebar
+{
+    float: left;
+    width: 9em;
+    background: #40C040;
+    min-height: 100%;
+}
+
+#content
+{
+    margin-top: 3em;
+    margin-left: 9em;
+}
