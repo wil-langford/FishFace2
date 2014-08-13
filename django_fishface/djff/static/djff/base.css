@@ -1,5 +1,6 @@
 html, body
 {
+    margin: 0;
     height: 100%;
 }
 
@@ -12,21 +13,25 @@ body
 
 header
 {
+    top: 0px;
+    position: fixed;
     min-width: 100%;
-    min-height: 25em;
-    background-color: #20A020;
+    min-height: 3em;
+    background: #20A020;
+    padding-left: 4em;
 }
 
 #sidebar
 {
     float: left;
-    width: 9em;
-    background: #40C040;
+    width: 10em;
     min-height: 100%;
+    background: #40C040;
+    padding-top: 5em;
 }
 
 #content
 {
-    margin-top: 3em;
-    margin-left: 9em;
+    padding-top: 6em;
+    margin-left: 10em;
 }
