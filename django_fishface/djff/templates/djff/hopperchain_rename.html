@@ -1,0 +1,21 @@
+{% extends "djff/base.html" %}
+
+{% block subtitle %}Rename Hopperchain{% endblock %}
+
+{% block content %}
+{% if chain %}
+    <form action="{% url 'djff:hopperchain_renamer' chain.id %}" method="post">
+    {% csrf_token %}
+    <input type="text" name="new_name" value="{{ chain.hopperchain_name }}" />
+    <input type="submit" value="Rename" />
+    </form>
+    <ol>
+        {% for hop_type, hop_param in chain.hopperchain_spec %}
+            <li>{{ hop_type }}: {{ hop_param }}</li>
+        {% endfor %}
+    </ol>
+
+{% else %}
+    <p>Hopperchain not found.</p>
+{% endif %}
+{% endblock %}

@@ -4,20 +4,19 @@
 <head>
     <link rel="stylesheet" type="text/css"
           href="{% static 'djff/base.css' %}" />
-    <title>FishFace{% block subtitle %}{% endblock %}</title>
+    <title>FishFace{% block pagetitle %}{% endblock %}</title>
 </head>
 
 <body>
 
 <header>
-    <h1>FishFace</h1>
+    <h2>FishFace</h2>
+    <h4>{% block subtitle %}{% endblock %}</h4>
 </header>
 
 <div id="sidebar">
     {% block sidebar %}
-    <ul>
-        <li>SIDEBAR</li>
-    </ul>
+    SIDEBAR
     {% endblock %}
 </div>
 

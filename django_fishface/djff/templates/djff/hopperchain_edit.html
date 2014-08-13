@@ -1,0 +1,29 @@
+{% extends "djff/base.html" %}
+
+{% block subtitle %}Edit Hopperchain{% endblock %}
+
+{% block content %}
+{% if chain %}
+    <em>Hopperchain Name:</em><br />
+    <strong>
+        <a href="{% url 'djff:hopperchain_rename' chain.id %}">
+            {{ chain.hopperchain_name }}
+        </a>
+    </strong>
+    <ol>
+        {% for hop_type, hop_param in chain.hopperchain_spec %}
+            <li class="hopper_line">
+                <a href="insert/{{ forloop.counter0 }}/" class="insert">+</a>
+                <a href="delete/{{ forloop.counter0 }}/" class="delete">x</a>
+                <a href="set/{{ forloop.counter0 }}/" class="set">*</a>
+                <span class="type">{{ hop_type }}</span>{% if hop_param %}:
+                <span class="parameters">{{ hop_param }}</span>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ol>
+
+{% else %}
+    <p>Hopperchain not found.</p>
+{% endif %}
+{% endblock %}

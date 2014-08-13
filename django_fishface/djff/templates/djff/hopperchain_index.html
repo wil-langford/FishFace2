@@ -1,0 +1,19 @@
+{% extends "djff/base.html" %}
+
+{% block subtitle %}Stored Hopperchains{% endblock %}
+
+{% block content %}
+{% if hopperchain_list %}
+    <ol>
+        {% for chain in hopperchain_list %}
+            <li>
+                <a href="{% url 'djff:hopperchain_detail' chain.id %}">
+                {{ chain.hopperchain_name }}
+                </a>
+            </li>
+        {% endfor %}
+    </ol>
+{% else %}
+    <p>No hopperchains have been stored.</p>
+{% endif %}
+{% endblock %}
