@@ -2,10 +2,6 @@ import pickle
 from django.db import models
 import fields
 
-##############
-### Models ###
-##############
-
 class Experiment(models.Model):
     experiment_name = models.CharField(
         'descriptive name of experiment (optional)',
@@ -82,7 +78,7 @@ class HopperChain(models.Model):
         max_length=250,
         blank=True,
     )
-    hopperchain_spec = models.TextField(
+    hopperchain_spec = fields.HopperchainSpecField(
         'specification of hopperchain',
     )
 

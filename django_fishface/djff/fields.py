@@ -2,6 +2,21 @@ import pickle
 from django.db import models
 import numpy as np
 import south.modelsinspector as smi
+import fishface.hopperchain as hc
+
+class HopperchainSpecField(models.TextField):
+    __metaclass__ = models.SubfieldBase
+
+    def to_python(self, value):
+        if isinstance(value, basestring):
+            return hc.string_to_spec(value)
+        else:
+            raise Exception("Can't convert non-strings to hopperchain" +
+                            "specs.")
+
+    def get_db_prep_value(self, value):
+        return hc.spec_to_string(value)
+smi.add_introspection_rules([], [r"^djff.fields.HopperchainSpecField"])
 
 
 class PickleField(models.TextField):
@@ -23,7 +38,7 @@ class PickleField(models.TextField):
             return pickle.loads(str(value))
         return value
 
-    def get_prop_value(self, value):
+    def get_prep_value(self, value):
         return pickle.dumps(value)
 smi.add_introspection_rules([], [r"^djff.fields.PickleField"])
 

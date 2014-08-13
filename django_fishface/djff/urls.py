@@ -1,7 +1,7 @@
 import django.conf.urls as dcu
-from djff import views
+import djff.views as views
 
 urlpatterns = dcu.patterns(
     '',
-    dcu.url(r'^$', views.IndexView.as_view(), name='index'),
+    dcu.url(r'^$', views.index, name='index'),
 )
