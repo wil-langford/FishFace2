@@ -60,6 +60,7 @@ class TestHoppers(object):
     def test_hopper_base(self):
         source = FakeSource(TEST_IMAGES['grayscale-blackfill-1x1'])
         hop = hoppers.Hopper(source)
+        nt.assert_equal(hop.spec, ('null', dict()))
         for output_image, meta_data in hop:
             nt.assert_true(np.array_equal(
                 TEST_IMAGES['grayscale-blackfill-1x1'],
@@ -72,6 +73,17 @@ class TestHoppers(object):
             TEST_IMAGES['grayscale-blackfill-1x1'].copy()
         )
         hop = hoppers.HopperScale(source, factor=3)
+        nt.assert_equal(
+            hop.spec,
+            (
+                'scale',
+                {
+                    'factor': 3,
+                    'new_size': None
+                }
+            )
+        )
+
         for output_image, meta_data in hop:
             nt.assert_true(np.array_equal(
                 TEST_IMAGES['grayscale-blackfill-3x3'],
@@ -98,6 +110,8 @@ class TestHoppers(object):
         source = FakeSource(three_channel.copy())
 
         hop = hoppers.HopperConvertToGrayscale(source)
+        nt.assert_equal(hop.spec, ('grayscale', dict()))
+
         for output_image, meta_data in hop:
             nt.assert_true(np.array_equal(
                 np.array([[207]]),
@@ -109,21 +123,33 @@ class TestHoppers(object):
 
         for thresh in range(60, 255, 64):
             hop = hoppers.HopperThreshold(source, thresh)
+            nt.assert_equal(
+                hop.spec,
+                (
+                    'threshold',
+                    {
+                        'thresh': thresh
+                    }
+                )
+            )
             for output_image, meta_data in hop:
                 compare_to = TEST_IMAGES['grayscale-fourtone-2x2']
-                compare_to[compare_to>thresh] = 255
-                compare_to[compare_to<255] = 0
+                compare_to[compare_to > thresh] = 255
+                compare_to[compare_to < 255] = 0
                 print "COMPARE\n", compare_to
                 print "OUTPUT\n", output_image
-                nt.assert_true(np.array_equal(
-                    compare_to,
-                    output_image)
+                nt.assert_true(
+                    np.array_equal(
+                        compare_to,
+                        output_image
+                    )
                 )
 
     def test_invert(self):
         source = FakeSource(TEST_IMAGES['grayscale-blackfill-1x1'])
 
         hop = hoppers.HopperInvert(source)
+        nt.assert_equal(hop.spec, ('invert', dict()))
         for output_image, meta_data in hop:
             nt.assert_true(np.array_equal(
                 TEST_IMAGES['grayscale-whitefill-1x1'],

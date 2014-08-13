@@ -11,10 +11,44 @@ import glob
 
 
 def _find_jpgs_in_dir(directory):
+    """
+    Finds files with .jpg and .jpeg extensions in the specified
+    directory.
+
+    :param directory: The directory to look for JPGs in.
+    :return: List of JPGs in the specified directory.
+    """
     return (
         glob.glob(os.path.join(directory, "*.jpg")) +
         glob.glob(os.path.join(directory, "*.jpeg"))
     )
+
+
+def spec_to_string(spec):
+    """
+    Converts a hopperchain spec into a string suitable for printing
+    or database storage.
+
+    :param spec: The hopperchain spec to process.
+    :return: A string based on the provided hopperchain spec.
+    """
+    return '#'.join([hoppers.spec_to_string(hop_spec) for
+                     hop_spec in spec])
+
+
+def string_to_spec(string):
+    """
+    Converts a string formatted by spec_to_string back into a
+    hopperchain spec.
+
+    :param string: The string to process.
+    :return: A hopperchain spec based on the string.
+    """
+    spec = list()
+    hopper_spec_strings = string.split('#')
+    for spec_string in hopper_spec_strings:
+        spec.append(hoppers.string_to_spec(spec_string))
+    return spec
 
 
 class FileSource(object):
@@ -53,9 +87,14 @@ class FileSource(object):
             raise Exception("file_dir or file_list must be specified.")
 
     def __iter__(self):
+        """Part of the iterable protocol."""
         return self
 
     def next(self):
+        """
+        Part of the iterable protocol.  Returns the image in the list
+        until the list runs dry.
+        """
         try:
             filename = self._source.next()
         except StopIteration:
@@ -91,9 +130,14 @@ class ImageSource(object):
         self._index = 0
 
     def __iter__(self):
+        """Part of the iterable protocol."""
         return self
 
     def next(self):
+        """
+        Part of the iterable protocol.  Returns the next image from the
+        list until the list runs dry.
+        """
         try:
             image = self._source_list[self._index]
             self._index += 1
@@ -112,10 +156,10 @@ class HopperChain(object):
     """
     Manage multiple hoppers in series.
 
-    :param chain_spec iter: An iterable of hopper specifications.  Each
-                            hopper spec is a pair: a string ID for the
-                            class of hopper to create, and a dictionary
-                            of parameters to pass to it.
+    :param hopperchain_spec iter: An iterable of hopper specifications.
+                            Each hopper spec is a pair: a string ID for
+                            the class of hopper to create, and a
+                            dictionary of parameters to pass to it.
     :param source_list iter: This is passed directly to FileSource as
                              the file_list parameter.
     :param source_dir iter: This is passed directly to FileSource as
@@ -132,7 +176,7 @@ class HopperChain(object):
     That is, "for output_image in hopper_chain: ..."
     """
 
-    def __init__(self, chain_spec,
+    def __init__(self, hopperchain_spec,
                  source_obj=None,
                  source_list=None, source_dir=None):
         if isinstance(source_obj, (ImageSource, FileSource)):
@@ -145,10 +189,11 @@ class HopperChain(object):
                             "HopperChain.")
 
         self._hopper_list = list()
-        self._orig_chain_spec = chain_spec
-        self.append_hoppers(chain_spec)
+        self._orig_chain_spec = hopperchain_spec
+        self.append_hoppers(hopperchain_spec)
 
     def __iter__(self):
+        """Part of the iterable protocol."""
         return self
 
     def next(self):
@@ -159,11 +204,23 @@ class HopperChain(object):
             raise
         return image, meta_data
 
-    def chain_spec(self):
+    @property
+    def spec(self):
+        """
+        Returns a hopperchain spec (which is a tuple of hopper
+        specs).
+        """
         return tuple(hop.spec for hop in self._hopper_list)
 
-    def append_hoppers(self, chain_spec):
-        for hopper_class_str, hopper_param in chain_spec:
+    def append_hoppers(self, hopperchain_spec):
+        """
+        Append hoppers to the chain according to the hopperchain spec
+        provided.
+
+        :param hopperchain_spec: The chain spec to
+        :return:
+        """
+        for hopper_class_str, hopper_param in hopperchain_spec:
             if len(self._hopper_list) == 0:
                 source = self._image_source
             else:
@@ -178,13 +235,25 @@ class HopperChain(object):
                 )
             )
 
-            self._hopper_list[-1].spec = (hopper_class_str,
-                                          hopper_param)
-
     def get_hopper(self, index):
+        """
+        Gets a specific hopper spec from the list of hoppers
+        in the chain.
+
+        :param index: The index of the hopper to retrieve.
+        :return: The spec of the retrieved hopper.
+        """
         return self._hopper_list[index].spec
 
-    def set_hopper(self, index, hopper_class_str, hopper_param):
+    def set_hopper(self, index, hopper_spec):
+        """
+        Replaces a specific hopper in the chain with a new hopper
+        generated by hopper_spec.
+
+        :param index: Which hopper to replace.
+        :param hopper_spec: The hopper spec of the replacement hopper.
+        """
+        hopper_class_str, hopper_param = hopper_spec
         hopper_class = hoppers.CLASS_IDS[hopper_class_str]
 
         if index == 0:
@@ -195,7 +264,6 @@ class HopperChain(object):
         self._hopper_list[index] = hopper_class(source, **hopper_param)
 
         new_hopper = self._hopper_list[index]
-        new_hopper.spec = (hopper_class_str, hopper_param)
 
         try:
             self._hopper_list[index+1].set_source(new_hopper)
@@ -203,6 +271,18 @@ class HopperChain(object):
             pass
 
     def insert_hoppers(self, position, chain_spec=None, number=None):
+        """
+        Inserts hoppers into a hopper chain.
+
+        Either chain_spec or number must be specified.  If chain_spec
+        is given, then its length overrides number.
+
+        :param position: The position in the chain at which to insert
+                         the new hoppers.
+        :param chain_spec: The chain spec of the hoppers to insert.
+        :param number: The number of null hoppers to insert.
+        :return:
+        """
         if number is None and chain_spec is None:
             raise Exception("Must specify either the number of null " +
                             "hoppers to insert or a chain_spec " +
@@ -226,10 +306,21 @@ class HopperChain(object):
 
             self._hopper_list.insert(
                 position+i,
-                hopper_class(source, **hopper_params)
+                hopper_class(
+                    source,
+                    **hopper_params
+                )
             )
 
     def delete_hoppers(self, position, number=1):
+        """
+        Delete a specified number of hoppers from a specific location
+        in the chain.
+
+        :param position: The position to delete hoppers from.
+        :param number: The number of hoppers to delete.
+        :return:
+        """
         if position+number > len(self):
             raise Exception(
                 "Cannot remove {} hoppers from position {}, because " +
@@ -251,4 +342,5 @@ class HopperChain(object):
         self._hopper_list[position].set_source(source)
 
     def __len__(self):
+        """Returns the length of the list of hoppers in the chain."""
         return len(self._hopper_list)
