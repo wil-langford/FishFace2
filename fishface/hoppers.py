@@ -22,6 +22,24 @@ import cv2
 __author__ = 'wil-langford'
 
 
+# This dict associates a dict of parameters with each
+# hopper class short name.  The parameter dicts associate
+# the parameter with a tuple containing the type and
+# default for that hopper class.
+CLASS_PARAMS = {
+    "null": {},
+    "scale": {
+        "factor": (float, 1.0),
+        "new_size": (tuple, None),
+    },
+    "grayscale": {},
+    "threshold": {
+        "thresh": (int, 50),
+    },
+    "invert": {}
+}
+
+
 def spec_to_string(spec):
     """
     Takes a hopper spec and turns it into a string.
@@ -229,6 +247,8 @@ class HopperInvert(Hopper):
         return ('invert', dict())
 
 
+# This dict associates a short name with each hopper
+# class.
 CLASS_IDS = {
     "null": Hopper,
     "scale": HopperScale,
@@ -236,3 +256,4 @@ CLASS_IDS = {
     "threshold": HopperThreshold,
     "invert": HopperInvert
 }
+
