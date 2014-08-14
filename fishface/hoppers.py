@@ -22,22 +22,6 @@ import cv2
 __author__ = 'wil-langford'
 
 
-# This dict associates a dict of parameters with each
-# hopper class short name.  The parameter dicts associate
-# the parameter with a tuple containing the type and
-# default for that hopper class.
-CLASS_PARAMS = {
-    "null": {},
-    "scale": {
-        "factor": (float, 1.0),
-        "new_size": (tuple, None),
-    },
-    "grayscale": {},
-    "threshold": {
-        "thresh": (int, 50),
-    },
-    "invert": {}
-}
 
 
 def spec_to_string(spec):
@@ -249,10 +233,38 @@ class HopperInvert(Hopper):
 
 # This dict associates a short name with each hopper
 # class.
-CLASS_IDS = {
-    "null": Hopper,
-    "scale": HopperScale,
-    "grayscale": HopperConvertToGrayscale,
-    "threshold": HopperThreshold,
-    "invert": HopperInvert
+# This dict also associates a dict of parameters with each
+# hopper class short name.  The parameter dicts associate
+# the parameter with a tuple containing the type and
+# default for that hopper class.
+CLASS_PARAMS = {
+    "null": {
+        "class": Hopper,
+        "params": {}
+    },
+    "scale": {
+        "class": HopperScale,
+        "params": {
+            "factor": (float, 1.0),
+            "new_size": (tuple, None),
+        }
+    },
+    "grayscale": {
+        "class": HopperConvertToGrayscale,
+        "params": {}
+    },
+    "threshold": {
+        "class": HopperThreshold,
+        "params": {
+            "thresh": (int, 50),
+        }
+    },
+    "invert": {
+        "class": HopperInvert,
+        "params": {}
+    },
 }
+
+CLASS_IDS = dict()
+for key in CLASS_PARAMS:
+    CLASS_IDS[key] = CLASS_PARAMS[key]['class']
