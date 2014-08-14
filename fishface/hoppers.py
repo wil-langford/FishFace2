@@ -256,4 +256,3 @@ CLASS_IDS = {
     "threshold": HopperThreshold,
     "invert": HopperInvert
 }
-
