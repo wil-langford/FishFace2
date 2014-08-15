@@ -10,16 +10,6 @@ urlpatterns = dcu.patterns(
         name='hopperchain_index'
     ),
     dcu.url(
-        r'^hc/(?P<chain_id>\d+)/$',
-        views.hopperchain_detail,
-        name='hopperchain_detail'
-    ),
-    dcu.url(
-        r'^hc/edit/(?P<chain_id>\d+)/$',
-        views.hopperchain_edit,
-        name='hopperchain_edit'
-    ),
-    dcu.url(
         r'^hc/rename/(?P<chain_id>\d+)/$',
         views.hopperchain_rename,
         name='hopperchain_rename'
@@ -31,12 +21,47 @@ urlpatterns = dcu.patterns(
     ),
     dcu.url(
         r'^hc/edit/(?P<chain_id>\d+)/delete/(?P<hopper_index>\d+)/$',
-        views.hopperchain_delete,
-        name='hopperchain_delete'
+        views.hopperchain_delete_hopper,
+        name='hopperchain_delete_hopper'
     ),
     dcu.url(
         r'^hc/edit/(?P<chain_id>\d+)/insert/(?P<hopper_index>\d+)/$',
-        views.hopperchain_insert,
-        name='hopperchain_insert'
+        views.hopperchain_insert_hopper,
+        name='hopperchain_insert_hopper'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/editor/$',
+        views.hopperchain_editor,
+        name='hopperchain_editor'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/up/(?P<hopper_index>\d+)/$',
+        views.hopperchain_up,
+        name='hopperchain_up'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/down/(?P<hopper_index>\d+)/$',
+        views.hopperchain_down,
+        name='hopperchain_down'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/set/(?P<hopper_index>\d+)/(?P<hop_type>\w+)/$',
+        views.hopperchain_set,
+        name='hopperchain_set'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/$',
+        views.hopperchain_edit,
+        name='hopperchain_edit'
+    ),
+    dcu.url(
+        r'^hc/deleter/(?P<chain_id>\d+)/$',
+        views.hopperchain_deleter,
+        name='hopperchain_deleter'
+    ),
+    dcu.url(
+        r'^hc/new/$',
+        views.hopperchain_new,
+        name='hopperchain_new'
     ),
 )

@@ -8,7 +8,7 @@ html, body
 body
 {
     background: #FFDDBB;
-    font: 14px/1.333 sans-serif;
+    font-size: 100%;
     color: #000000;
 }
 
@@ -51,7 +51,7 @@ header
 }
 
 
-.hopper_line .set
+.hopper_line .updown
 {
     color: blue;
 }
@@ -59,9 +59,21 @@ header
 .hopper_line .type
 {
     color: black;
+    font-size: 2em;
+    font-weight: bold;
 }
 
 .hopper_line .parameters
 {
     color: #555555;
+}
+
+.hopper_line .disabled
+{
+    color: gray;
+}
+
+.deleter .warning
+{
+    color: red;
 }
