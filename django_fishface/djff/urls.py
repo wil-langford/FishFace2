@@ -64,4 +64,9 @@ urlpatterns = dcu.patterns(
         views.hopperchain_new,
         name='hopperchain_new'
     ),
+    dcu.url(
+        r'^hc/preview/(?P<chain_id>\d+)/preview.jpg$',
+        views.hopperchain_preview_image,
+        name='hopperchain_preview_image'
+    ),
 )

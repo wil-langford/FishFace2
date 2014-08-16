@@ -1,6 +1,9 @@
 {% extends "djff/base.html" %}
+{% load staticfiles %}
 
 {% block subtitle %}Edit Hopperchain{% endblock %}
+
+
 
 {% block content %}
     <em>Hopperchain Name:</em><br />
@@ -68,6 +71,7 @@
             {% endif %}
             </ul>
 
+        <hr>
         </li>
     {% empty %}
     <h4>Hopperchain not found.</h4>
@@ -76,4 +80,9 @@
     </form>
     </ol>
 
+{% endblock %}
+
+{% block preview_area %}
+    <img width='95%' src="{% static 'djff/sample-DATA.jpg' %}" />
+    <img width='95%' src="{% url 'djff:hopperchain_preview_image' chain.id %}" />
 {% endblock %}
