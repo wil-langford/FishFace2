@@ -292,7 +292,7 @@ class HopperChain(object):
             number = len(chain_spec)
 
         for i in range(number):
-            if i+position == 0:
+            if i + position == 0:
                 source = self._image_source
             else:
                 source = self._hopper_list[i+position-1]
@@ -322,14 +322,14 @@ class HopperChain(object):
         :return:
         """
         if position+number > len(self):
-            raise Exception("Cannot remove {} hoppers from position " +
-                            "{}, because only {} hoppers exist at " +
-                            "that location".format(
-                                number,
-                                position,
-                                len(self) - position + 1
-                            )
-                            )
+            raise Exception(
+                "Cannot remove {} hoppers from position {}, because " +
+                "only {} hoppers exist at that location".format(
+                    number,
+                    position,
+                    len(self) - position + 1
+                )
+            )
 
         if position == 0:
             source = self._image_source

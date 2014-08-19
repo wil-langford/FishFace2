@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+{% load staticfiles %}
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="text/css"
+          href="{% static 'djff/base.css' %}" />
+    <title>FishFace{% block pagetitle %}{% endblock %}</title>
+</head>
+
+<body>
+
+<header>
+    <h2>FishFace</h2>
+    <h4>{% block subtitle %}{% endblock %}</h4>
+</header>
+
+<div id="sidebar">
+    {% block sidebar %}
+    <a href="{% url 'djff:hopperchain_index' %}">
+        HopperChains
+    </a>
+    {% endblock %}
+</div>
+
+<div id="preview_area">
+    {% block preview_area %}
+    {% endblock %}
+</div>
+
+<div id="content">
+    {% block content %}{% endblock %}
+</div>
+
+</body>
+</html>

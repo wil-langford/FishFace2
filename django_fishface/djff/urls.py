@@ -1,0 +1,72 @@
+import django.conf.urls as dcu
+import djff.views as views
+
+urlpatterns = dcu.patterns(
+    '',
+    dcu.url(r'^$', views.index, name='index'),
+    dcu.url(
+        r'^hc/$',
+        views.hopperchain_index,
+        name='hopperchain_index'
+    ),
+    dcu.url(
+        r'^hc/rename/(?P<chain_id>\d+)/$',
+        views.hopperchain_rename,
+        name='hopperchain_rename'
+    ),
+    dcu.url(
+        r'^hc/renamer/(?P<chain_id>\d+)/$',
+        views.hopperchain_renamer,
+        name='hopperchain_renamer'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/delete/(?P<hopper_index>\d+)/$',
+        views.hopperchain_delete_hopper,
+        name='hopperchain_delete_hopper'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/insert/(?P<hopper_index>\d+)/$',
+        views.hopperchain_insert_hopper,
+        name='hopperchain_insert_hopper'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/editor/$',
+        views.hopperchain_editor,
+        name='hopperchain_editor'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/up/(?P<hopper_index>\d+)/$',
+        views.hopperchain_up,
+        name='hopperchain_up'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/down/(?P<hopper_index>\d+)/$',
+        views.hopperchain_down,
+        name='hopperchain_down'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/set/(?P<hopper_index>\d+)/(?P<hop_type>\w+)/$',
+        views.hopperchain_set,
+        name='hopperchain_set'
+    ),
+    dcu.url(
+        r'^hc/edit/(?P<chain_id>\d+)/$',
+        views.hopperchain_edit,
+        name='hopperchain_edit'
+    ),
+    dcu.url(
+        r'^hc/deleter/(?P<chain_id>\d+)/$',
+        views.hopperchain_deleter,
+        name='hopperchain_deleter'
+    ),
+    dcu.url(
+        r'^hc/new/$',
+        views.hopperchain_new,
+        name='hopperchain_new'
+    ),
+    dcu.url(
+        r'^hc/preview/(?P<chain_id>\d+)/preview.jpg$',
+        views.hopperchain_preview_image,
+        name='hopperchain_preview_image'
+    ),
+)

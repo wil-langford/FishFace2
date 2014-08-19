@@ -1,0 +1,90 @@
+html, body
+{
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body
+{
+    background: #FFDDBB;
+    font-size: 100%;
+    color: #000000;
+}
+
+header
+{
+    top: 0;
+    position: fixed;
+    min-width: 100%;
+    min-height: 3em;
+    background: #108010;
+    padding-left: 3em;
+    line-height: 0.2;
+    color: white;
+}
+
+#sidebar
+{
+    float: left;
+    width: 10em;
+    min-height: 100%;
+    background: #40C040;
+    padding-top: 6em;
+    padding-left: 1em;
+}
+
+#preview_area
+{
+    float: right;
+    width: 25%;
+    min-height: 100%;
+    background: peru;
+    padding-top: 6em;
+    padding-left: 1em;
+}
+
+#content
+{
+    padding-top: 6em;
+    margin-left: 12em;
+}
+
+
+.hopper_line .insert
+{
+    color: green;
+}
+
+.hopper_line .delete
+{
+    color: red;
+}
+
+
+.hopper_line .updown
+{
+    color: blue;
+}
+
+.hopper_line .type
+{
+    color: black;
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.hopper_line .parameters
+{
+    color: #555555;
+}
+
+.hopper_line .disabled
+{
+    color: gray;
+}
+
+.deleter .warning
+{
+    color: red;
+}
