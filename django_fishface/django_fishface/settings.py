@@ -83,3 +83,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# TODO: Change to a non-temporary MEDIA_ROOT after move to server.
+MEDIA_ROOT = '/home/wil/PycharmProjects/FishFace2/eph/media/'
