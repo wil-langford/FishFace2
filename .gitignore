@@ -60,3 +60,6 @@ docs/_build/
 
 # No DB in the repository, thanks.
 db.sqlite3
+
+# Nothing beginning with EPHemeral.
+eph*
