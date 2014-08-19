@@ -54,3 +54,12 @@ docs/_build/
 
 # PyCharm IDE
 .idea
+
+# Backups
+*.bak
+
+# No DB in the repository, thanks.
+db.sqlite3
+
+# Nothing beginning with EPHemeral.
+eph*
