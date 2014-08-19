@@ -62,9 +62,8 @@
             {% if hop_type == "null" %}
                 <li> Set new hopper type:
                 {% for hop_new_class in hopper_classes %}
-                    <a href="{% url 'djff:hopperchain_set' chain.id forloop.parentloop.counter0 hop_new_class %}">
-                        {{ hop_new_class }}
-                    </a>
+                    <a href="{% url 'djff:hopperchain_set' chain.id forloop.parentloop.counter0 hop_new_class %}"
+                            >{{ hop_new_class }}</a>
                 {% endfor %}
                 </li>
                 <br>
