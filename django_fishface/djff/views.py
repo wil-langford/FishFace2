@@ -1,24 +1,23 @@
-from ast import literal_eval as eval
 import logging
+import cv2
+import numpy as np
 
 import django.shortcuts as ds
 import django.http as dh
 import django.core.urlresolvers as dcu
 import django.core.files.storage as dcfs
 
-from djff.models import Experiment, Image, ImageAnalysis
+# from djff.models import Experiment, Image, ImageAnalysis
 from djff.models import HopperChain
 
 from fishface.hoppers import CLASS_PARAMS
 import fishface.hopperchain
 
-import cv2
-import numpy as np
 
 logging.basicConfig(
-    level = logging.INFO,
-    format = '%(asctime)s %(levelname)s %(message)s',
-    filename = '/tmp/djangoLog.log',)
+    level=logging.WARNING,
+    format='%(asctime)s %(levelname)s %(message)s',
+    filename='/tmp/djangoLog.log',)
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ def _image_response_from_numpy_array(img, extension):
                       your own risk.
     """
     out = cv2.imencode(".{}".format(extension), img)[1].tostring()
-    response = dh.HttpResponse(out, mimetype="image/{}".format(
+    response = dh.HttpResponse(out, content_type="image/{}".format(
         extension
     ))
     return response
@@ -183,7 +182,10 @@ def hopperchain_set(request, chain_id, hopper_index, hop_type):
     chain = ds.get_object_or_404(HopperChain, pk=chain_id)
     hopper_index = int(hopper_index)
 
-    chain.hopperchain_spec[hopper_index] = (hop_type, dict())
+    chain.hopperchain_spec[hopper_index] = (
+        hop_type,
+        CLASS_PARAMS[hop_type]['defaults']
+    )
     chain.save()
 
     return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_edit',
@@ -192,12 +194,14 @@ def hopperchain_set(request, chain_id, hopper_index, hop_type):
 
 def hopperchain_new(request):
     chain = HopperChain()
-    chain.hopperchain_spec = [ ('null', dict())]
+    chain.hopperchain_spec = [('null', dict())]
     chain.hopperchain_name = "New HopperChain"
     chain.save()
 
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_rename',
-                                               args=(chain.id,)))
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:hopperchain_rename',
+                    args=(chain.id,))
+    )
 
 
 def hopperchain_deleter(request, chain_id):
@@ -209,21 +213,23 @@ def hopperchain_deleter(request, chain_id):
     return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_edit',
                                                args=(chain.id,)))
 
-def hopperchain_preview_image(request, chain_id):
-    try:
-        chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-    except dh.Http404:
-        img = np.ones((100,100,3),dtype=np.uint8) * 150
-        return _image_response_from_numpy_array(img, 'jpg')
 
-    image_source = fishface.hopperchain.ImageSource(
-        [np.ones((100,100,3)) * 0]
-    )
+def hopperchain_preview_image(request, chain_id):
+    with dcfs.default_storage.open(
+            'sample-DATA.jpg',
+            mode='r'
+    ) as img_file:
+        img_raw = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
+        src_img = cv2.imdecode(img_raw, 0)
+
+    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
+
+    image_source = fishface.hopperchain.ImageSource([src_img])
 
     real_hc = fishface.hopperchain.HopperChain(
         chain.hopperchain_spec,
         source_obj=image_source
     )
 
-    img, metadata = real_hc.next()
+    img = real_hc.next()[0]
     return _image_response_from_numpy_array(img, 'jpg')
