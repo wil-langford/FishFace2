@@ -22,8 +22,6 @@ import cv2
 __author__ = 'wil-langford'
 
 
-
-
 def spec_to_string(spec):
     """
     Takes a hopper spec and turns it into a string.
@@ -32,8 +30,8 @@ def spec_to_string(spec):
                        element: hopper parameters.
     """
     spec_str = spec[0]
-    for key in spec[1]:
-        spec_str += ":{}={}".format(key, spec[1][key])
+    for param_key in spec[1]:
+        spec_str += ":{}={}".format(param_key, spec[1][param_key])
 
     return spec_str
 
@@ -49,8 +47,8 @@ def string_to_spec(string):
     name = spec_tokens[0]
     if len(spec_tokens) > 1:
         for spec_kwarg in spec_tokens[1:]:
-            key, value = spec_kwarg.split('=')
-            spec_kwargs[key] = value
+            param_key, value = spec_kwarg.split('=')
+            spec_kwargs[param_key] = value
 
     return (name, spec_kwargs)
 
@@ -172,7 +170,7 @@ class HopperConvertToGrayscale(Hopper):
     def _process(self, image):
         if len(image.shape) == 3 and image.shape[2] == 3:
             result = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        elif len(image.shape) == 1:
+        elif len(image.shape) == 2:
             result = image
         else:
             result = False
@@ -201,7 +199,7 @@ class HopperThreshold(Hopper):
     def _process(self, image):
         returned_thresh, result = cv2.threshold(
             image,
-            thresh=self._thresh,
+            thresh=float(self._thresh),
             maxval=255,
             type=cv2.THRESH_BINARY
         )
@@ -240,28 +238,38 @@ class HopperInvert(Hopper):
 CLASS_PARAMS = {
     "null": {
         "class": Hopper,
-        "params": {}
+        "params": {},
+        "defaults": {}
     },
     "scale": {
         "class": HopperScale,
         "params": {
-            "factor": (float, 1.0),
-            "new_size": (tuple, None),
+            "factor": float,
+            "new_size": tuple,
+        },
+        "defaults": {
+            "factor": 1.0,
+            "new_size": '',
         }
     },
     "grayscale": {
         "class": HopperConvertToGrayscale,
-        "params": {}
+        "params": {},
+        "defaults": {}
     },
     "threshold": {
         "class": HopperThreshold,
         "params": {
-            "thresh": (int, 50),
+            "thresh": int,
+        },
+        "defaults": {
+            "thresh": 50.0
         }
     },
     "invert": {
         "class": HopperInvert,
-        "params": {}
+        "params": {},
+        "defaults": {}
     },
 }
 
