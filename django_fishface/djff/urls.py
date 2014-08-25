@@ -1,9 +1,13 @@
 import django.conf.urls as dcu
 import djff.views as views
-
 urlpatterns = dcu.patterns(
     '',
     dcu.url(r'^$', views.index, name='index'),
+    dcu.url(
+        r'^hc/image_upload/(?P<chain_id>\d+)/$',
+        views.image_capturer,
+        name='image_capturer'
+    ),
     dcu.url(
         r'^hc/$',
         views.hopperchain_index,
@@ -69,4 +73,36 @@ urlpatterns = dcu.patterns(
         views.hopperchain_preview_image,
         name='hopperchain_preview_image'
     ),
+    dcu.url(
+        r'^xp/$',
+        views.experiment_index,
+        name='experiment_index'
+    ),
+    dcu.url(
+        r'^xp/(?P<xp_id>\d+)/edit/$',
+        views.experiment_edit,
+        name='experiment_edit'
+    ),
+    dcu.url(
+        r'^xp/(?P<xp_id>\d+)/rename/$',
+        views.experiment_rename,
+        name='experiment_rename'
+    ),
+    dcu.url(
+        r'^xp/new/$',
+        views.experiment_new,
+        name='experiment_new'
+    ),
+    dcu.url(
+        r'^upload_imagery/$',
+        views.image_capturer,
+        name='image_capturer'
+    ),
+    dcu.url(
+        r'^tokenizer/$',
+        views.tokenizer,
+        name='tokenizer'
+    ),
 )
+
+
