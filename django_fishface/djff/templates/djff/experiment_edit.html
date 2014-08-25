@@ -1,0 +1,27 @@
+{% extends "djff/base.html" %}
+{% load staticfiles %}
+
+{% block subtitle %}Experiment Editing{% endblock %}
+
+
+
+{% block content %}
+    <em>Experiment Name:</em><br />
+    <strong>
+        <a href="{% url 'djff:experiment_rename' xp.id %}">
+            {{ xp.experiment_name }}
+        </a>
+    </strong>
+
+    <ol>
+{#    <form method="post"#}
+{#          action="{% url 'djff:experiment_editor' xp.id %}">#}
+{#        {% csrf_token %}#}
+{#    <input type="submit" value="Save changes" />#}
+{#    </form>#}
+    </ol>
+
+{% endblock %}
+
+{% block preview_area %}
+{% endblock %}
