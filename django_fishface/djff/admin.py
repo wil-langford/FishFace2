@@ -11,13 +11,27 @@ class ExperimentAdmin(admin.ModelAdmin):
             'fields': [
                 'experiment_name',
                 'experiment_start_dtg',
-                'experiment_last_viewed'
+                'species'
+            ]
+        }),
+        ('Researcher (optional)', {
+            'fields': [
+                'researcher_name',
+                'researcher_email'
             ]
         })
     ]
     inlines = [ImageInline]
-    list_display = ('experiment_name', 'experiment_start_dtg')
-    list_filter = ['experiment_start_dtg']
+    list_display = (
+        'experiment_name',
+        'experiment_start_dtg',
+        'researcher_name'
+    )
+    list_filter = [
+        'experiment_start_dtg',
+        'species',
+        'researcher_name'
+    ]
     search_fields = ['question_text']
 
 admin.site.register(models.Experiment, ExperimentAdmin)
@@ -32,14 +46,13 @@ class ImageAdmin(admin.ModelAdmin):
         ('Image Information', {
             'fields': [
                 'dtg_capture',
-                'species',
                 'voltage',
-                'filename',
+                'image_file'
             ]
         })
     ]
     inlines = [ImageAnalysisInline]
-    list_display = ('species', 'voltage', 'dtg_capture')
-    list_filter = ('species', 'dtg_capture')
+    list_display = ('voltage', 'dtg_capture')
+    list_filter = ('dtg_capture',)
 
 admin.site.register(models.Image, ImageAdmin)
