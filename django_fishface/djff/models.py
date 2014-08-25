@@ -1,19 +1,35 @@
-import pickle
 from django.db import models
+import django.utils as du
 import fields
 
+
 class Experiment(models.Model):
+    """
+    The model for experiment-level data.
+    """
     experiment_name = models.CharField(
-        'descriptive name of experiment (optional)',
+        'descriptive name of experiment',
         max_length=250,
-        null=True,
-        blank=True,
+        default='New Experiment'
     )
     experiment_start_dtg = models.DateTimeField(
         'start date/time of experiment'
     )
-    experiment_last_viewed = models.DateTimeField(
-        'last time the experiment was opened'
+    species = models.CharField(
+        'species of fish',
+        max_length=50
+    )
+
+    researcher_name = models.CharField(
+        'the name of the researcher',
+        max_length=100,
+        null=True,
+        blank=True
+    )
+    researcher_email = models.EmailField(
+        'the email address of the researcher',
+        null=True,
+        blank=True
     )
 
 
@@ -28,13 +44,23 @@ class Image(models.Model):
     experiment = models.ForeignKey(Experiment)
 
     # Data available at capture time.
-    dtg_capture = models.DateTimeField('DTG of image capture')
-    species = models.CharField('species of fish', max_length=50)
-    voltage = models.FloatField('voltage at power supply', default=0)
+    dtg_capture = models.DateTimeField(
+        'DTG of image capture',
+        default=du.timezone.now()
+    )
+    voltage = models.FloatField(
+        'voltage at power supply',
+        default=0
+    )
 
-    # TODO: change to FilePathField when ready to start testing with actual images
-    filename = models.TextField(
+    image_file = models.ImageField(
         'path of image file',
+        upload_to="experiment_imagery/stills/%Y.%m.%d"
+    )
+
+    is_cal_image = models.BooleanField(
+        'is this image a calibration image?',
+        default=False
     )
 
 
