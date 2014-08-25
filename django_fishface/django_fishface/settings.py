@@ -86,3 +86,4 @@ STATIC_URL = '/static/'
 
 # TODO: Change to a non-temporary MEDIA_ROOT after move to server.
 MEDIA_ROOT = '/home/wil/PycharmProjects/FishFace2/eph/media/'
+MEDIA_URL = '/media/'
