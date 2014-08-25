@@ -98,11 +98,6 @@ urlpatterns = dcu.patterns(
         views.image_capturer,
         name='image_capturer'
     ),
-    dcu.url(
-        r'^tokenizer/$',
-        views.tokenizer,
-        name='tokenizer'
-    ),
 )
 
 
