@@ -11,9 +11,11 @@ class Migration(SchemaMigration):
         # Adding model 'Experiment'
         db.create_table(u'djff_experiment', (
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
-            ('experiment_name', self.gf('django.db.models.fields.CharField')(max_length=250, null=True, blank=True)),
-            ('experiment_start_dtg', self.gf('django.db.models.fields.DateTimeField')()),
-            ('experiment_last_viewed', self.gf('django.db.models.fields.DateTimeField')()),
+            ('experiment_name', self.gf('django.db.models.fields.CharField')(default='Experiment 2014-08-19 17:18:08.291429+00:00', max_length=250)),
+            ('experiment_start_dtg', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
+            ('species', self.gf('django.db.models.fields.CharField')(max_length=50)),
+            ('researcher_name', self.gf('django.db.models.fields.CharField')(max_length=100, null=True, blank=True)),
+            ('researcher_email', self.gf('django.db.models.fields.EmailField')(max_length=75, null=True, blank=True)),
         ))
         db.send_create_signal(u'djff', ['Experiment'])
 
@@ -21,10 +23,10 @@ class Migration(SchemaMigration):
         db.create_table(u'djff_image', (
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('experiment', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['djff.Experiment'])),
-            ('dtg_capture', self.gf('django.db.models.fields.DateTimeField')()),
-            ('species', self.gf('django.db.models.fields.CharField')(max_length=50)),
+            ('dtg_capture', self.gf('django.db.models.fields.DateTimeField')(auto_now_add=True, blank=True)),
             ('voltage', self.gf('django.db.models.fields.FloatField')(default=0)),
-            ('filename', self.gf('django.db.models.fields.TextField')()),
+            ('image_file', self.gf('django.db.models.fields.files.ImageField')(max_length=100)),
+            ('is_cal_image', self.gf('django.db.models.fields.BooleanField')(default=False)),
         ))
         db.send_create_signal(u'djff', ['Image'])
 
@@ -45,7 +47,7 @@ class Migration(SchemaMigration):
         db.create_table(u'djff_hopperchain', (
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('hopperchain_name', self.gf('django.db.models.fields.CharField')(max_length=250, blank=True)),
-            ('hopperchain_spec', self.gf('django.db.models.fields.TextField')()),
+            ('hopperchain_spec', self.gf('djff.fields.HopperchainSpecField')()),
         ))
         db.send_create_signal(u'djff', ['HopperChain'])
 
@@ -67,24 +69,26 @@ class Migration(SchemaMigration):
     models = {
         u'djff.experiment': {
             'Meta': {'object_name': 'Experiment'},
-            'experiment_last_viewed': ('django.db.models.fields.DateTimeField', [], {}),
-            'experiment_name': ('django.db.models.fields.CharField', [], {'max_length': '250', 'null': 'True', 'blank': 'True'}),
-            'experiment_start_dtg': ('django.db.models.fields.DateTimeField', [], {}),
-            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
+            'experiment_name': ('django.db.models.fields.CharField', [], {'default': "'Experiment 2014-08-19 17:18:08.291429+00:00'", 'max_length': '250'}),
+            'experiment_start_dtg': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'researcher_email': ('django.db.models.fields.EmailField', [], {'max_length': '75', 'null': 'True', 'blank': 'True'}),
+            'researcher_name': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
+            'species': ('django.db.models.fields.CharField', [], {'max_length': '50'})
         },
         u'djff.hopperchain': {
             'Meta': {'object_name': 'HopperChain'},
             'hopperchain_name': ('django.db.models.fields.CharField', [], {'max_length': '250', 'blank': 'True'}),
-            'hopperchain_spec': ('django.db.models.fields.TextField', [], {}),
+            'hopperchain_spec': ('djff.fields.HopperchainSpecField', [], {}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'})
         },
         u'djff.image': {
             'Meta': {'object_name': 'Image'},
-            'dtg_capture': ('django.db.models.fields.DateTimeField', [], {}),
+            'dtg_capture': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'experiment': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['djff.Experiment']"}),
-            'filename': ('django.db.models.fields.TextField', [], {}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'species': ('django.db.models.fields.CharField', [], {'max_length': '50'}),
+            'image_file': ('django.db.models.fields.files.ImageField', [], {'max_length': '100'}),
+            'is_cal_image': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'voltage': ('django.db.models.fields.FloatField', [], {'default': '0'})
         },
         u'djff.imageanalysis': {
