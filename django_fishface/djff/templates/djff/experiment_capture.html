@@ -1,0 +1,23 @@
+{% extends "djff/base.html" %}
+{% load staticfiles %}
+
+{% block subtitle %}Experiment Capture{% endblock %}
+
+
+
+{% block content %}
+    <em>Experiment Name:</em><br />
+    <strong>
+            {{ xp.experiment_name }}
+    </strong>
+
+    <form method="post"
+          action="{% url 'djff:experiment_capturer' xp.id 4.21 'false' %}">
+        {% csrf_token %}
+    <input type="submit" value="Capture another one" />
+    </form>
+
+{% endblock %}
+
+{% block preview_area %}
+{% endblock %}
