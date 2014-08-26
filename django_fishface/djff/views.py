@@ -1,21 +1,34 @@
 import logging
 import cv2
 import numpy as np
+import datetime
+
+import requests
 
 import django.shortcuts as ds
 import django.http as dh
+import django.utils as du
 import django.core.urlresolvers as dcu
 import django.core.files.storage as dcfs
+import django.views.decorators.csrf as csrf_dec
+import django.utils.timezone as dut
 
-# from djff.models import Experiment, Image, ImageAnalysis
+from djff.models import Experiment, Image, ImageAnalysis
 from djff.models import HopperChain
 
 from fishface.hoppers import CLASS_PARAMS
 import fishface.hopperchain
 
+IMAGERY_SERVER_IP = 'raspi'
+IMAGERY_SERVER_PORT = 18765
+
+IMAGERY_SERVER_URL = 'http://{}:{}/'.format(
+    IMAGERY_SERVER_IP,
+    IMAGERY_SERVER_PORT
+)
 
 logging.basicConfig(
-    level=logging.WARNING,
+    level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s',
     filename='/tmp/djangoLog.log',)
 
@@ -38,8 +51,138 @@ def _image_response_from_numpy_array(img, extension):
     return response
 
 
+def _file_object_to_numpy_array(image_file):
+    img_raw = np.asarray(bytearray(image_file.read()), dtype=np.uint8)
+    return cv2.imdecode(img_raw, 0)
+
+
+def _file_path_to_numpy_array(image_file_path):
+    with dcfs.default_storage.open(
+            image_file_path,
+            mode='r'
+    ) as image_file:
+        return _file_object_to_numpy_array(image_file)
+
+
+#######################
+###  General Views  ###
+#######################
+
+
 def index(request):
-    pass
+    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_index'))
+
+
+##########################
+###  Experiment views  ###
+##########################
+
+
+def experiment_index(request):
+    experiment_list = Experiment.objects.all().order_by(
+        'experiment_start_dtg'
+    )
+    context = {'experiment_list': experiment_list}
+    return ds.render(request, 'djff/experiment_index.html', context)
+
+
+def experiment_new(request):
+    xp = Experiment()
+    xp.experiment_start_dtg = du.timezone.now()
+    xp.experiment_name = "New experiment"
+    xp.species = "pleco"
+    xp.save()
+
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:experiment_rename',
+                    args=(xp.id,))
+    )
+
+
+def experiment_edit(request, xp_id):
+    xp = ds.get_object_or_404(Experiment, pk=xp_id)
+    return ds.render(
+        request,
+        'djff/experiment_index.html',
+        {'xp': xp}
+    )
+
+
+def experiment_rename(request, xp_id):
+    xp = ds.get_object_or_404(Experiment, pk=xp_id)
+    return ds.render(
+        request,
+        'djff/experiment_rename.html',
+        {'xp': xp}
+    )
+
+
+def experiment_capture(request, xp_id):
+    xp = ds.get_object_or_404(Experiment, pk=xp_id)
+
+    return ds.render(
+        request,
+        'djff/experiment_capture.html',
+        {'xp': xp}
+    )
+
+
+def experiment_capturer(request, xp_id, voltage, is_cal_image=False):
+    payload = {
+        'command': 'post_image',
+        'xp_id': xp_id,
+        'voltage': voltage,
+        'is_cal_image': is_cal_image
+    }
+
+    r = requests.get(IMAGERY_SERVER_URL, params=payload)
+
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:experiment_capture',
+                    args=(xp_id,))
+    )
+
+
+
+#######################
+###  Capture views  ###
+#######################
+
+
+@csrf_dec.csrf_exempt
+def image_capturer(request):
+    logger.info("processing request")
+    if request.method == 'POST':
+        logger.info(request.POST)
+        xp = ds.get_object_or_404(Experiment, pk=request.POST['xp_id'])
+
+        is_cal_image = (request.POST['is_cal_image'].lower()
+                        in ['true','t','yes','y','1'])
+        voltage = float(request.POST['voltage'])
+
+        dtg_capture = datetime.datetime.utcfromtimestamp(
+            float(request.POST['capture_time'])
+        ).replace(tzinfo=dut.utc)
+
+        captured_image = Image(
+            experiment=xp,
+            dtg_capture=dtg_capture,
+            voltage=voltage,
+            is_cal_image=is_cal_image,
+            image_file=request.FILES[
+                request.POST['filename']
+            ],
+        )
+        captured_image.save()
+
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:experiment_index'),
+    )
+
+
+###########################
+###  HopperChain views  ###
+###########################
 
 
 def hopperchain_index(request):
@@ -215,12 +358,7 @@ def hopperchain_deleter(request, chain_id):
 
 
 def hopperchain_preview_image(request, chain_id):
-    with dcfs.default_storage.open(
-            'sample-DATA.jpg',
-            mode='r'
-    ) as img_file:
-        img_raw = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
-        src_img = cv2.imdecode(img_raw, 0)
+    src_img = _file_path_to_numpy_array('sample-DATA.jpg')
 
     chain = ds.get_object_or_404(HopperChain, pk=chain_id)
 
@@ -233,3 +371,4 @@ def hopperchain_preview_image(request, chain_id):
 
     img = real_hc.next()[0]
     return _image_response_from_numpy_array(img, 'jpg')
+
