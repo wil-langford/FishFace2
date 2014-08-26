@@ -1,6 +1,8 @@
 from django.db import models
 import django.utils as du
 import fields
+import django.dispatch.dispatcher
+import django.db.models.signals as ddms
 
 
 class Experiment(models.Model):
@@ -109,3 +111,7 @@ class HopperChain(models.Model):
     )
 
 
+@django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
+def image_delete(sender, instance, **kwargs):
+    # pass False so ImageField won't save the model
+    instance.image_file.delete(False)
