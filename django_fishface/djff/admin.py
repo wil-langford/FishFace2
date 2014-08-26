@@ -47,12 +47,13 @@ class ImageAdmin(admin.ModelAdmin):
             'fields': [
                 'dtg_capture',
                 'voltage',
+                'is_cal_image',
                 'image_file'
             ]
         })
     ]
     inlines = [ImageAnalysisInline]
-    list_display = ('voltage', 'dtg_capture')
+    list_display = ('voltage', 'dtg_capture', 'is_cal_image')
     list_filter = ('dtg_capture',)
 
 admin.site.register(models.Image, ImageAdmin)
