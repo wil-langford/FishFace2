@@ -10,19 +10,17 @@
 <body>
 
 <header>
-    <h2>FishFace</h2>
+    <h2><a href="{% url 'djff:experiment_index' %}">FishFace</a></h2>
     <h4>{% block subtitle %}{% endblock %}</h4>
 </header>
 
 <div id="sidebar">
     {% block sidebar %}
-    <a href="{% url 'djff:hopperchain_index' %}">
-        Hopperchains
-    </a>
-    <br>
-    <a href="{% url 'djff:experiment_index' %}">
-        Experiments
-    </a>
+        <a href="{% url 'djff:experiment_index' %}">Experiments</a>
+        <br>
+        Species
+        <br>
+        <a href="{% url 'djff:hopperchain_index' %}">Hopperchains</a>
     {% endblock %}
 </div>
 
