@@ -1,6 +1,7 @@
 from django.contrib import admin
 from djff import models
 
+
 class ImageInline(admin.TabularInline):
     model = models.Image
 
@@ -52,8 +53,29 @@ class ImageAdmin(admin.ModelAdmin):
             ]
         })
     ]
-    inlines = [ImageAnalysisInline]
-    list_display = ('voltage', 'dtg_capture', 'is_cal_image')
+    # TODO: uncomment following line
+    # inlines = [ImageAnalysisInline]
+    list_display = ('voltage', 'dtg_capture',
+                    'is_cal_image', 'admin_image')
     list_filter = ('dtg_capture',)
 
 admin.site.register(models.Image, ImageAdmin)
+
+
+class SpeciesAdmin(admin.ModelAdmin):
+    fieldsets = [
+        ('Species Information', {
+            'fields': [
+                'species_name',
+                'species_shortname',
+            ]
+        }),
+        ('Sample image', {
+            'fields': [
+                'sample_image',
+            ]
+        }),
+    ]
+    list_display = ('species_name', 'species_shortname', 'admin_image')
+
+admin.site.register(models.Species, SpeciesAdmin)
