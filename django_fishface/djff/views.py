@@ -35,7 +35,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-
 def _image_response_from_numpy_array(img, extension):
     """
     Returns an HttpResponse with an image mimetype based on the
@@ -123,16 +122,17 @@ def experiment_capturer(request):
     payload = {
         'command': 'post_image',
         'xp_id': request.POST['xp_id'],
-        'voltage': request.POST['voltage']
+        'voltage': request.POST['voltage'],
     }
 
-    try:
-        payload['is_cal_image'] = request.POST['is_cal_image']
-    except:
-        payload['is_cal_image'] = False
+    payload['is_cal_image'] = request.POST.get(
+        'is_cal_image',
+        False
+    )
 
-
-    r = requests.get(IMAGERY_SERVER_URL, params=payload)
+    if (not request.POST['is_cal_image'] == 'True' or
+        request.POST.get('cal_ready', '') == 'True'):
+        r = requests.get(IMAGERY_SERVER_URL, params=payload)
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:experiment_capture',
