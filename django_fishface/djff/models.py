@@ -5,6 +5,38 @@ import django.dispatch.dispatcher
 import django.db.models.signals as ddms
 
 
+class Species(models.Model):
+    species_name = models.CharField(
+        'the full species of the fish',
+        max_length=200,
+        default='full name of fish species',
+    )
+    species_shortname = models.CharField(
+        'a short abbreviation for the species of fish',
+        max_length=200,
+        default='ABC',
+    )
+    sample_image = models.ImageField(
+        'a sample image of the fish species',
+        blank=True,
+        null=True,
+        upload_to="species_sample_images"
+    )
+
+    def admin_image(self):
+        return '<img width=200 src="/media/{}" />'.format(
+            self.sample_image
+        )
+
+    admin_image.allow_tags = True
+
+    def __unicode__(self):
+        return u'{}({})'.format(
+            self.species_name,
+            self.species_shortname,
+        )
+
+
 class Experiment(models.Model):
     """
     The model for experiment-level data.
@@ -17,10 +49,7 @@ class Experiment(models.Model):
     experiment_start_dtg = models.DateTimeField(
         'start date/time of experiment'
     )
-    species = models.CharField(
-        'species of fish',
-        max_length=50
-    )
+    species = models.ForeignKey(Species)
 
     researcher_name = models.CharField(
         'the name of the researcher',
@@ -64,6 +93,15 @@ class Image(models.Model):
         'is this image a calibration image?',
         default=False
     )
+
+    # TODO: check to see if there's a way to look up '/media/' instead
+    # TODO: of hard coding it
+    def admin_image(self):
+        return '<img width=200 src="/media/{}" />'.format(
+            self.image_file
+        )
+
+    admin_image.allow_tags = True
 
 
 class ImageAnalysis(models.Model):
