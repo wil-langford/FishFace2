@@ -13,7 +13,7 @@ import django.core.files.storage as dcfs
 import django.views.decorators.csrf as csrf_dec
 import django.utils.timezone as dut
 
-from djff.models import Experiment, Image, ImageAnalysis
+from djff.models import Experiment, Image
 from djff.models import HopperChain
 
 from fishface.hoppers import CLASS_PARAMS
@@ -117,16 +117,6 @@ def experiment_rename(request, xp_id):
     )
 
 
-def experiment_capture(request, xp_id):
-    xp = ds.get_object_or_404(Experiment, pk=xp_id)
-
-    return ds.render(
-        request,
-        'djff/experiment_capture.html',
-        {'xp': xp}
-    )
-
-
 def experiment_capturer(request, xp_id, voltage, is_cal_image=False):
     payload = {
         'command': 'post_image',
@@ -143,6 +133,22 @@ def experiment_capturer(request, xp_id, voltage, is_cal_image=False):
     )
 
 
+def experiment_capture(request, xp_id):
+    xp = ds.get_object_or_404(Experiment, pk=xp_id)
+
+    all_xp_images = Image.objects.filter(
+        experiment__id=xp_id
+    )
+
+    return ds.render(
+        request,
+        'djff/experiment_capture.html',
+        {
+            'xp': xp,
+            'all_xp_images': all_xp_images,
+        }
+    )
+
 
 #######################
 ###  Capture views  ###
@@ -153,27 +159,33 @@ def experiment_capturer(request, xp_id, voltage, is_cal_image=False):
 def image_capturer(request):
     logger.info("processing request")
     if request.method == 'POST':
-        logger.info(request.POST)
-        xp = ds.get_object_or_404(Experiment, pk=request.POST['xp_id'])
+        logger.debug(request.POST)
 
-        is_cal_image = (request.POST['is_cal_image'].lower()
-                        in ['true','t','yes','y','1'])
-        voltage = float(request.POST['voltage'])
+        if request.POST['command'] == 'post_image':
+            xp = ds.get_object_or_404(
+                Experiment,
+                pk=request.POST['xp_id']
+            )
 
-        dtg_capture = datetime.datetime.utcfromtimestamp(
-            float(request.POST['capture_time'])
-        ).replace(tzinfo=dut.utc)
+            is_cal_image = (request.POST['is_cal_image'].lower()
+                            in ['true', 't', 'yes', 'y', '1'])
+            voltage = float(request.POST['voltage'])
 
-        captured_image = Image(
-            experiment=xp,
-            dtg_capture=dtg_capture,
-            voltage=voltage,
-            is_cal_image=is_cal_image,
-            image_file=request.FILES[
-                request.POST['filename']
-            ],
-        )
-        captured_image.save()
+            dtg_capture = datetime.datetime.utcfromtimestamp(
+                float(request.POST['capture_time'])
+            ).replace(tzinfo=dut.utc)
+
+            captured_image = Image(
+                experiment=xp,
+                dtg_capture=dtg_capture,
+                voltage=voltage,
+                is_cal_image=is_cal_image,
+                image_file=request.FILES[
+                    request.POST['filename']
+                ],
+            )
+            captured_image.save()
+
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:experiment_index'),
