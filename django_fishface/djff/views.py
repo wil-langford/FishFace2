@@ -12,8 +12,9 @@ import django.core.urlresolvers as dcu
 import django.core.files.storage as dcfs
 import django.views.decorators.csrf as csrf_dec
 import django.utils.timezone as dut
+import django.utils.safestring as dus
 
-from djff.models import Experiment, Image
+from djff.models import Experiment, Image, Species
 from djff.models import HopperChain
 
 from fishface.hoppers import CLASS_PARAMS
@@ -90,21 +91,12 @@ def experiment_new(request):
     xp = Experiment()
     xp.experiment_start_dtg = du.timezone.now()
     xp.experiment_name = "New experiment"
-    xp.species = "pleco"
+    xp.species = Species.objects.all()[0]
     xp.save()
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:experiment_rename',
                     args=(xp.id,))
-    )
-
-
-def experiment_edit(request, xp_id):
-    xp = ds.get_object_or_404(Experiment, pk=xp_id)
-    return ds.render(
-        request,
-        'djff/experiment_index.html',
-        {'xp': xp}
     )
 
 
@@ -117,27 +109,58 @@ def experiment_rename(request, xp_id):
     )
 
 
-def experiment_capturer(request, xp_id, voltage, is_cal_image=False):
+def experiment_renamer(request, xp_id):
+    xp = ds.get_object_or_404(Experiment, pk=xp_id)
+
+    xp.experiment_name = request.POST['new_name']
+    xp.save()
+
+    return dh.HttpResponseRedirect(dcu.reverse('djff:experiment_capture',
+                                               args=(xp.id,)))
+
+
+def experiment_capturer(request):
     payload = {
         'command': 'post_image',
-        'xp_id': xp_id,
-        'voltage': voltage,
-        'is_cal_image': is_cal_image
+        'xp_id': request.POST['xp_id'],
+        'voltage': request.POST['voltage']
     }
+
+    try:
+        payload['is_cal_image'] = request.POST['is_cal_image']
+    except:
+        payload['is_cal_image'] = False
+
 
     r = requests.get(IMAGERY_SERVER_URL, params=payload)
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:experiment_capture',
-                    args=(xp_id,))
+                    args=(payload['xp_id'],))
     )
 
 
 def experiment_capture(request, xp_id):
-    xp = ds.get_object_or_404(Experiment, pk=xp_id)
+    try:
+        xp = ds.get_object_or_404(Experiment, pk=xp_id)
+    except ds.Http404:
+        return dh.HttpResponseRedirect(
+            dcu.reverse(
+                'djff:experiment_new',
+                args=tuple(),
+            )
+        )
 
-    all_xp_images = Image.objects.filter(
+    xp_images = Image.objects.filter(
         experiment__id=xp_id
+    )
+
+    cal_images = xp_images.filter(
+        is_cal_image=True
+    )
+
+    data_images = xp_images.filter(
+        is_cal_image=False
     )
 
     return ds.render(
@@ -145,14 +168,16 @@ def experiment_capture(request, xp_id):
         'djff/experiment_capture.html',
         {
             'xp': xp,
-            'all_xp_images': all_xp_images,
+            'xp_images': xp_images,
+            'cal_images': cal_images,
+            'data_images': data_images,
         }
     )
 
 
-#######################
-###  Capture views  ###
-#######################
+################################
+###  Internal Capture views  ###
+################################
 
 
 @csrf_dec.csrf_exempt

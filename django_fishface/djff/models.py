@@ -23,12 +23,19 @@ class Species(models.Model):
         upload_to="species_sample_images"
     )
 
-    def admin_image(self):
+    def inline_image(self):
         return '<img width=200 src="/media/{}" />'.format(
             self.sample_image
         )
+    inline_image.allow_tags = True
 
-    admin_image.allow_tags = True
+    def linked_inline_image(self):
+        return '<a href="/media/{}" target="_newtab">{}</a>'.format(
+            self.sample_image,
+            self.inline_image(),
+        )
+    linked_inline_image.allow_tags = True
+
 
     def __unicode__(self):
         return u'{}({})'.format(
@@ -96,12 +103,19 @@ class Image(models.Model):
 
     # TODO: check to see if there's a way to look up '/media/' instead
     # TODO: of hard coding it
-    def admin_image(self):
+
+    def inline_image(self):
         return '<img width=200 src="/media/{}" />'.format(
             self.image_file
         )
+    inline_image.allow_tags = True
 
-    admin_image.allow_tags = True
+    def linked_inline_image(self):
+        return '<a href="/media/{}" target="_newtab">{}</a>'.format(
+            self.image_file,
+            self.inline_image(),
+        )
+    linked_inline_image.allow_tags = True
 
 
 class ImageAnalysis(models.Model):

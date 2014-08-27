@@ -6,9 +6,10 @@
     <ol>
     {% for xp in experiment_list %}
                 <li>
-                    <a href="{% url 'djff:experiment_edit' xp.id %}">
-                    {{ xp.experiment_name }}
-                    </a>
+                    <a href="{% url 'djff:experiment_capture' xp.id %}">
+                        {{ xp.experiment_name }}</a>
+                    <br><em>Species</em>: {{ xp.species.species_shortname }}
+                    <br><em>Started</em>: {{ xp.experiment_start_dtg }}
                 </li>
     {% empty %}
         <p>No experiments have been stored.</p>

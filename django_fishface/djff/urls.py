@@ -14,11 +14,7 @@ urlpatterns = dcu.patterns(
         name='image_capturer'
     ),
     dcu.url(
-        r'^imagery_request/' +
-        r'(?P<xp_id>[^/]+)/' +
-        r'(?P<voltage>[^/]+)/' +
-        r'(?P<is_cal_image>[^/]+)/' +
-        r'$',
+        r'^imagery_request/$',
         views.experiment_capturer,
         name='experiment_capturer'
     ),
@@ -31,22 +27,24 @@ urlpatterns = dcu.patterns(
         name='experiment_index'
     ),
     dcu.url(
-        r'^xp/(?P<xp_id>\d+)/edit/$',
-        views.experiment_edit,
-        name='experiment_edit'
-    ),
-    dcu.url(
-        r'^xp/(?P<xp_id>\d+)/rename/$',
+        r'^xp/rename/(?P<xp_id>\d+)/$',
         views.experiment_rename,
         name='experiment_rename'
     ),
     dcu.url(
-        r'^xp/(?P<xp_id>\d+)/capture/$',
+        r'^xp/renamer/(?P<xp_id>\d+)/$',
+        views.experiment_renamer,
+        name='experiment_renamer'
+    ),
+    dcu.url(
+        r'^xp/capture/(?P<xp_id>\d+)/$',
         views.experiment_capture,
         name='experiment_capture'
     ),
     dcu.url(
         r'^xp/new/$',
+
+
         views.experiment_new,
         name='experiment_new'
     ),

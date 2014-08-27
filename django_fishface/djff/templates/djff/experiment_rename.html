@@ -3,7 +3,7 @@
 {% block subtitle %}Rename Experiment{% endblock %}
 
 {% block content %}
-{% if chain %}
+{% if xp %}
     <form action="{% url 'djff:experiment_renamer' xp.id %}" method="post">
     {% csrf_token %}
     <input type="text" name="new_name" value="{{ xp.experiment_name }}" />

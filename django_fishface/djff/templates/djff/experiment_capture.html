@@ -1,21 +1,68 @@
 {% extends "djff/base.html" %}
 {% load staticfiles %}
+{% load djff_filters %}
 
-{% block subtitle %}Experiment Capture{% endblock %}
+{% block subtitle %}Capture Imagery{% endblock %}
 
 
 
 {% block content %}
     <em>Experiment Name:</em><br />
     <strong>
+        <a href="{% url 'djff:experiment_rename' xp.id %}">
             {{ xp.experiment_name }}
+        </a>
     </strong>
 
+    <hr>
+    {% if not cal_images %}
+        <p>The first image captured for an experiment must be
+        a calibration image.  No fish should be in the flume,
+        but otherwise the configuration of the lighting, etc.
+        should be exactly as it will be during the data capture.</p>
+    {% endif %}
     <form method="post"
-          action="{% url 'djff:experiment_capturer' xp.id 4.21 'false' %}">
+          action="{% url 'djff:experiment_capturer' %}">
         {% csrf_token %}
-    <input type="submit" value="Capture another one" />
+
+        <input type="hidden" value="0" name="voltage">
+        <input type="hidden" value="true" name="is_cal_image">
+        Ready to capture calibration image (no fish):
+        <input type="checkbox" value="true" name="cal_ready">
+        <input type="hidden" value="{{ xp.id }}" name="xp_id">
+        <input type="submit" value="Capture a calibration image" />
     </form>
+    <hr>
+    {% if cal_images %}
+    <form method="post"
+          action="{% url 'djff:experiment_capturer' %}">
+        {% csrf_token %}
+        Voltage:<input type="number" value="0" name="voltage">
+        <input type="hidden" value="false" name="is_cal_image">
+        <input type="hidden" value="{{ xp.id }}" name="xp_id">
+        <input type="submit" value="Capture a data image" />
+    </form>
+    {% endif %}
+
+
+    {% if cal_images %}
+        <h1>CALS</h1>
+        {% for img in cal_images %}
+            {{ img.linked_inline_image|replace_width:"20"|mark_safe }}
+        {% endfor %}
+    {% else %}
+        <p>No cal images.</p>
+    {% endif %}
+
+
+    {% if data_images %}
+        <h1>DATA</h1>
+        {% for img in data_images %}
+            {{ img.linked_inline_image|replace_width:"20"|mark_safe }}
+        {% endfor %}
+    {% else %}
+        <p>No data images.</p>
+    {% endif %}
 
 {% endblock %}
 

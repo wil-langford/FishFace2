@@ -2,8 +2,7 @@
 
 """
 This module is a small program intended to run on a Raspberry Pi with
-attached camera module.  It sends one full-resolution frame per second
-to any client that requests imagery via a Pyro4 interface.
+attached camera module and send imagery to a FishFace server.
 """
 
 import picamera
@@ -125,7 +124,7 @@ class ImageryServer(object):
 
         print 'posting {}'.format(image_filename)
 
-        is_cal_image = (request.POST['is_cal_image'].lower()
+        is_cal_image = (metadata['is_cal_image'].lower()
                         in ['true','t','yes','y','1'])
 
         metadata['filename'] = image_filename

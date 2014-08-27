@@ -56,7 +56,7 @@ class ImageAdmin(admin.ModelAdmin):
     # TODO: uncomment following line
     # inlines = [ImageAnalysisInline]
     list_display = ('voltage', 'dtg_capture',
-                    'is_cal_image', 'admin_image')
+                    'is_cal_image', 'inline_image')
     list_filter = ('dtg_capture',)
 
 admin.site.register(models.Image, ImageAdmin)
@@ -76,6 +76,6 @@ class SpeciesAdmin(admin.ModelAdmin):
             ]
         }),
     ]
-    list_display = ('species_name', 'species_shortname', 'admin_image')
+    list_display = ('species_name', 'species_shortname', 'inline_image')
 
 admin.site.register(models.Species, SpeciesAdmin)
