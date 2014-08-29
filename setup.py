@@ -12,5 +12,11 @@ duc.setup(name='FishFace',
                       "of a fish in a water flume.",
           url="https://github.com/wil-langford/FishFace2",
           py_modules=['fishface'],
-          requires=['cv2 (>=2.4.8)', 'Pillow (>=2.4.0)', 'requests (>=2.3.0)']
+          requires=[
+              'cv2 (>=2.4.8)',
+              'Pillow (>=2.4.0)',
+              'requests (>=2.3.0)',
+              'django',
+              'numpy',
+          ]
 )

@@ -1,9 +1,54 @@
 import django.conf.urls as dcu
 import djff.views as views
-
 urlpatterns = dcu.patterns(
     '',
+    # TODO: is this some sort of orphan?  check.
+    # dcu.url(
+    #     r'^hc/image_upload/(?P<chain_id>\d+)/$',
+    #     views.image_capturer,
+    #     name='image_capturer'
+    # ),
+    dcu.url(
+        r'^upload_imagery/$',
+        views.image_capturer,
+        name='image_capturer'
+    ),
+    dcu.url(
+        r'^imagery_request/$',
+        views.experiment_capturer,
+        name='experiment_capturer'
+    ),
+
     dcu.url(r'^$', views.index, name='index'),
+
+    dcu.url(
+        r'^xp/$',
+        views.experiment_index,
+        name='experiment_index'
+    ),
+    dcu.url(
+        r'^xp/rename/(?P<xp_id>\d+)/$',
+        views.experiment_rename,
+        name='experiment_rename'
+    ),
+    dcu.url(
+        r'^xp/renamer/(?P<xp_id>\d+)/$',
+        views.experiment_renamer,
+        name='experiment_renamer'
+    ),
+    dcu.url(
+        r'^xp/capture/(?P<xp_id>\d+)/$',
+        views.experiment_capture,
+        name='experiment_capture'
+    ),
+    dcu.url(
+        r'^xp/new/$',
+
+
+        views.experiment_new,
+        name='experiment_new'
+    ),
+
     dcu.url(
         r'^hc/$',
         views.hopperchain_index,
@@ -69,4 +114,27 @@ urlpatterns = dcu.patterns(
         views.hopperchain_preview_image,
         name='hopperchain_preview_image'
     ),
+
+    dcu.url(
+        r'^cj/list/$',
+        views.CaptureJobIndex.as_view(),
+        name='cj_list',
+    ),
+    dcu.url(
+        r'^cj/add/$',
+        views.CaptureJobCreate.as_view(),
+        name='cj_add'
+    ),
+    dcu.url(
+        r'^cj/(?P<pk>\d+)/$',
+        views.CaptureJobUpdate.as_view(),
+        name='cj_update'
+    ),
+    dcu.url(
+        r'^cj/(?P<pk>\d+)/delete/$',
+        views.CaptureJobDelete.as_view(),
+        name='cj_delete'
+    ),
 )
+
+

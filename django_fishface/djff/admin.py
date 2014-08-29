@@ -1,6 +1,7 @@
 from django.contrib import admin
 from djff import models
 
+
 class ImageInline(admin.TabularInline):
     model = models.Image
 
@@ -11,13 +12,27 @@ class ExperimentAdmin(admin.ModelAdmin):
             'fields': [
                 'experiment_name',
                 'experiment_start_dtg',
-                'experiment_last_viewed'
+                'species'
+            ]
+        }),
+        ('Researcher (optional)', {
+            'fields': [
+                'researcher_name',
+                'researcher_email'
             ]
         })
     ]
     inlines = [ImageInline]
-    list_display = ('experiment_name', 'experiment_start_dtg')
-    list_filter = ['experiment_start_dtg']
+    list_display = (
+        'experiment_name',
+        'experiment_start_dtg',
+        'researcher_name'
+    )
+    list_filter = [
+        'experiment_start_dtg',
+        'species',
+        'researcher_name'
+    ]
     search_fields = ['question_text']
 
 admin.site.register(models.Experiment, ExperimentAdmin)
@@ -32,14 +47,75 @@ class ImageAdmin(admin.ModelAdmin):
         ('Image Information', {
             'fields': [
                 'dtg_capture',
-                'species',
                 'voltage',
-                'filename',
+                'is_cal_image',
+                'image_file'
             ]
         })
     ]
-    inlines = [ImageAnalysisInline]
-    list_display = ('species', 'voltage', 'dtg_capture')
-    list_filter = ('species', 'dtg_capture')
+    # TODO: uncomment following line
+    # inlines = [ImageAnalysisInline]
+    list_display = ('voltage', 'dtg_capture',
+                    'is_cal_image', 'inline_image')
+    list_filter = ('dtg_capture',)
 
 admin.site.register(models.Image, ImageAdmin)
+
+
+class SpeciesAdmin(admin.ModelAdmin):
+    fieldsets = [
+        ('Species Information', {
+            'fields': [
+                'species_name',
+                'species_shortname',
+            ]
+        }),
+        ('Sample image', {
+            'fields': [
+                'sample_image',
+            ]
+        }),
+    ]
+    list_display = ('species_name', 'species_shortname', 'inline_image')
+
+admin.site.register(models.Species, SpeciesAdmin)
+
+
+class CaptureJobAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (
+            'Job', {
+                'fields': [
+                    'name',
+                    'xp',
+                ]
+            }
+        ),
+        (
+            'Parameters', {
+                'fields': [
+                    'voltage',
+                    'duration',
+                    'interval',
+                ]
+            }
+        ),
+        (
+            'Run Information', {
+                'fields': [
+                    'running',
+                    'run_start',
+                    'run_end',
+                ]
+            }
+        ),
+    ]
+
+    list_display = (
+        'name',
+        'xp',
+        'run_start',
+        'running',
+    )
+
+admin.site.register(models.CaptureJob, CaptureJobAdmin)
