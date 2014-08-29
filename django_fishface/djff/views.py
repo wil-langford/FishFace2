@@ -13,8 +13,10 @@ import django.core.files.storage as dcfs
 import django.views.decorators.csrf as csrf_dec
 import django.utils.timezone as dut
 import django.utils.safestring as dus
+import django.views.generic as dvg
+import django.views.generic.edit as dvge
 
-from djff.models import Experiment, Image, Species
+from djff.models import Experiment, Image, Species, CaptureJob
 from djff.models import HopperChain
 
 from fishface.hoppers import CLASS_PARAMS
@@ -163,6 +165,10 @@ def experiment_capture(request, xp_id):
         is_cal_image=False
     )
 
+    capturejobs = CaptureJob.objects.filter(
+        xp=xp_id
+    )
+
     return ds.render(
         request,
         'djff/experiment_capture.html',
@@ -171,8 +177,39 @@ def experiment_capture(request, xp_id):
             'xp_images': xp_images,
             'cal_images': cal_images,
             'data_images': data_images,
+            'capturejobs': capturejobs,
         }
     )
+
+
+##########################
+###  CaptureJob views  ###
+##########################
+
+class CaptureJobIndex(dvg.ListView):
+    template_name = 'djff/capturejob_list.html'
+    context_object_name = 'capturejobs'
+
+    def get_queryset(self):
+        return CaptureJob.objects.all()
+
+
+class CaptureJobCreate(dvge.CreateView):
+    model = CaptureJob
+    context_object_name = 'cj_context'
+    template_name = 'djff/capturejob_add.html'
+
+class CaptureJobUpdate(dvge.UpdateView):
+    model = CaptureJob
+    context_object_name = 'cj_context'
+    template_name = 'djff/capturejob_update.html'
+
+
+class CaptureJobDelete(dvge.DeleteView):
+    model = CaptureJob
+    context_object_name = 'cj_context'
+    template_name = 'djff/capturejob_delete.html'
+    success_url = dcu.reverse_lazy('capturejob-list')
 
 
 ################################
@@ -408,4 +445,3 @@ def hopperchain_preview_image(request, chain_id):
 
     img = real_hc.next()[0]
     return _image_response_from_numpy_array(img, 'jpg')
-
