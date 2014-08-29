@@ -14,6 +14,16 @@
         </a>
     </strong>
 
+    {% if cal_images %}
+        <ol>
+        {% for cj in capturejobs %}
+            <li>{{ cj.name }}</li>
+        {% empty %}
+            No capture jobs defined for this experiment.
+        {% endfor %}
+        </ol>
+    {% endif %}
+
     <hr>
     {% if not cal_images %}
         <p>The first image captured for an experiment must be
@@ -44,6 +54,7 @@
     </form>
     {% endif %}
 
+    <hr>
 
     {% if cal_images %}
         <h1>CALS</h1>
