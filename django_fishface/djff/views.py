@@ -1,10 +1,7 @@
 import logging
-import cv2
 import numpy as np
 import datetime
-
 import requests
-
 import django.shortcuts as ds
 import django.http as dh
 import django.utils as du
@@ -12,15 +9,15 @@ import django.core.urlresolvers as dcu
 import django.core.files.storage as dcfs
 import django.views.decorators.csrf as csrf_dec
 import django.utils.timezone as dut
-import django.utils.safestring as dus
 import django.views.generic as dvg
 import django.views.generic.edit as dvge
 
+import cv2
+
 from djff.models import Experiment, Image, Species, CaptureJob
 from djff.models import HopperChain
+from utils.hoppers import CLASS_PARAMS
 
-from fishface.hoppers import CLASS_PARAMS
-import fishface.hopperchain
 
 IMAGERY_SERVER_IP = 'raspi'
 IMAGERY_SERVER_PORT = 18765
@@ -436,9 +433,9 @@ def hopperchain_preview_image(request, chain_id):
 
     chain = ds.get_object_or_404(HopperChain, pk=chain_id)
 
-    image_source = fishface.hopperchain.ImageSource([src_img])
+    image_source = djff.utils.hopperchain.ImageSource([src_img])
 
-    real_hc = fishface.hopperchain.HopperChain(
+    real_hc = djff.utils.hopperchain.HopperChain(
         chain.hopperchain_spec,
         source_obj=image_source
     )
