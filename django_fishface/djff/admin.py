@@ -79,3 +79,43 @@ class SpeciesAdmin(admin.ModelAdmin):
     list_display = ('species_name', 'species_shortname', 'inline_image')
 
 admin.site.register(models.Species, SpeciesAdmin)
+
+
+class CaptureJobAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (
+            'Job', {
+                'fields': [
+                    'name',
+                    'xp',
+                ]
+            }
+        ),
+        (
+            'Parameters', {
+                'fields': [
+                    'voltage',
+                    'duration',
+                    'interval',
+                ]
+            }
+        ),
+        (
+            'Run Information', {
+                'fields': [
+                    'running',
+                    'run_start',
+                    'run_end',
+                ]
+            }
+        ),
+    ]
+
+    list_display = (
+        'name',
+        'xp',
+        'run_start',
+        'running',
+    )
+
+admin.site.register(models.CaptureJob, CaptureJobAdmin)
