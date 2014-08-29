@@ -1,0 +1,22 @@
+{% extends "djff/base.html" %}
+
+{% block subtitle %}Capture Jobs{% endblock %}
+
+{% block content %}
+    <ol>
+    {% for cj in capturejobs %}
+                <li>
+                    <a href="{% url 'djff:cj_update' cj.id %}">
+                        {{ cj.name }}
+                    </a>
+                    <br><em>Experiment</em>: {{ cj.xp.experiment_name }}
+                    <br><em>Species</em>: {{ cj.xp.species.species_shortname }}
+                    <br><em>Voltage</em>: {{ cj.voltage }}
+                </li>
+    {% empty %}
+        <p>No capture jobs are pending.</p>
+    {% endfor %}
+    </ol>
+
+    <p>Add a <a href="{% url 'djff:cj_add' %}">new capture job</a>.</p>
+{% endblock %}
