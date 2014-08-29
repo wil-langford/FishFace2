@@ -17,6 +17,7 @@ import cv2
 from djff.models import Experiment, Image, Species, CaptureJob
 from djff.models import HopperChain
 from utils.hoppers import CLASS_PARAMS
+import djff.utils
 
 
 IMAGERY_SERVER_IP = 'raspi'
@@ -183,6 +184,7 @@ def experiment_capture(request, xp_id):
 ###  CaptureJob views  ###
 ##########################
 
+
 class CaptureJobIndex(dvg.ListView):
     template_name = 'djff/capturejob_list.html'
     context_object_name = 'capturejobs'
@@ -195,6 +197,7 @@ class CaptureJobCreate(dvge.CreateView):
     model = CaptureJob
     context_object_name = 'cj_context'
     template_name = 'djff/capturejob_add.html'
+
 
 class CaptureJobUpdate(dvge.UpdateView):
     model = CaptureJob
@@ -244,7 +247,6 @@ def image_capturer(request):
                 ],
             )
             captured_image.save()
-
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:experiment_index'),
