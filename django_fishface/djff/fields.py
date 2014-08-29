@@ -1,8 +1,9 @@
 import pickle
 from django.db import models
-import numpy as np
+
 import south.modelsinspector as smi
-import fishface.hopperchain as hc
+
+import utils.hopperchain as hc
 
 
 class HopperchainSpecField(models.Field):
