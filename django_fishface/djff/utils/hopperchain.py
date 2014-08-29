@@ -3,11 +3,12 @@
 """
 The objects in this module handle image processing on the macro level.
 """
-
-import hoppers
-import cv2
 import os
 import glob
+
+import cv2
+
+from djff.utils import hoppers
 
 
 def _find_jpgs_in_dir(directory):
