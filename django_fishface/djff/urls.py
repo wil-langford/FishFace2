@@ -114,6 +114,27 @@ urlpatterns = dcu.patterns(
         views.hopperchain_preview_image,
         name='hopperchain_preview_image'
     ),
+
+    dcu.url(
+        r'^cj/list/$',
+        views.CaptureJobIndex.as_view(),
+        name='cj_list',
+    ),
+    dcu.url(
+        r'^cj/add/$',
+        views.CaptureJobCreate.as_view(),
+        name='cj_add'
+    ),
+    dcu.url(
+        r'^cj/(?P<pk>\d+)/$',
+        views.CaptureJobUpdate.as_view(),
+        name='cj_update'
+    ),
+    dcu.url(
+        r'^cj/(?P<pk>\d+)/delete/$',
+        views.CaptureJobDelete.as_view(),
+        name='cj_delete'
+    ),
 )
 
 
