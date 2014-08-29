@@ -3,6 +3,7 @@ import django.utils as du
 import fields
 import django.dispatch.dispatcher
 import django.db.models.signals as ddms
+import django.core.urlresolvers as dcu
 
 
 class Species(models.Model):
@@ -36,7 +37,6 @@ class Species(models.Model):
         )
     linked_inline_image.allow_tags = True
 
-
     def __unicode__(self):
         return u'{}({})'.format(
             self.species_name,
@@ -69,6 +69,12 @@ class Experiment(models.Model):
         null=True,
         blank=True
     )
+
+    def __unicode__(self):
+        return "{} (ID {})".format(
+            self.experiment_name,
+            self.id,
+        )
 
 
 class Image(models.Model):
@@ -162,6 +168,57 @@ class HopperChain(models.Model):
         'specification of hopperchain',
     )
 
+
+class CaptureJob(models.Model):
+    readonly_fields = ('running', 'run_start', 'run_end')
+
+    name = models.TextField(
+        'the name of the capture job',
+        default='New capture job (created {})'.format(du.timezone.now())
+    )
+
+    xp = models.ForeignKey(Experiment)
+
+    voltage = models.FloatField(
+        'the voltage that the power supply will be set to',
+        default=0,
+    )
+    duration = models.IntegerField(
+        'the number of seconds to run the job',
+        default=0,
+    )
+    interval = models.IntegerField(
+        'the number of seconds between image captures',
+        default=1,
+    )
+
+    running = models.BooleanField(
+        'is the job running right now',
+        default=False,
+    )
+    run_start = models.DateTimeField(
+        'when was the job started',
+        blank=True,
+        null=True
+    )
+    run_end = models.DateTimeField(
+        'when did the job finish running',
+        blank=True,
+        null=True,
+    )
+
+    def get_absolute_url(self):
+        return dcu.reverse(
+            'djff:cj_update',
+            kwargs={'pk': self.pk}
+        )
+
+    def new_name(self, instance):
+        xp_name = instance.xp.experiment_name
+        return '{} job (created {})'.format(
+            xp_name,
+            du.timezone.now()
+        )
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
 def image_delete(sender, instance, **kwargs):
