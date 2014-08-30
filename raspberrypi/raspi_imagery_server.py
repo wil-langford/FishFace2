@@ -13,7 +13,7 @@ import BaseHTTPServer
 import urlparse
 import requests
 import datetime
-# import numpy as np
+import instruments as ik
 
 HOST = ''
 PORT = 18765
@@ -21,6 +21,7 @@ PORT = 18765
 IMAGE_POST_URL = "http://localhost:8100/fishface/upload_imagery/"
 
 DATE_FORMAT = "%Y-%m-%d-%H:%M:%S"
+
 
 class ImageryServer(object):
     """
@@ -37,10 +38,8 @@ class ImageryServer(object):
 
         self._current_frame_capture_time = None
 
-        # self.command_server = BaseHTTPServer.HTTPServer(
-        #     ('raspi', 8421),
-        #     CommandHandler
-        # )
+        self.power_supply = ik.hp.HP6652a.open_serial('/dev/ttyUSB0',
+                                                      57600)
 
         self._current_frame = None
 
@@ -140,17 +139,27 @@ class ImageryServer(object):
         )
         return r
 
-    def obey_server_command(self, raw_command):
-        command = dict([field.split('=') for field in raw_command.split('&')])
+    def obey_server_command(self, raw_payload):
+        payload = dict([field.split('=') for field in raw_payload.split('&')])
 
         result = "no result"
 
-        if command['command'] == 'post_image':
-            result = self.post_current_image_to_server(command)
-            if result.status_code == 500:
-                result = result.text
+        if payload['command'] == 'post_image':
+            result = self.post_current_image_to_server(payload)
+
+        if payload['command'] == 'run_capturejob':
+            result = self.run_capture_job(payload)
+
+        if result.status_code == 500:
+            result = result.text
 
         return result
+
+
+    def run_capturejob(self, payload):
+        print payload
+
+
 
 
 class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):

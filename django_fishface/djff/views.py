@@ -212,6 +212,22 @@ class CaptureJobDelete(dvge.DeleteView):
     success_url = dcu.reverse_lazy('capturejob-list')
 
 
+def run_capturejob(request):
+
+    payload = {'command': 'run_capturejob'}
+    for pass_through in ['cj_id',
+                         'voltage',
+                         'duration',
+                         'interval']:
+        payload[pass_through] = request.POST[pass_through]
+
+    r = requests.get(IMAGERY_SERVER_URL, params=payload)
+
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:cj_update',
+                    args=(payload['cj_id'],))
+    )
+
 ################################
 ###  Internal Capture views  ###
 ################################
