@@ -31,6 +31,7 @@ class ImageryServer(object):
 
     def __init__(self):
         self._keep_capturing = True
+        self._keep_capturejob_looping = True
 
         self.camera = picamera.PiCamera()
         self.camera.resolution = (2048, 1536)
@@ -103,6 +104,7 @@ class ImageryServer(object):
             httpd.serve_forever()
         except KeyboardInterrupt:
             self._keep_capturing = False
+            self._keep_capturejob_looping = False
             httpd.server_close()
 
     def post_current_image_to_server(self, metadata):
@@ -123,7 +125,7 @@ class ImageryServer(object):
 
         print 'posting {}'.format(image_filename)
 
-        is_cal_image = (metadata['is_cal_image'].lower()
+        is_cal_image = (str(metadata['is_cal_image']).lower()
                         in ['true','t','yes','y','1'])
 
         metadata['filename'] = image_filename
@@ -148,18 +150,44 @@ class ImageryServer(object):
             result = self.post_current_image_to_server(payload)
 
         if payload['command'] == 'run_capturejob':
-            result = self.run_capture_job(payload)
+            result = self.run_capturejob(payload)
 
-        if result.status_code == 500:
+        if result and result.status_code == 500:
             result = result.text
 
         return result
 
-
     def run_capturejob(self, payload):
-        print payload
+        self._keep_capturejob_looping = True
 
+        metadata = {
+            'command': 'post_image',
+            'is_cal_image': False,
+            'voltage': payload['voltage'],
+            'xp_id': payload['xp_id']
+        }
 
+        end_at = time.time() + float(payload['duration'])
+
+        def capturejob_loop(payload, metadata):
+            interval = float(payload['interval'])
+            while (self._keep_capturejob_looping and
+                           time.time() < end_at):
+                r = self.post_current_image_to_server(metadata)
+                print ('# ' * 30 + '\n') * 3
+                print r.status_code
+                # print r.text
+                time.sleep(interval)
+
+        thread = threading.Thread(target=capturejob_loop, args=(payload,metadata))
+        print ("starting capturejob {} sending images to " +
+              "experiment {}".format(payload['cj_id'], payload['xp_id']))
+        thread.start()
+        print "capturejob thread started"
+
+        # TODO: this could make more sense, but I'm not sure how
+
+        return False
 
 
 class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):

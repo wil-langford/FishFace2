@@ -43,15 +43,24 @@
         <input type="submit" value="Capture a calibration image" />
     </form>
     <hr>
-    {% if cal_images %}
-    <form method="post"
-          action="{% url 'djff:experiment_capturer' %}">
+    {% if cal_images and capturejobs %}
+    <ol>
+    {% for cj in capturejobs %}
+        <li>
+        <form method="post" action="{% url 'djff:run_capturejob' cj.id %}">
         {% csrf_token %}
-        Voltage:<input type="number" value="0" name="voltage">
-        <input type="hidden" value="False" name="is_cal_image">
-        <input type="hidden" value="{{ xp.id }}" name="xp_id">
-        <input type="submit" value="Capture a data image" />
-    </form>
+        Duration: {{ cj.duration }},
+            Interval: {{ cj.interval }},
+            Voltage: {{ cj.voltage }}
+        <input type="submit" value="Run this capture job" />
+        </form>
+        </li>
+    {% endfor %}
+    </ol>
+    {% elif cal_images %}
+        There are no capture jobs associated with this experiment.
+    {% else %}
+        Please capture a calibration image before viewing the capture jobs.
     {% endif %}
 
     <hr>

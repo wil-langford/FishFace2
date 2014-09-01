@@ -135,6 +135,12 @@ urlpatterns = dcu.patterns(
         views.CaptureJobDelete.as_view(),
         name='cj_delete'
     ),
+
+    dcu.url(
+        r'^cj/(?P<cj_id>\d+)/run/$',
+        views.run_capturejob,
+        name='run_capturejob'
+    ),
 )
 
 

@@ -212,20 +212,23 @@ class CaptureJobDelete(dvge.DeleteView):
     success_url = dcu.reverse_lazy('capturejob-list')
 
 
-def run_capturejob(request):
+def run_capturejob(request, cj_id):
+    cj = ds.get_object_or_404(CaptureJob, pk=cj_id)
 
-    payload = {'command': 'run_capturejob'}
-    for pass_through in ['cj_id',
-                         'voltage',
-                         'duration',
-                         'interval']:
-        payload[pass_through] = request.POST[pass_through]
+    payload = {
+        'command': 'run_capturejob',
+        'xp_id': cj.xp.id,
+        'cj_id': cj_id,
+        'voltage': cj.voltage,
+        'duration': cj.duration,
+        'interval': cj.interval,
+    }
 
     r = requests.get(IMAGERY_SERVER_URL, params=payload)
 
     return dh.HttpResponseRedirect(
-        dcu.reverse('djff:cj_update',
-                    args=(payload['cj_id'],))
+        dcu.reverse('djff:experiment_capture',
+                    args=(payload['xp_id'],))
     )
 
 ################################
@@ -245,7 +248,7 @@ def image_capturer(request):
                 pk=request.POST['xp_id']
             )
 
-            is_cal_image = (request.POST['is_cal_image'].lower()
+            is_cal_image = (str(request.POST['is_cal_image']).lower()
                             in ['true', 't', 'yes', 'y', '1'])
             voltage = float(request.POST['voltage'])
 
