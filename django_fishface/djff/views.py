@@ -222,6 +222,7 @@ def run_capturejob(request, cj_id):
         'voltage': cj.voltage,
         'duration': cj.duration,
         'interval': cj.interval,
+        'startup_delay': cj.startup_delay,
     }
 
     r = requests.get(IMAGERY_SERVER_URL, params=payload)

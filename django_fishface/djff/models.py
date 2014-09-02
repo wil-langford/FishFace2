@@ -191,6 +191,11 @@ class CaptureJob(models.Model):
         'the number of seconds between image captures',
         default=1,
     )
+    startup_delay = models.FloatField(
+        ('the number of seconds to delay between setting voltage' +
+         ' and image capture'),
+        default=30.0
+    )
 
     running = models.BooleanField(
         'is the job running right now',
