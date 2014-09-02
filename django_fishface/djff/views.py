@@ -86,7 +86,7 @@ def experiment_index(request):
     return ds.render(request, 'djff/experiment_index.html', context)
 
 
-def experiment_new(request):
+def experiment_new_init():
     xp = Experiment()
     xp.experiment_start_dtg = du.timezone.now()
     xp.experiment_name = "New experiment"
@@ -98,8 +98,11 @@ def experiment_new(request):
         defaultSpecies.species_shortname = "HP"
         defaultSpecies.save()
         xp.species = defaultSpecies
-
     xp.save()
+    return xp
+
+def experiment_new(request):
+    xp = experiment_new_init()
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:experiment_rename',

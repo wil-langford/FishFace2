@@ -18,19 +18,7 @@ class SpeciesTests(TestCase):
   	    self.assertEqual(sampleExperiment.species.species_name, 'plucko')
 
     def test_Initial_species_created_with_new_experiment(self):
-        xp = Experiment()
-        xp.experiment_start_dtg = du.timezone.now()
-        xp.experiment_name = "New experiment"
-        try:
-            xp.species = Species.objects.all()[0]
-        except IndexError:
-            defaultSpecies = Species()
-            defaultSpecies.species_name = "hypostomus plecostomus"
-            defaultSpecies.species_shortname = "HP"
-            defaultSpecies.save()
-            xp.species = defaultSpecies
-
-        xp.save()
-        self.assertEqual(xp.species.species_name, defaultSpecies.species_name)
+        xp = djff.views.experiment_new_init()
+        self.assertTrue(xp.species)
 
 
