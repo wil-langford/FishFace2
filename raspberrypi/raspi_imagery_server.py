@@ -54,13 +54,16 @@ class ImageryServer(object):
     def _capture_new_current_frame(self):
         stream = io.BytesIO()
 
-        self._current_frame_capture_time = time.time()
+        new_frame_capture_time = time.time()
         self.camera.capture(
             stream,
             format='jpeg'
         )
 
-        self._current_frame = stream.getvalue()
+        image = stream.getvalue()
+
+        self._current_frame_capture_time = new_frame_capture_time
+        self._current_frame = image
 
     def get_current_frame(self):
         return self._current_frame
@@ -113,11 +116,14 @@ class ImageryServer(object):
             self._keep_capturejob_looping = False
             httpd.server_close()
 
-    def post_current_image_to_server(self, metadata):
-        stream = io.BytesIO(self._current_frame)
+    def post_current_image_to_server(self, metadata, sync=True):
+        current_frame = self._current_frame
+        current_frame_capture_time = self._current_frame_capture_time
+
+        stream = io.BytesIO(current_frame)
 
         image_dtg = datetime.datetime.fromtimestamp(
-            self._current_frame_capture_time
+            current_frame_capture_time
         ).strftime(
             DATE_FORMAT
         )
@@ -135,20 +141,36 @@ class ImageryServer(object):
                         in ['true','t','yes','y','1'])
 
         metadata['filename'] = image_filename
-        metadata['capture_time'] = self._current_frame_capture_time
+        metadata['capture_time'] = current_frame_capture_time
         metadata['is_cal_image'] = str(is_cal_image)
 
 
         files = {image_filename: stream}
 
         t = time.time()
-        r = requests.post(
-            IMAGE_POST_URL,
-            files=files,
-            data=metadata
-        )
-        print time.time() - t
-        return r
+
+        if sync:
+            r = requests.post(
+                IMAGE_POST_URL,
+                files=files,
+                data=metadata
+            )
+            print time.time() - t
+            return r
+        else:
+            def async_image_post(url, files, data):
+                requests.post(
+                    IMAGE_POST_URL,
+                    files=files,
+                    data=metadata
+                )
+
+            async_thread = threading.Thread(
+                target=async_image_post,
+                args=(IMAGE_POST_URL, files, metadata)
+            )
+            async_thread.start()
+            return
 
     def obey_server_command(self, raw_payload):
         payload = dict([field.split('=') for field in raw_payload.split('&')])
@@ -172,7 +194,6 @@ class ImageryServer(object):
         startup_delay = float(payload['startup_delay'])
 
         first_capture_at = time.time() + startup_delay
-        last_capture_at = first_capture_at + duration
 
         capture_times = [first_capture_at]
         for i in range(1, int(duration / interval) + 1):
@@ -192,14 +213,20 @@ class ImageryServer(object):
                 if not self._keep_capturejob_looping:
                     break
                 delay_until(next_capture_time)
-                r = self.post_current_image_to_server(metadata)
+                r = self.post_current_image_to_server(
+                        metadata,
+                        sync=False,
+                    )
 
         thread = threading.Thread(
             target=capturejob_loop,
             args=(payload, metadata, capture_times)
         )
-        print ("starting capturejob {} sending images to " +
-              "experiment {}".format(payload['cj_id'], payload['xp_id']))
+        print (("starting capturejob {} sending images to " +
+              "experiment {}").format(
+                  payload['cj_id'],
+                  payload['xp_id'])
+        )
         thread.start()
         print "capturejob thread started"
 
