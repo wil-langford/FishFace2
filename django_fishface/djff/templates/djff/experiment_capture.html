@@ -14,23 +14,18 @@
         </a>
     </strong>
 
-    {% if cal_images %}
-        <ol>
-        {% for cj in capturejobs %}
-            <li>{{ cj.name }}</li>
-        {% empty %}
-            No capture jobs defined for this experiment.
-        {% endfor %}
-        </ol>
-    {% endif %}
-
-    <hr>
     {% if not cal_images %}
-        <p>The first image captured for an experiment must be
+        <div class="boxed bad">
+            <p>The first image captured for an experiment must be
         a <em>calibration image</em>.  No fish should be in the flume,
         but otherwise the configuration of the lighting, etc.
         should be exactly as it will be during the data capture.</p>
+
+            <p>When you're ready to capture a calibration image, check the
+        box below and click on the button.</p>
+        </div>
     {% endif %}
+    <div class="boxed">
     <form method="post"
           action="{% url 'djff:experiment_capturer' %}">
         {% csrf_token %}
@@ -42,7 +37,19 @@
         <input type="hidden" value="{{ xp.id }}" name="xp_id">
         <input type="submit" value="Capture a calibration image" />
     </form>
-    <hr>
+
+    {% if cal_images %}
+        <p>Calibration images:</p>
+        {% for img in cal_images %}
+            {{ img.linked_inline_image|replace_width:"20"|mark_safe }}
+        {% endfor %}
+    {% else %}
+        <p>No cal images.</p>
+    {% endif %}
+
+    </div>
+
+    <div class="boxed">
     {% if cal_images and capturejobs %}
     <ol>
     {% for cj in capturejobs %}
@@ -63,16 +70,7 @@
         Please capture a calibration image before viewing the capture jobs.
     {% endif %}
 
-    <hr>
-
-    {% if cal_images %}
-        <h1>CALS</h1>
-        {% for img in cal_images %}
-            {{ img.linked_inline_image|replace_width:"20"|mark_safe }}
-        {% endfor %}
-    {% else %}
-        <p>No cal images.</p>
-    {% endif %}
+    </div>
 
 
     {% if data_images %}
