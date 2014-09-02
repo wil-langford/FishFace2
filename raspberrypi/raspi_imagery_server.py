@@ -134,11 +134,14 @@ class ImageryServer(object):
 
 
         files = {image_filename: stream}
+
+        t = time.time()
         r = requests.post(
             IMAGE_POST_URL,
             files=files,
             data=metadata
         )
+        print time.time() - t
         return r
 
     def obey_server_command(self, raw_payload):
@@ -174,9 +177,6 @@ class ImageryServer(object):
             while (self._keep_capturejob_looping and
                            time.time() < end_at):
                 r = self.post_current_image_to_server(metadata)
-                print ('# ' * 30 + '\n') * 3
-                print r.status_code
-                # print r.text
                 time.sleep(interval)
 
         thread = threading.Thread(target=capturejob_loop, args=(payload,metadata))
