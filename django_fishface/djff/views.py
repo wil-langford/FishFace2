@@ -86,12 +86,23 @@ def experiment_index(request):
     return ds.render(request, 'djff/experiment_index.html', context)
 
 
-def experiment_new(request):
+def experiment_new_init():
     xp = Experiment()
     xp.experiment_start_dtg = du.timezone.now()
     xp.experiment_name = "New experiment"
-    xp.species = Species.objects.all()[0]
+    try:
+        xp.species = Species.objects.all()[0]
+    except IndexError:
+        defaultSpecies = Species()
+        defaultSpecies.species_name = "hypostomus plecostomus"
+        defaultSpecies.species_shortname = "HP"
+        defaultSpecies.save()
+        xp.species = defaultSpecies
     xp.save()
+    return xp
+
+def experiment_new(request):
+    xp = experiment_new_init()
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:experiment_rename',
