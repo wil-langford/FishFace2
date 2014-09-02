@@ -76,7 +76,7 @@
     {% if data_images %}
         <h1>DATA</h1>
         {% for img in data_images %}
-            {{ img.linked_inline_image|replace_width:"20"|mark_safe }}
+            {{ img.linked_inline_bullet|mark_safe }}
         {% endfor %}
     {% else %}
         <p>No data images.</p>
