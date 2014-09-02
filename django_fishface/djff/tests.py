@@ -21,9 +21,7 @@ class ExperimentTests(TestCase):
         for count in range(0,3):
             xp_list.append(djff.views.experiment_new_init())
 
-        experiment_list = Experiment.objects.all().order_by(
-        'experiment_start_dtg'
-        )
+        experiment_list = djff.views.experiment_index_init()
 
         for experiment in experiment_list:
             test_list.append(experiment.experiment_start_dtg)
