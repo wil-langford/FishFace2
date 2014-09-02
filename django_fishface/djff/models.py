@@ -123,6 +123,13 @@ class Image(models.Model):
         )
     linked_inline_image.allow_tags = True
 
+    def linked_inline_bullet(self):
+        return '<a href="/media/{}" target="_newtab">X</a>'.format(
+            self.image_file,
+        )
+    linked_inline_image.allow_tags = True
+
+
 
 class ImageAnalysis(models.Model):
     # link to a specific image
@@ -183,11 +190,11 @@ class CaptureJob(models.Model):
         'the voltage that the power supply will be set to',
         default=0,
     )
-    duration = models.IntegerField(
+    duration = models.FloatField(
         'the number of seconds to run the job',
         default=0,
     )
-    interval = models.IntegerField(
+    interval = models.FloatField(
         'the number of seconds between image captures',
         default=1,
     )
@@ -200,16 +207,17 @@ class CaptureJob(models.Model):
     running = models.BooleanField(
         'is the job running right now',
         default=False,
+        editable=False,
     )
     run_start = models.DateTimeField(
         'when was the job started',
-        blank=True,
-        null=True
+        null=True,
+        editable=False,
     )
     run_end = models.DateTimeField(
         'when did the job finish running',
-        blank=True,
         null=True,
+        editable=False,
     )
 
     def get_absolute_url(self):
