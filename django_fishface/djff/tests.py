@@ -14,3 +14,18 @@ class SpeciesTests(TestCase):
         self.assertTrue(xp.species)
 
 
+class ExperimentTests(TestCase):
+    def test_Experiment_index_sorted_by_date(self):
+        xp_list = []
+        test_list = []
+        for count in range(0,3):
+            xp_list.append(djff.views.experiment_new_init())
+
+        experiment_list = Experiment.objects.all().order_by(
+        'experiment_start_dtg'
+        )
+
+        for experiment in experiment_list:
+            test_list.append(experiment.experiment_start_dtg)
+
+        self.assertTrue(test_list == sorted(test_list))
