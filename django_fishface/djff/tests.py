@@ -17,7 +17,7 @@ class SpeciesTests(TestCase):
   	    sampleExperiment.save()
   	    self.assertEqual(sampleExperiment.species.species_name, 'plucko')
 
-    def test_initial_species_created_with_new_experiment(self):
+    def test_Initial_species_created_with_new_experiment(self):
         xp = Experiment()
         xp.experiment_start_dtg = du.timezone.now()
         xp.experiment_name = "New experiment"
