@@ -24,6 +24,18 @@ header
     color: white;
 }
 
+div.boxed
+{
+    border-style: solid;
+    border-width: 1px;
+    border-color: black;
+}
+
+div.bad
+{
+    background-color: lightpink;
+}
+
 #sidebar
 {
     float: left;
