@@ -76,13 +76,16 @@ def index(request):
 ##########################
 ###  Experiment views  ###
 ##########################
-
-
-def experiment_index(request):
+def experiment_index_init():
     experiment_list = Experiment.objects.all().order_by(
         'experiment_start_dtg'
     )
     context = {'experiment_list': experiment_list}
+    return context
+
+
+def experiment_index(request):
+    context = experiment_index_init()
     return ds.render(request, 'djff/experiment_index.html', context)
 
 
