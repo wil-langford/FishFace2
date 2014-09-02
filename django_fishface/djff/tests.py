@@ -16,10 +16,14 @@ class SpeciesTests(TestCase):
 
 class ExperimentTests(TestCase):
     def test_Experiment_index_sorted_by_date(self):
+############ Creating dummy data for testing ######################
+
         xp_list = []
         test_list = []
         for count in range(0,3):
             xp_list.append(djff.views.experiment_new_init())
+
+###################################################################
 
         experiment_list = djff.views.experiment_index_init()
 
