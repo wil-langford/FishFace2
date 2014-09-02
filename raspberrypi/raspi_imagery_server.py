@@ -23,6 +23,13 @@ IMAGE_POST_URL = "http://localhost:8100/fishface/upload_imagery/"
 DATE_FORMAT = "%Y-%m-%d-%H:%M:%S"
 
 
+def delay_until(unix_timestamp):
+    now = time.time()
+    while now < unix_timestamp:
+        time.sleep(unix_timestamp-now)
+        now = time.time()
+
+
 class ImageryServer(object):
     """
     """
@@ -82,7 +89,6 @@ class ImageryServer(object):
         def image_capture_loop():
             while self._keep_capturing:
                 self._capture_new_current_frame()
-                time.sleep(0.2)
             self.camera.close()
 
         thread = threading.Thread(target=image_capture_loop)
@@ -161,6 +167,17 @@ class ImageryServer(object):
         return result
 
     def run_capturejob(self, payload):
+        duration = float(payload['duration'])
+        interval = float(payload['interval'])
+        startup_delay = float(payload['startup_delay'])
+
+        first_capture_at = time.time() + startup_delay
+        last_capture_at = first_capture_at + duration
+
+        capture_times = [first_capture_at]
+        for i in range(1, int(duration / interval) + 1):
+            capture_times.append(first_capture_at + i*interval)
+
         self._keep_capturejob_looping = True
 
         metadata = {
@@ -170,16 +187,17 @@ class ImageryServer(object):
             'xp_id': payload['xp_id']
         }
 
-        end_at = time.time() + float(payload['duration'])
-
-        def capturejob_loop(payload, metadata):
-            interval = float(payload['interval'])
-            while (self._keep_capturejob_looping and
-                           time.time() < end_at):
+        def capturejob_loop(payload, metadata, capture_times):
+            for next_capture_time in capture_times:
+                if not self._keep_capturejob_looping:
+                    break
+                delay_until(next_capture_time)
                 r = self.post_current_image_to_server(metadata)
-                time.sleep(interval)
 
-        thread = threading.Thread(target=capturejob_loop, args=(payload,metadata))
+        thread = threading.Thread(
+            target=capturejob_loop,
+            args=(payload, metadata, capture_times)
+        )
         print ("starting capturejob {} sending images to " +
               "experiment {}".format(payload['cj_id'], payload['xp_id']))
         thread.start()
