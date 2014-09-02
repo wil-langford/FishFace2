@@ -80,12 +80,12 @@ def experiment_index_init():
     experiment_list = Experiment.objects.all().order_by(
         'experiment_start_dtg'
     )
-    context = {'experiment_list': experiment_list}
-    return context
+    return experiment_list
 
 
 def experiment_index(request):
-    context = experiment_index_init()
+    experiment_list = experiment_index_init()
+    context = {'experiment_list': experiment_list}
     return ds.render(request, 'djff/experiment_index.html', context)
 
 
