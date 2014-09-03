@@ -14,7 +14,13 @@ import django.views.generic.edit as dvge
 
 import cv2
 
-from djff.models import Experiment, Image, Species, CaptureJob
+from djff.models import (
+    Experiment,
+    Image,
+    Species,
+    CaptureJobTemplate,
+    CaptureJobRecord,
+)
 from djff.models import HopperChain
 from utils.hoppers import CLASS_PARAMS
 import djff.utils
@@ -163,9 +169,7 @@ def experiment_capture(request, xp_id):
         is_cal_image=False
     )
 
-    capturejobs = CaptureJob.objects.filter(
-        xp=xp_id
-    )
+    capture_job_templates = CaptureJobTemplate.objects.all()
 
     return ds.render(
         request,
@@ -175,54 +179,60 @@ def experiment_capture(request, xp_id):
             'xp_images': xp_images,
             'cal_images': cal_images,
             'data_images': data_images,
-            'capturejobs': capturejobs,
+            'capture_job_templates': capture_job_templates,
         }
     )
 
 
 ##########################
-###  CaptureJob views  ###
+###  CaptureJobTemplate views  ###
 ##########################
 
 
-class CaptureJobIndex(dvg.ListView):
-    template_name = 'djff/capturejob_list.html'
-    context_object_name = 'capturejobs'
+class CaptureJobTemplateIndex(dvg.ListView):
+    context_object_name = 'cjt_context'
+    template_name = 'djff/capturejobtemplate_list.html'
 
     def get_queryset(self):
-        return CaptureJob.objects.all()
+        return CaptureJobTemplate.objects.all()
 
 
-class CaptureJobCreate(dvge.CreateView):
-    model = CaptureJob
-    context_object_name = 'cj_context'
-    template_name = 'djff/capturejob_add.html'
+class CaptureJobTemplateCreate(dvge.CreateView):
+    model = CaptureJobTemplate
+    context_object_name = 'cjt_context'
+    template_name = 'djff/capturejobtemplate_add.html'
 
 
-class CaptureJobUpdate(dvge.UpdateView):
-    model = CaptureJob
-    context_object_name = 'cj_context'
-    template_name = 'djff/capturejob_update.html'
+class CaptureJobTemplateUpdate(dvge.UpdateView):
+    model = CaptureJobTemplate
+    context_object_name = 'cjt_context'
+    template_name = 'djff/capturejobtemplate_update.html'
+    success_url = dcu.reverse_lazy('djff:cjt_list')
 
 
-class CaptureJobDelete(dvge.DeleteView):
-    model = CaptureJob
-    context_object_name = 'cj_context'
-    template_name = 'djff/capturejob_delete.html'
-    success_url = dcu.reverse_lazy('capturejob-list')
+class CaptureJobTemplateDelete(dvge.DeleteView):
+    model = CaptureJobTemplate
+    context_object_name = 'cjt_context'
+    success_url = dcu.reverse_lazy('djff:cjt_list')
 
 
-def run_capturejob(request, cj_id):
-    cj = ds.get_object_or_404(CaptureJob, pk=cj_id)
+def run_capturejob(request, xp_id, cjt_id):
+    cjt = ds.get_object_or_404(CaptureJobTemplate, pk=cjt_id)
+    xp = ds.get_object_or_404(Experiment, pk=xp_id)
+    cjr = CaptureJobRecord(
+        xp=xp,
+        voltage=cjt.voltage,
+    )
+    cjr.save()
 
     payload = {
         'command': 'run_capturejob',
-        'xp_id': cj.xp.id,
-        'cj_id': cj_id,
-        'voltage': cj.voltage,
-        'duration': cj.duration,
-        'interval': cj.interval,
-        'startup_delay': cj.startup_delay,
+        'xp_id': xp.id,
+        'cjr_id': cjr.id,
+        'voltage': cjr.voltage,
+        'duration': cjt.duration,
+        'interval': cjt.interval,
+        'startup_delay': cjt.startup_delay,
     }
 
     r = requests.get(IMAGERY_SERVER_URL, params=payload)

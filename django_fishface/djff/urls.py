@@ -116,28 +116,28 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
-        r'^cj/list/$',
-        views.CaptureJobIndex.as_view(),
-        name='cj_list',
+        r'^cjt/list/$',
+        views.CaptureJobTemplateIndex.as_view(),
+        name='cjt_list',
     ),
     dcu.url(
-        r'^cj/add/$',
-        views.CaptureJobCreate.as_view(),
-        name='cj_add'
+        r'^cjt/add/$',
+        views.CaptureJobTemplateCreate.as_view(),
+        name='cjt_add'
     ),
     dcu.url(
-        r'^cj/(?P<pk>\d+)/$',
-        views.CaptureJobUpdate.as_view(),
-        name='cj_update'
+        r'^cjt/(?P<pk>\d+)/$',
+        views.CaptureJobTemplateUpdate.as_view(),
+        name='cjt_update'
     ),
     dcu.url(
-        r'^cj/(?P<pk>\d+)/delete/$',
-        views.CaptureJobDelete.as_view(),
-        name='cj_delete'
+        r'^cjt/(?P<pk>\d+)/delete/$',
+        views.CaptureJobTemplateDelete.as_view(),
+        name='cjt_delete'
     ),
 
     dcu.url(
-        r'^cj/(?P<cj_id>\d+)/run/$',
+        r'^cj/(?P<xp_id>\d+)/(?P<cjt_id>\d+)/run/$',
         views.run_capturejob,
         name='run_capturejob'
     ),

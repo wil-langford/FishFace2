@@ -3,7 +3,7 @@
 {% block subtitle %}Capture Job Template{% endblock %}
 
 {% block content %}
-    <form action="{% url 'djff:cj_update' cj_context.id %}" method="post">
+    <form action="{% url 'djff:cjt_update' cjt_context.id %}" method="post">
         {% csrf_token %}
         {{ form.as_p }}
         <input type="submit" value="Save">

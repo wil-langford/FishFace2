@@ -81,41 +81,25 @@ class SpeciesAdmin(admin.ModelAdmin):
 admin.site.register(models.Species, SpeciesAdmin)
 
 
-class CaptureJobAdmin(admin.ModelAdmin):
+class CaptureJobTemplateAdmin(admin.ModelAdmin):
     fieldsets = [
-        (
-            'Job', {
-                'fields': [
-                    'name',
-                    'xp',
-                ]
-            }
-        ),
         (
             'Parameters', {
                 'fields': [
                     'voltage',
                     'duration',
                     'interval',
-                ]
-            }
-        ),
-        (
-            'Run Information', {
-                'fields': [
-                    'running',
-                    'run_start',
-                    'run_end',
+                    'startup_delay',
                 ]
             }
         ),
     ]
 
     list_display = (
-        'name',
-        'xp',
-        'run_start',
-        'running',
+        'voltage',
+        'duration',
+        'interval',
+        'startup_delay'
     )
 
-admin.site.register(models.CaptureJob, CaptureJobAdmin)
+admin.site.register(models.CaptureJobTemplate, CaptureJobTemplateAdmin)

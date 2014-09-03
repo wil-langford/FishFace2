@@ -138,12 +138,11 @@ class ImageryServer(object):
         print 'posting {}'.format(image_filename)
 
         is_cal_image = (str(metadata['is_cal_image']).lower()
-                        in ['true','t','yes','y','1'])
+                        in ['true', 't', 'yes', 'y', '1'])
 
         metadata['filename'] = image_filename
         metadata['capture_time'] = current_frame_capture_time
         metadata['is_cal_image'] = str(is_cal_image)
-
 
         files = {image_filename: stream}
 
@@ -158,9 +157,9 @@ class ImageryServer(object):
             print time.time() - t
             return r
         else:
-            def async_image_post(url, files, data):
+            def async_image_post(url, files, metadata):
                 requests.post(
-                    IMAGE_POST_URL,
+                    url,
                     files=files,
                     data=metadata
                 )
@@ -205,7 +204,8 @@ class ImageryServer(object):
             'command': 'post_image',
             'is_cal_image': False,
             'voltage': payload['voltage'],
-            'xp_id': payload['xp_id']
+            'xp_id': payload['xp_id'],
+            'cjr_id': payload['cjr_id'],
         }
 
         def capturejob_loop(payload, metadata, capture_times):
@@ -222,10 +222,11 @@ class ImageryServer(object):
             target=capturejob_loop,
             args=(payload, metadata, capture_times)
         )
-        print (("starting capturejob {} sending images to " +
+        print (("sending images for capturejob {} for" +
               "experiment {}").format(
-                  payload['cj_id'],
-                  payload['xp_id'])
+                  payload['cjr_id'],
+                  payload['xp_id']
+            )
         )
         thread.start()
         print "capturejob thread started"

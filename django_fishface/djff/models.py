@@ -77,6 +77,14 @@ class Experiment(models.Model):
         )
 
 
+class CaptureJobRecord(models.Model):
+    xp = models.ForeignKey(Experiment)
+    voltage = models.FloatField(default=0)
+    job_start = models.DateTimeField(auto_now=True)
+    job_stop = models.DateTimeField(null=True)
+    running = models.BooleanField(default=True)
+
+
 class Image(models.Model):
     """
     Each captured image will be stored as the path of the file that
@@ -85,7 +93,16 @@ class Image(models.Model):
     """
 
     # Link to a specific experiment
-    experiment = models.ForeignKey(Experiment)
+    experiment = models.ForeignKey(
+        Experiment,
+        editable=False,
+    )
+    # Link to a specific capturejob
+    capturejob = models.ForeignKey(
+        CaptureJobRecord,
+        null=True,
+        editable=False,
+    )
 
     # Data available at capture time.
     dtg_capture = models.DateTimeField(
@@ -176,16 +193,7 @@ class HopperChain(models.Model):
     )
 
 
-class CaptureJob(models.Model):
-    readonly_fields = ('running', 'run_start', 'run_end')
-
-    name = models.TextField(
-        'the name of the capture job',
-        default='New capture job (created {})'.format(du.timezone.now())
-    )
-
-    xp = models.ForeignKey(Experiment)
-
+class CaptureJobTemplate(models.Model):
     voltage = models.FloatField(
         'the voltage that the power supply will be set to',
         default=0,
@@ -204,34 +212,12 @@ class CaptureJob(models.Model):
         default=30.0
     )
 
-    running = models.BooleanField(
-        'is the job running right now',
-        default=False,
-        editable=False,
-    )
-    run_start = models.DateTimeField(
-        'when was the job started',
-        null=True,
-        editable=False,
-    )
-    run_end = models.DateTimeField(
-        'when did the job finish running',
-        null=True,
-        editable=False,
-    )
-
     def get_absolute_url(self):
         return dcu.reverse(
-            'djff:cj_update',
+            'djff:cjt_update',
             kwargs={'pk': self.pk}
         )
 
-    def new_name(self, instance):
-        xp_name = instance.xp.experiment_name
-        return '{} job (created {})'.format(
-            xp_name,
-            du.timezone.now()
-        )
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
 def image_delete(sender, instance, **kwargs):

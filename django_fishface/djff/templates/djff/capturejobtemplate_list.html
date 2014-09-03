@@ -4,19 +4,27 @@
 
 {% block content %}
     <ol>
-    {% for cj in capturejobs %}
+    {% for cjt in cjt_context %}
                 <li>
-                    <a href="{% url 'djff:cj_update' cj.id %}">
-                        {{ cj.name }}
+                    <a href="{% url 'djff:cjt_update' cjt.id %}">
+                        Capture Job Template
                     </a>
-                    <br><em>Experiment</em>: {{ cj.xp.experiment_name }}
-                    <br><em>Species</em>: {{ cj.xp.species.species_shortname }}
-                    <br><em>Voltage</em>: {{ cj.voltage }}
+                    <br><em>Voltage</em>: {{ cjt.voltage }}
+                    <br><em>Duration</em>: {{ cjt.duration }}
+                    <br><em>Interval</em>: {{ cjt.interval }}
+                    <br><em>Startup Delay</em>: {{ cjt.startup_delay }}
+                    <br>
+                    <form action="{% url 'djff:cjt_delete' cjt.id %}"
+                            method="post">
+                        {% csrf_token %}
+                        <input type="submit"
+                               value="Delete this template" />
+                    </form>
                 </li>
     {% empty %}
-        <p>No capture jobs are pending.</p>
+        <p>There are no stored capture job templates.</p>
     {% endfor %}
     </ol>
 
-    <p>Add a <a href="{% url 'djff:cj_add' %}">new capture job</a>.</p>
+    <p>Add a <a href="{% url 'djff:cjt_add' %}">new capture job template</a>.</p>
 {% endblock %}

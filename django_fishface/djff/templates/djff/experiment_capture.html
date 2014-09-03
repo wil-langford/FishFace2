@@ -50,23 +50,21 @@
     </div>
 
     <div class="boxed">
-    {% if cal_images and capturejobs %}
+    {% if cal_images and capture_job_templates %}
     <ol>
-    {% for cj in capturejobs %}
+    {% for cjt in capture_job_templates %}
         <li>
-        <form method="post" action="{% url 'djff:run_capturejob' cj.id %}">
+        <form method="post" action="{% url 'djff:run_capturejob' xp.id cjt.id %}">
         {% csrf_token %}
-        Duration: {{ cj.duration }},
-            Interval: {{ cj.interval }},
-            Voltage: {{ cj.voltage }}
+            Duration: {{ cjt.duration }},
+            Interval: {{ cjt.interval }},
+            Voltage: {{ cjt.voltage }}
         <input type="submit" value="Run this capture job" />
         </form>
         </li>
     {% endfor %}
     </ol>
-    {% elif cal_images %}
-        There are no capture jobs associated with this experiment.
-    {% else %}
+    {% elif not cal_images %}
         Please capture a calibration image before viewing the capture jobs.
     {% endif %}
 
