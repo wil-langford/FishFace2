@@ -214,9 +214,17 @@ def experiment_capture(request, xp_id):
 
     capturejob_templates = CaptureJobTemplate.objects.all()
 
-    capturerecords = CaptureJobRecord.objects.filter(
+    running_jobs = CaptureJobRecord.objects.filter(
         running=True
     )
+
+    cjrs = CaptureJobRecord.objects.filter(xp__id=xp.id)
+
+    images_by_cjr = [
+        (cjr_obj, Image.objects.filter(capturejob__id=cjr_obj.id))
+        for cjr_obj in
+        cjrs
+    ]
 
     return ds.render(
         request,
@@ -226,8 +234,9 @@ def experiment_capture(request, xp_id):
             'xp_images': xp_images,
             'cal_images': cal_images,
             'data_images': data_images,
-            'capturerecords': capturerecords,
+            'running_jobs': running_jobs,
             'capturejob_templates': capturejob_templates,
+            'images_by_cjr': images_by_cjr,
         }
     )
 
@@ -276,6 +285,7 @@ def run_capturejob(request, xp_id, cjt_id):
     payload = {
         'command': 'run_capturejob',
         'xp_id': xp.id,
+        'species': xp.species.species_shortname,
         'cjr_id': cjr.id,
         'voltage': cjr.voltage,
         'duration': cjt.duration,

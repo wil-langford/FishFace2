@@ -2,17 +2,16 @@
 {% load staticfiles %}
 {% load djff_filters %}
 
-{% block subtitle %}Capture Imagery{% endblock %}
+{% block subtitle %}Experiment Details{% endblock %}
 
 
 
 {% block content %}
-    <em>Experiment Name:</em><br />
-    <strong>
+    <h1>
         <a href="{% url 'djff:experiment_rename' xp.id %}">
             {{ xp.experiment_name }}
         </a>
-    </strong>
+    </h1>
 
     {% if not cal_images %}
         <div class="boxed bad">
@@ -46,11 +45,12 @@
     {% else %}
         <p>No cal images.</p>
     {% endif %}
-
     </div>
 
+    <br>
+
     <div class="boxed">
-    {% if not capturerecords and cal_images and capturejob_templates %}
+    {% if not running_jobs and cal_images and capturejob_templates %}
     <ol>
     {% for cjt in capturejob_templates %}
         <li>
@@ -65,31 +65,31 @@
     {% endfor %}
     </ol>
 
-    {% elif capturerecords %}
-        <ol>
-        {% for cjr in capturerecords %}
-            <li>
-            Active capture job:<br>
+    {% elif running_jobs %}
+        {% for cjr in running_jobs %}
+            <strong>Active capture job:</strong><br>
             <em>Voltage</em>: {{ cjr.voltage }}<br>
             <em>Remaining</em>: {{ cjr.remaining }}/{{ cjr.total }}
-            </li>
         {% endfor %}
-        </ol>
     {% elif not cal_images %}
         Please capture a calibration image before viewing the capture jobs.
     {% endif %}
-
     </div>
 
+    <h3>Capture Jobs</h3>
+    <hr width="30%" />
 
-    {% if data_images %}
-        <h1>DATA</h1>
-        {% for img in data_images %}
+    {% for cjr, imageset in images_by_cjr %}
+        Started: {{ cjr.job_start }}<br>
+        Completed: {{ cjr.job_stop }}<br>
+        Captured {{ imageset.count }} images at {{ cjr.voltage }} volts:<br>
+        {% for img in imageset %}
             {{ img.linked_inline_bullet|mark_safe }}
         {% endfor %}
-    {% else %}
-        <p>No data images.</p>
-    {% endif %}
+        <hr width="30%" />
+    {% empty %}
+        <p>No capture jobs have been run for this experiment.</p>
+    {% endfor %}
 
 {% endblock %}
 

@@ -244,6 +244,7 @@ class ImageryServer(object):
             'voltage': payload['voltage'],
             'xp_id': payload['xp_id'],
             'cjr_id': payload['cjr_id'],
+            'species': payload['species']
         }
 
         def capturejob_loop(
