@@ -4,9 +4,9 @@
 
 {% block content %}
     <ol>
-    {% for cjt in cjt_context %}
+    {% for cjt in context %}
                 <li>
-                    <a href="{% url 'djff:cjt_update' cjt.id %}">
+                    <a href="{% url 'djff:cjt_detail' cjt.id %}">
                         Capture Job Template
                     </a>
                     <br><em>Voltage</em>: {{ cjt.voltage }}
@@ -26,5 +26,5 @@
     {% endfor %}
     </ol>
 
-    <p>Add a <a href="{% url 'djff:cjt_add' %}">new capture job template</a>.</p>
+    <p>Add a <a href="{% url 'djff:cjt_new' %}">new capture job template</a>.</p>
 {% endblock %}

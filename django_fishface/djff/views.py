@@ -291,30 +291,32 @@ class SpeciesDelete(dvge.DeleteView):
 
 
 class CaptureJobTemplateIndex(dvg.ListView):
-    context_object_name = 'cjt_context'
-    template_name = 'djff/capturejobtemplate_list.html'
-
-    def get_queryset(self):
-        return CaptureJobTemplate.objects.all()
-
-
-class CaptureJobTemplateCreate(dvge.CreateView):
+    context_object_name = 'context'
+    template_name = 'djff/cjt_index.html'
     model = CaptureJobTemplate
-    context_object_name = 'cjt_context'
-    template_name = 'djff/capturejobtemplate_add.html'
 
 
 class CaptureJobTemplateUpdate(dvge.UpdateView):
     model = CaptureJobTemplate
-    context_object_name = 'cjt_context'
-    template_name = 'djff/capturejobtemplate_update.html'
-    success_url = dcu.reverse_lazy('djff:cjt_list')
+    context_object_name = 'context'
+    template_name = 'djff/cjt_detail.html'
+    success_url = dcu.reverse_lazy('djff:cjt_index')
 
 
 class CaptureJobTemplateDelete(dvge.DeleteView):
     model = CaptureJobTemplate
-    context_object_name = 'cjt_context'
-    success_url = dcu.reverse_lazy('djff:cjt_list')
+    context_object_name = 'context'
+    success_url = dcu.reverse_lazy('djff:cjt_index')
+
+
+def cjt_new(request):
+    cjt = CaptureJobTemplate()
+    cjt.save()
+
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:cjt_detail',
+                    args=(cjt.id,))
+    )
 
 
 def run_capturejob(request, xp_id, cjt_id):
