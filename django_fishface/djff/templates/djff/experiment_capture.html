@@ -25,6 +25,7 @@
         </div>
     {% endif %}
     <div class="boxed">
+    <h3>Calibration Images</h3>
     <form method="post"
           action="{% url 'djff:experiment_capturer' %}">
         {% csrf_token %}
@@ -34,24 +35,23 @@
         <input type="checkbox" value="True" name="cal_ready">
         Ready to capture calibration image (no fish):
         <input type="hidden" value="{{ xp.id }}" name="xp_id">
-        <input type="submit" value="Capture a calibration image" />
+        <input type="submit" value="Capture a {% if cal_images %}new {% endif %}calibration image" />
     </form>
 
     {% if cal_images %}
-        <p>Calibration images:</p>
+        <p>Calibration images for this experiment:</p>
         {% for img in cal_images %}
             {{ img.linked_inline_image|replace_width:"20"|mark_safe }}
         {% endfor %}
-    {% else %}
-        <p>No cal images.</p>
     {% endif %}
     </div>
 
     <br>
 
-    <div class="boxed">
     {% if not running_jobs and cal_images and capturejob_templates %}
-    <ol>
+        <div class="boxed">
+        <h3>Capture Jobs</h3>
+            <ol>
     {% for cjt in capturejob_templates %}
         <li>
         <form method="post" action="{% url 'djff:run_capturejob' xp.id cjt.id %}">
@@ -64,32 +64,35 @@
         </li>
     {% endfor %}
     </ol>
-
+    </div>
     {% elif running_jobs %}
+        <div class="boxed">
         {% for cjr in running_jobs %}
             <strong>Active capture job:</strong><br>
             <em>Voltage</em>: {{ cjr.voltage }}<br>
             <em>Remaining</em>: {{ cjr.remaining }}/{{ cjr.total }}
         {% endfor %}
-    {% elif not cal_images %}
-        Please capture a calibration image before viewing the capture jobs.
+        </div>
     {% endif %}
-    </div>
 
-    <h3>Capture Jobs</h3>
-    <hr width="30%" />
-
-    {% for cjr, imageset in images_by_cjr %}
-        Started: {{ cjr.job_start }}<br>
-        Completed: {{ cjr.job_stop }}<br>
-        Captured {{ imageset.count }} images at {{ cjr.voltage }} volts:<br>
-        {% for img in imageset %}
-            {{ img.linked_inline_bullet|mark_safe }}
-        {% endfor %}
+    {% if images_by_cjr %}
+        <div class="boxed">
+        <h3>Capture Job Records</h3>
         <hr width="30%" />
-    {% empty %}
-        <p>No capture jobs have been run for this experiment.</p>
-    {% endfor %}
+
+        {% for cjr, imageset in images_by_cjr %}
+            Started: {{ cjr.job_start }}<br>
+            Completed: {{ cjr.job_stop }}<br>
+            Captured {{ imageset.count }} images at {{ cjr.voltage }} volts:<br>
+            {% for img in imageset %}
+                {{ img.linked_inline_bullet|mark_safe }}
+            {% endfor %}
+            <hr width="30%" />
+        {% empty %}
+            <p>No capture jobs have been run for this experiment.</p>
+        {% endfor %}
+        </div>
+    {% endif %}
 
 {% endblock %}
 

@@ -43,6 +43,12 @@ class Species(models.Model):
             self.species_shortname,
         )
 
+    def get_absolute_url(self):
+        return dcu.reverse(
+            'djff:sp_update',
+            kwargs={'pk': self.pk}
+        )
+
 
 class Experiment(models.Model):
     """

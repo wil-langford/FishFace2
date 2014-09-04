@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 {% load staticfiles %}
+{% load djff_filters %}
+
 <html lang="en">
 <head>
     <link rel="stylesheet" type="text/css"
@@ -19,10 +21,10 @@
         <ul>
         <li><a href="{% url 'djff:experiment_index' %}">Experiments</a></li>
         <ul>
-            <li>Species</li>
+            <li><a href="{% url 'djff:sp_list' %}">Species</a></li>
             <li><a href="{% url 'djff:cjt_list' %}">CapJob Templates</a></li>
         </ul>
-        <li><a href="{% url 'djff:hopperchain_index' %}">Hopperchains</a></li>
+{#        <li><a href="{% url 'djff:hopperchain_index' %}">Hopperchains</a></li>#}
         </ul>
     {% endblock %}
 </div>

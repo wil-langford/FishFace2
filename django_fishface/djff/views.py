@@ -241,6 +241,37 @@ def experiment_capture(request, xp_id):
     )
 
 
+#######################
+###  Species views  ###
+#######################
+
+
+class SpeciesIndex(dvg.ListView):
+    context_object_name = 'sp_context'
+    template_name = 'djff/species_list.html'
+
+    def get_queryset(self):
+        return Species.objects.all()
+
+
+class SpeciesCreate(dvge.CreateView):
+    model = Species
+    context_object_name = 'sp_context'
+    template_name = 'djff/species_add.html'
+
+
+class SpeciesUpdate(dvge.UpdateView):
+    model = Species
+    context_object_name = 'sp_context'
+    template_name = 'djff/species_update.html'
+    success_url = dcu.reverse_lazy('djff:sp_list')
+
+
+class SpeciesDelete(dvge.DeleteView):
+    model = Species
+    context_object_name = 'sp_context'
+    success_url = dcu.reverse_lazy('djff:sp_list')
+    
 ##################################
 ###  CaptureJobTemplate views  ###
 ##################################

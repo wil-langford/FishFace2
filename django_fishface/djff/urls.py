@@ -131,6 +131,27 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
+        r'^sp/list/$',
+        views.SpeciesIndex.as_view(),
+        name='sp_list',
+    ),
+    dcu.url(
+        r'^sp/add/$',
+        views.SpeciesCreate.as_view(),
+        name='sp_add'
+    ),
+    dcu.url(
+        r'^sp/(?P<pk>\d+)/$',
+        views.SpeciesUpdate.as_view(),
+        name='sp_update'
+    ),
+    dcu.url(
+        r'^sp/(?P<pk>\d+)/delete/$',
+        views.SpeciesDelete.as_view(),
+        name='sp_delete'
+    ),
+
+    dcu.url(
         r'^cj/(?P<xp_id>\d+)/(?P<cjt_id>\d+)/run/$',
         views.run_capturejob,
         name='run_capturejob'
