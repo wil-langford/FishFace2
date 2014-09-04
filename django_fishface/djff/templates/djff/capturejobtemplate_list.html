@@ -1,0 +1,30 @@
+{% extends "djff/base.html" %}
+
+{% block subtitle %}Capture Job Template{% endblock %}
+
+{% block content %}
+    <ol>
+    {% for cjt in cjt_context %}
+                <li>
+                    <a href="{% url 'djff:cjt_update' cjt.id %}">
+                        Capture Job Template
+                    </a>
+                    <br><em>Voltage</em>: {{ cjt.voltage }}
+                    <br><em>Duration</em>: {{ cjt.duration }}
+                    <br><em>Interval</em>: {{ cjt.interval }}
+                    <br><em>Startup Delay</em>: {{ cjt.startup_delay }}
+                    <br>
+                    <form action="{% url 'djff:cjt_delete' cjt.id %}"
+                            method="post">
+                        {% csrf_token %}
+                        <input type="submit"
+                               value="Delete this template" />
+                    </form>
+                </li>
+    {% empty %}
+        <p>There are no stored capture job templates.</p>
+    {% endfor %}
+    </ol>
+
+    <p>Add a <a href="{% url 'djff:cjt_add' %}">new capture job template</a>.</p>
+{% endblock %}

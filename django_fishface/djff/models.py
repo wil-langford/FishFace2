@@ -10,12 +10,12 @@ class Species(models.Model):
     species_name = models.CharField(
         'the full species of the fish',
         max_length=200,
-        default='full name of fish species',
+        default='hypostomus plecostomus',
     )
     species_shortname = models.CharField(
         'a short abbreviation for the species of fish',
-        max_length=200,
-        default='ABC',
+        max_length=5,
+        default='HP',
     )
     sample_image = models.ImageField(
         'a sample image of the fish species',
@@ -41,6 +41,12 @@ class Species(models.Model):
         return u'{}({})'.format(
             self.species_name,
             self.species_shortname,
+        )
+
+    def get_absolute_url(self):
+        return dcu.reverse(
+            'djff:sp_update',
+            kwargs={'pk': self.pk}
         )
 
 
@@ -77,6 +83,21 @@ class Experiment(models.Model):
         )
 
 
+class CaptureJobRecord(models.Model):
+    xp = models.ForeignKey(Experiment)
+    voltage = models.FloatField(default=0)
+
+    job_start = models.DateTimeField(null=True, blank=True)
+    running = models.NullBooleanField(default=None)
+    total = models.IntegerField(null=True, blank=True)
+    remaining = models.IntegerField(null=True, blank=True)
+    job_stop = models.DateTimeField(null=True, blank=True)
+
+    def __unicode__(self):
+        return u'CaptureJobRecord {} (XP {})'.format(self.id,
+                                                     self.xp.id)
+
+
 class Image(models.Model):
     """
     Each captured image will be stored as the path of the file that
@@ -85,7 +106,16 @@ class Image(models.Model):
     """
 
     # Link to a specific experiment
-    experiment = models.ForeignKey(Experiment)
+    experiment = models.ForeignKey(
+        Experiment,
+        editable=False,
+    )
+    # Link to a specific capturejob
+    capturejob = models.ForeignKey(
+        CaptureJobRecord,
+        null=True,
+        editable=False,
+    )
 
     # Data available at capture time.
     dtg_capture = models.DateTimeField(
@@ -122,6 +152,13 @@ class Image(models.Model):
             self.inline_image(),
         )
     linked_inline_image.allow_tags = True
+
+    def linked_inline_bullet(self):
+        return '<a href="/media/{}" target="_newtab">X</a>'.format(
+            self.image_file,
+        )
+    linked_inline_image.allow_tags = True
+
 
 
 class ImageAnalysis(models.Model):
@@ -169,56 +206,31 @@ class HopperChain(models.Model):
     )
 
 
-class CaptureJob(models.Model):
-    readonly_fields = ('running', 'run_start', 'run_end')
-
-    name = models.TextField(
-        'the name of the capture job',
-        default='New capture job (created {})'.format(du.timezone.now())
-    )
-
-    xp = models.ForeignKey(Experiment)
-
+class CaptureJobTemplate(models.Model):
     voltage = models.FloatField(
         'the voltage that the power supply will be set to',
         default=0,
     )
-    duration = models.IntegerField(
+    duration = models.FloatField(
         'the number of seconds to run the job',
         default=0,
     )
-    interval = models.IntegerField(
+    interval = models.FloatField(
         'the number of seconds between image captures',
         default=1,
     )
-
-    running = models.BooleanField(
-        'is the job running right now',
-        default=False,
-    )
-    run_start = models.DateTimeField(
-        'when was the job started',
-        blank=True,
-        null=True
-    )
-    run_end = models.DateTimeField(
-        'when did the job finish running',
-        blank=True,
-        null=True,
+    startup_delay = models.FloatField(
+        ('the number of seconds to delay between setting voltage' +
+         ' and image capture'),
+        default=30.0
     )
 
     def get_absolute_url(self):
         return dcu.reverse(
-            'djff:cj_update',
+            'djff:cjt_update',
             kwargs={'pk': self.pk}
         )
 
-    def new_name(self, instance):
-        xp_name = instance.xp.experiment_name
-        return '{} job (created {})'.format(
-            xp_name,
-            du.timezone.now()
-        )
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
 def image_delete(sender, instance, **kwargs):
