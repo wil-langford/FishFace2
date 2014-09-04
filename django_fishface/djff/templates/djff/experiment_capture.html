@@ -50,9 +50,9 @@
     </div>
 
     <div class="boxed">
-    {% if cal_images and capture_job_templates %}
+    {% if not capturerecords and cal_images and capturejob_templates %}
     <ol>
-    {% for cjt in capture_job_templates %}
+    {% for cjt in capturejob_templates %}
         <li>
         <form method="post" action="{% url 'djff:run_capturejob' xp.id cjt.id %}">
         {% csrf_token %}
@@ -64,6 +64,17 @@
         </li>
     {% endfor %}
     </ol>
+
+    {% elif capturerecords %}
+        <ol>
+        {% for cjr in capturerecords %}
+            <li>
+            Active capture job:<br>
+            <em>Voltage</em>: {{ cjr.voltage }}<br>
+            <em>Remaining</em>: {{ cjr.remaining }}/{{ cjr.total }}
+            </li>
+        {% endfor %}
+        </ol>
     {% elif not cal_images %}
         Please capture a calibration image before viewing the capture jobs.
     {% endif %}

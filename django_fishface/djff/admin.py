@@ -55,8 +55,14 @@ class ImageAdmin(admin.ModelAdmin):
     ]
     # TODO: uncomment following line
     # inlines = [ImageAnalysisInline]
-    list_display = ('voltage', 'dtg_capture',
-                    'is_cal_image', 'inline_image')
+    list_display = (
+        'voltage',
+        'dtg_capture',
+        'is_cal_image',
+        'experiment',
+        'capturejob',
+        'inline_image'
+    )
     list_filter = ('dtg_capture',)
 
 admin.site.register(models.Image, ImageAdmin)
@@ -103,3 +109,28 @@ class CaptureJobTemplateAdmin(admin.ModelAdmin):
     )
 
 admin.site.register(models.CaptureJobTemplate, CaptureJobTemplateAdmin)
+
+class CaptureJobRecordAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (
+            'Parameters', {
+                'fields': [
+                    'xp',
+                    'voltage',
+                    'job_start',
+                    'job_stop',
+                    'running',
+                ]
+            }
+        ),
+    ]
+
+    list_display = (
+        'xp',
+        'voltage',
+        'running',
+        'job_start',
+        'job_stop',
+    )
+
+admin.site.register(models.CaptureJobRecord, CaptureJobRecordAdmin)

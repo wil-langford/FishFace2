@@ -19,6 +19,7 @@ HOST = ''
 PORT = 18765
 
 IMAGE_POST_URL = "http://localhost:8100/fishface/upload_imagery/"
+TELEMETRY_URL = "http://localhost:8100/fishface/telemetry/"
 
 DATE_FORMAT = "%Y-%m-%d-%H:%M:%S"
 
@@ -34,8 +35,6 @@ class ImageryServer(object):
     """
     """
 
-    WINNER = "yay"
-
     def __init__(self):
         self._keep_capturing = True
         self._keep_capturejob_looping = True
@@ -43,6 +42,8 @@ class ImageryServer(object):
         self.camera = picamera.PiCamera()
         self.camera.resolution = (2048, 1536)
         self.camera.rotation = 180
+
+        self._job_status = None
 
         self._current_frame_capture_time = None
 
@@ -157,11 +158,11 @@ class ImageryServer(object):
             print time.time() - t
             return r
         else:
-            def async_image_post(url, files, metadata):
-                requests.post(
+            def async_image_post(url, files_to_post, metadata_to_post):
+                return requests.post(
                     url,
-                    files=files,
-                    data=metadata
+                    files=files_to_post,
+                    data=metadata_to_post
                 )
 
             async_thread = threading.Thread(
@@ -171,8 +172,9 @@ class ImageryServer(object):
             async_thread.start()
             return
 
-    def obey_server_command(self, raw_payload):
-        payload = dict([field.split('=') for field in raw_payload.split('&')])
+    def receive_telemetry(self, raw_payload):
+        payload = dict([field.split('=')
+                        for field in raw_payload.split('&')])
 
         result = "no result"
 
@@ -182,12 +184,45 @@ class ImageryServer(object):
         if payload['command'] == 'run_capturejob':
             result = self.run_capturejob(payload)
 
+        if payload['command'] == 'job_status':
+            result = self.post_job_status_update(payload)
+
         if result and result.status_code == 500:
             result = result.text
 
         return result
 
+    def send_telemetry(self, payload, files=None):
+        return requests.post(
+            TELEMETRY_URL,
+            data=payload,
+            files=files,
+        )
+
+    def post_job_status_update(self):
+        if self._job_status is None:
+            result = self.send_telemetry(
+                {
+                    'command': 'job_status_update',
+                    'status': 'no_job_running',
+                }
+            )
+        else:
+            payload = self._job_status.copy()
+            payload['command'] = 'job_status_update'
+
+            result = self.send_telemetry(payload)
+
+        return result
+
     def run_capturejob(self, payload):
+        self._job_status = {
+            'cjr_id': payload['cjr_id'],
+            'status': 'running',
+            'job_start_timestamp': time.time(),
+            'job_end_timestamp': ''
+        }
+
         duration = float(payload['duration'])
         interval = float(payload['interval'])
         startup_delay = float(payload['startup_delay'])
@@ -208,30 +243,54 @@ class ImageryServer(object):
             'cjr_id': payload['cjr_id'],
         }
 
-        def capturejob_loop(payload, metadata, capture_times):
-            for next_capture_time in capture_times:
+        def capturejob_loop(
+                metadata_dict,
+                capture_times_list):
+            self._job_status['total'] = len(capture_times_list) + 1
+            self._job_status['remaining'] = len(capture_times_list) + 1
+
+            total = self._job_status['total']
+
+            for i, next_capture_time in enumerate(capture_times_list):
                 if not self._keep_capturejob_looping:
                     break
+
                 delay_until(next_capture_time)
-                r = self.post_current_image_to_server(
-                        metadata,
-                        sync=False,
-                    )
+                self.post_current_image_to_server(
+                    metadata_dict,
+                    sync=False,
+                )
+
+                self._job_status['remaining'] = total - i
+
+                self.post_job_status_update()
+
+            self._job_status['job_end_timestamp'] = time.time()
+
+            self._job_status['command'] = 'job_status_update'
+            self._job_status['status'] = 'complete'
+
+            self.send_telemetry(
+                self._job_status
+            )
+
+            self._job_status = None
 
         thread = threading.Thread(
             target=capturejob_loop,
-            args=(payload, metadata, capture_times)
+            args=(metadata, capture_times)
         )
-        print (("sending images for capturejob {} for" +
-              "experiment {}").format(
-                  payload['cjr_id'],
-                  payload['xp_id']
-            )
+        print (
+            ("sending images for capturejob {} for" +
+                "experiment {}").format(
+                    payload['cjr_id'],
+                    payload['xp_id'],
+                )
         )
         thread.start()
         print "capturejob thread started"
 
-        # TODO: this could make more sense, but I'm not sure how
+        # TODO: this could make more sense, but I'm not sure how.  yet.
 
         return False
 
@@ -250,7 +309,7 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         # self.send_header("Contest-type", "type/html")
         # self.end_headers()
 
-        result = self.server.parent.obey_server_command(
+        result = self.server.parent.receive_telemetry(
             parsed_path.query
         )
         self.wfile.write(str(result))

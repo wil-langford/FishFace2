@@ -76,7 +76,38 @@ def _file_path_to_numpy_array(image_file_path):
 
 
 def index(request):
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_index'))
+    return dh.HttpResponseRedirect(dcu.reverse('djff:experiment_index'))
+
+
+@csrf_dec.csrf_exempt
+def receive_telemetry(request):
+
+    payload = request.POST
+
+    if payload['command'] == 'job_status_update':
+        cjr = ds.get_object_or_404(CaptureJobRecord,
+                                   pk=int(payload['cjr_id']))
+
+        if payload['status'] == 'running':
+            cjr.running = True
+        else:
+            cjr.running = False
+
+        cjr.job_start = du.timezone.datetime.utcfromtimestamp(
+            float(payload['job_start_timestamp'])
+        ).replace(tzinfo=dut.utc)
+
+        cjr.total = int(payload['total'])
+        cjr.remaining = int(payload['remaining'])
+
+        if payload['job_end_timestamp']:
+            cjr.job_stop = du.timezone.datetime.utcfromtimestamp(
+                float(payload['job_end_timestamp'])
+            ).replace(tzinfo=dut.utc)
+
+        cjr.save()
+
+    return dh.HttpResponseRedirect(dcu.reverse('djff:experiment_index'))
 
 
 ##########################
@@ -169,7 +200,13 @@ def experiment_capture(request, xp_id):
         is_cal_image=False
     )
 
-    capture_job_templates = CaptureJobTemplate.objects.all()
+    capturejob_templates = CaptureJobTemplate.objects.all()
+
+    capturerecords = CaptureJobRecord.objects.filter(
+        running=True
+    )
+
+    blah = "active capturejobs: {}".format(len(capturerecords))
 
     return ds.render(
         request,
@@ -179,14 +216,16 @@ def experiment_capture(request, xp_id):
             'xp_images': xp_images,
             'cal_images': cal_images,
             'data_images': data_images,
-            'capture_job_templates': capture_job_templates,
+            'capturerecords': capturerecords,
+            'capturejob_templates': capturejob_templates,
+            'blah': blah,
         }
     )
 
 
-##########################
+##################################
 ###  CaptureJobTemplate views  ###
-##########################
+##################################
 
 
 class CaptureJobTemplateIndex(dvg.ListView):
@@ -235,6 +274,8 @@ def run_capturejob(request, xp_id, cjt_id):
         'startup_delay': cjt.startup_delay,
     }
 
+    logger.info(str(payload))
+
     r = requests.get(IMAGERY_SERVER_URL, params=payload)
 
     return dh.HttpResponseRedirect(
@@ -267,11 +308,17 @@ def image_capturer(request):
                 float(request.POST['capture_time'])
             ).replace(tzinfo=dut.utc)
 
+            cjr = ds.get_object_or_404(
+                CaptureJobRecord,
+                pk=int(request.POST['cjr_id'])
+            )
+
             captured_image = Image(
                 experiment=xp,
                 dtg_capture=dtg_capture,
                 voltage=voltage,
                 is_cal_image=is_cal_image,
+                capturejob=cjr,
                 image_file=request.FILES[
                     request.POST['filename']
                 ],

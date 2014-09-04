@@ -80,9 +80,16 @@ class Experiment(models.Model):
 class CaptureJobRecord(models.Model):
     xp = models.ForeignKey(Experiment)
     voltage = models.FloatField(default=0)
-    job_start = models.DateTimeField(auto_now=True)
-    job_stop = models.DateTimeField(null=True)
-    running = models.BooleanField(default=True)
+
+    job_start = models.DateTimeField(null=True, blank=True)
+    running = models.NullBooleanField(default=None)
+    total = models.IntegerField(null=True, blank=True)
+    remaining = models.IntegerField(null=True, blank=True)
+    job_stop = models.DateTimeField(null=True, blank=True)
+
+    def __unicode__(self):
+        return u'CaptureJobRecord {} (XP {})'.format(self.id,
+                                                     self.xp.id)
 
 
 class Image(models.Model):

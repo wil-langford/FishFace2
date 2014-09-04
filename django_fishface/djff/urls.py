@@ -141,6 +141,12 @@ urlpatterns = dcu.patterns(
         views.run_capturejob,
         name='run_capturejob'
     ),
+
+    dcu.url(
+        r'^telemetry/$',
+        views.receive_telemetry,
+        name='receive_telemetry'
+    )
 )
 
 
