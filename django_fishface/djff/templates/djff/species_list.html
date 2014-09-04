@@ -1,0 +1,32 @@
+{% extends "djff/base.html" %}
+{% load djff_filters %}
+
+{% block subtitle %}Species{% endblock %}
+
+{% block content %}
+    <ol>
+    {% for sp in sp_context %}
+                <li>
+                    <a href="{% url 'djff:sp_update' sp.id %}">
+                        {{ sp.species_name }}
+                    </a>
+                    <br><em>Shortname</em>: {{ sp.species_shortname }}
+                    {% if sp.sample_image %}
+                    <br><em>Image</em>:
+                        <br> {{ sp.inline_image|mark_safe }}
+                    {% endif %}
+                    <br>
+                    <form action="{% url 'djff:sp_delete' sp.id %}"
+                            method="post">
+                        {% csrf_token %}
+                        <input type="submit"
+                               value="Delete this species" />
+                    </form>
+                </li>
+    {% empty %}
+        <p>There are no stored species.</p>
+    {% endfor %}
+    </ol>
+
+    <p>Add a <a href="{% url 'djff:sp_add' %}">new species</a>.</p>
+{% endblock %}

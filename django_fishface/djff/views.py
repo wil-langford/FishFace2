@@ -14,7 +14,13 @@ import django.views.generic.edit as dvge
 
 import cv2
 
-from djff.models import Experiment, Image, Species, CaptureJob
+from djff.models import (
+    Experiment,
+    Image,
+    Species,
+    CaptureJobTemplate,
+    CaptureJobRecord,
+)
 from djff.models import HopperChain
 from utils.hoppers import CLASS_PARAMS
 import djff.utils
@@ -34,6 +40,7 @@ logging.basicConfig(
     filename='/tmp/djangoLog.log',)
 
 logger = logging.getLogger(__name__)
+
 
 def _image_response_from_numpy_array(img, extension):
     """
@@ -70,7 +77,38 @@ def _file_path_to_numpy_array(image_file_path):
 
 
 def index(request):
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_index'))
+    return dh.HttpResponseRedirect(dcu.reverse('djff:experiment_index'))
+
+
+@csrf_dec.csrf_exempt
+def receive_telemetry(request):
+
+    payload = request.POST
+
+    if payload['command'] == 'job_status_update':
+        cjr = ds.get_object_or_404(CaptureJobRecord,
+                                   pk=int(payload['cjr_id']))
+
+        if payload['status'] == 'running':
+            cjr.running = True
+        else:
+            cjr.running = False
+
+        cjr.job_start = du.timezone.datetime.utcfromtimestamp(
+            float(payload['job_start_timestamp'])
+        ).replace(tzinfo=dut.utc)
+
+        cjr.total = int(payload['total'])
+        cjr.remaining = int(payload['remaining'])
+
+        if payload['job_end_timestamp']:
+            cjr.job_stop = du.timezone.datetime.utcfromtimestamp(
+                float(payload['job_end_timestamp'])
+            ).replace(tzinfo=dut.utc)
+
+        cjr.save()
+
+    return dh.HttpResponseRedirect(dcu.reverse('djff:experiment_index'))
 
 
 ##########################
@@ -125,24 +163,37 @@ def experiment_renamer(request, xp_id):
     xp.experiment_name = request.POST['new_name']
     xp.save()
 
-    return dh.HttpResponseRedirect(dcu.reverse('djff:experiment_capture',
-                                               args=(xp.id,)))
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:experiment_capture', args=(xp.id,))
+    )
 
 
 def experiment_capturer(request):
+    xp = ds.get_object_or_404(Experiment, pk=int(request.POST['xp_id']))
+
     payload = {
         'command': 'post_image',
-        'xp_id': request.POST['xp_id'],
+        'xp_id': xp.id,
         'voltage': request.POST['voltage'],
+        'species': xp.species.species_shortname
     }
 
+    # default value for is_cal_image
     payload['is_cal_image'] = request.POST.get(
         'is_cal_image',
         False
     )
 
+    # default value for cjr_id
+    payload['cjr_id'] = request.POST.get(
+        'cjr_id',
+        0
+    )
+
+    # if it's not a cal image OR if it's a cal image and the user
+    # checked the "ready to capture cal image" box...
     if (not request.POST['is_cal_image'] == 'True' or
-        request.POST.get('cal_ready', '') == 'True'):
+            request.POST.get('cal_ready', '') == 'True'):
         r = requests.get(IMAGERY_SERVER_URL, params=payload)
 
     return dh.HttpResponseRedirect(
@@ -174,9 +225,19 @@ def experiment_capture(request, xp_id):
         is_cal_image=False
     )
 
-    capturejobs = CaptureJob.objects.filter(
-        xp=xp_id
+    capturejob_templates = CaptureJobTemplate.objects.all()
+
+    running_jobs = CaptureJobRecord.objects.filter(
+        running=True
     )
+
+    cjrs = CaptureJobRecord.objects.filter(xp__id=xp.id)
+
+    images_by_cjr = [
+        (cjr_obj, Image.objects.filter(capturejob__id=cjr_obj.id))
+        for cjr_obj in
+        cjrs
+    ]
 
     return ds.render(
         request,
@@ -186,42 +247,104 @@ def experiment_capture(request, xp_id):
             'xp_images': xp_images,
             'cal_images': cal_images,
             'data_images': data_images,
-            'capturejobs': capturejobs,
+            'running_jobs': running_jobs,
+            'capturejob_templates': capturejob_templates,
+            'images_by_cjr': images_by_cjr,
         }
     )
 
 
-##########################
-###  CaptureJob views  ###
-##########################
+#######################
+###  Species views  ###
+#######################
 
 
-class CaptureJobIndex(dvg.ListView):
-    template_name = 'djff/capturejob_list.html'
-    context_object_name = 'capturejobs'
+class SpeciesIndex(dvg.ListView):
+    context_object_name = 'sp_context'
+    template_name = 'djff/species_list.html'
 
     def get_queryset(self):
-        return CaptureJob.objects.all()
+        return Species.objects.all()
 
 
-class CaptureJobCreate(dvge.CreateView):
-    model = CaptureJob
-    context_object_name = 'cj_context'
-    template_name = 'djff/capturejob_add.html'
+class SpeciesCreate(dvge.CreateView):
+    model = Species
+    context_object_name = 'sp_context'
+    template_name = 'djff/species_add.html'
 
 
-class CaptureJobUpdate(dvge.UpdateView):
-    model = CaptureJob
-    context_object_name = 'cj_context'
-    template_name = 'djff/capturejob_update.html'
+class SpeciesUpdate(dvge.UpdateView):
+    model = Species
+    context_object_name = 'sp_context'
+    template_name = 'djff/species_update.html'
+    success_url = dcu.reverse_lazy('djff:sp_list')
 
 
-class CaptureJobDelete(dvge.DeleteView):
-    model = CaptureJob
-    context_object_name = 'cj_context'
-    template_name = 'djff/capturejob_delete.html'
-    success_url = dcu.reverse_lazy('capturejob-list')
+class SpeciesDelete(dvge.DeleteView):
+    model = Species
+    context_object_name = 'sp_context'
+    success_url = dcu.reverse_lazy('djff:sp_list')
+    
+##################################
+###  CaptureJobTemplate views  ###
+##################################
 
+
+class CaptureJobTemplateIndex(dvg.ListView):
+    context_object_name = 'cjt_context'
+    template_name = 'djff/capturejobtemplate_list.html'
+
+    def get_queryset(self):
+        return CaptureJobTemplate.objects.all()
+
+
+class CaptureJobTemplateCreate(dvge.CreateView):
+    model = CaptureJobTemplate
+    context_object_name = 'cjt_context'
+    template_name = 'djff/capturejobtemplate_add.html'
+
+
+class CaptureJobTemplateUpdate(dvge.UpdateView):
+    model = CaptureJobTemplate
+    context_object_name = 'cjt_context'
+    template_name = 'djff/capturejobtemplate_update.html'
+    success_url = dcu.reverse_lazy('djff:cjt_list')
+
+
+class CaptureJobTemplateDelete(dvge.DeleteView):
+    model = CaptureJobTemplate
+    context_object_name = 'cjt_context'
+    success_url = dcu.reverse_lazy('djff:cjt_list')
+
+
+def run_capturejob(request, xp_id, cjt_id):
+    cjt = ds.get_object_or_404(CaptureJobTemplate, pk=cjt_id)
+    xp = ds.get_object_or_404(Experiment, pk=xp_id)
+    cjr = CaptureJobRecord(
+        xp=xp,
+        voltage=cjt.voltage,
+    )
+    cjr.save()
+
+    payload = {
+        'command': 'run_capturejob',
+        'xp_id': xp.id,
+        'species': xp.species.species_shortname,
+        'cjr_id': cjr.id,
+        'voltage': cjr.voltage,
+        'duration': cjt.duration,
+        'interval': cjt.interval,
+        'startup_delay': cjt.startup_delay,
+    }
+
+    logger.info(str(payload))
+
+    r = requests.get(IMAGERY_SERVER_URL, params=payload)
+
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:experiment_capture',
+                    args=(payload['xp_id'],))
+    )
 
 ################################
 ###  Internal Capture views  ###
@@ -234,13 +357,20 @@ def image_capturer(request):
     if request.method == 'POST':
         logger.debug(request.POST)
 
+        logger.info("command: {}".format(request.POST['command']))
+
         if request.POST['command'] == 'post_image':
             xp = ds.get_object_or_404(
                 Experiment,
                 pk=request.POST['xp_id']
             )
 
-            is_cal_image = (request.POST['is_cal_image'].lower()
+            logger.info("Experiment: {} (ID {})".format(
+                xp.experiment_name,
+                xp.id
+            ))
+
+            is_cal_image = (str(request.POST['is_cal_image']).lower()
                             in ['true', 't', 'yes', 'y', '1'])
             voltage = float(request.POST['voltage'])
 
@@ -248,16 +378,31 @@ def image_capturer(request):
                 float(request.POST['capture_time'])
             ).replace(tzinfo=dut.utc)
 
+            try:
+                cjr = ds.get_object_or_404(
+                    CaptureJobRecord,
+                    pk=int(request.POST['cjr_id'])
+                )
+            except dh.Http404:
+                cjr = None
+
+            logger.info("storing image")
+
             captured_image = Image(
                 experiment=xp,
                 dtg_capture=dtg_capture,
                 voltage=voltage,
                 is_cal_image=is_cal_image,
+                capturejob=cjr,
                 image_file=request.FILES[
                     request.POST['filename']
                 ],
             )
             captured_image.save()
+
+            logger.info("image stored with ID {}".format(
+                captured_image.id
+            ))
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:experiment_index'),

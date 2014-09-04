@@ -2,12 +2,6 @@ import django.conf.urls as dcu
 import djff.views as views
 urlpatterns = dcu.patterns(
     '',
-    # TODO: is this some sort of orphan?  check.
-    # dcu.url(
-    #     r'^hc/image_upload/(?P<chain_id>\d+)/$',
-    #     views.image_capturer,
-    #     name='image_capturer'
-    # ),
     dcu.url(
         r'^upload_imagery/$',
         views.image_capturer,
@@ -116,25 +110,58 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
-        r'^cj/list/$',
-        views.CaptureJobIndex.as_view(),
-        name='cj_list',
+        r'^cjt/list/$',
+        views.CaptureJobTemplateIndex.as_view(),
+        name='cjt_list',
     ),
     dcu.url(
-        r'^cj/add/$',
-        views.CaptureJobCreate.as_view(),
-        name='cj_add'
+        r'^cjt/add/$',
+        views.CaptureJobTemplateCreate.as_view(),
+        name='cjt_add'
     ),
     dcu.url(
-        r'^cj/(?P<pk>\d+)/$',
-        views.CaptureJobUpdate.as_view(),
-        name='cj_update'
+        r'^cjt/(?P<pk>\d+)/$',
+        views.CaptureJobTemplateUpdate.as_view(),
+        name='cjt_update'
     ),
     dcu.url(
-        r'^cj/(?P<pk>\d+)/delete/$',
-        views.CaptureJobDelete.as_view(),
-        name='cj_delete'
+        r'^cjt/(?P<pk>\d+)/delete/$',
+        views.CaptureJobTemplateDelete.as_view(),
+        name='cjt_delete'
     ),
+
+    dcu.url(
+        r'^sp/list/$',
+        views.SpeciesIndex.as_view(),
+        name='sp_list',
+    ),
+    dcu.url(
+        r'^sp/add/$',
+        views.SpeciesCreate.as_view(),
+        name='sp_add'
+    ),
+    dcu.url(
+        r'^sp/(?P<pk>\d+)/$',
+        views.SpeciesUpdate.as_view(),
+        name='sp_update'
+    ),
+    dcu.url(
+        r'^sp/(?P<pk>\d+)/delete/$',
+        views.SpeciesDelete.as_view(),
+        name='sp_delete'
+    ),
+
+    dcu.url(
+        r'^cj/(?P<xp_id>\d+)/(?P<cjt_id>\d+)/run/$',
+        views.run_capturejob,
+        name='run_capturejob'
+    ),
+
+    dcu.url(
+        r'^telemetry/$',
+        views.receive_telemetry,
+        name='receive_telemetry'
+    )
 )
 
 

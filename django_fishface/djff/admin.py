@@ -55,8 +55,14 @@ class ImageAdmin(admin.ModelAdmin):
     ]
     # TODO: uncomment following line
     # inlines = [ImageAnalysisInline]
-    list_display = ('voltage', 'dtg_capture',
-                    'is_cal_image', 'inline_image')
+    list_display = (
+        'voltage',
+        'dtg_capture',
+        'is_cal_image',
+        'experiment',
+        'capturejob',
+        'inline_image'
+    )
     list_filter = ('dtg_capture',)
 
 admin.site.register(models.Image, ImageAdmin)
@@ -81,41 +87,50 @@ class SpeciesAdmin(admin.ModelAdmin):
 admin.site.register(models.Species, SpeciesAdmin)
 
 
-class CaptureJobAdmin(admin.ModelAdmin):
+class CaptureJobTemplateAdmin(admin.ModelAdmin):
     fieldsets = [
-        (
-            'Job', {
-                'fields': [
-                    'name',
-                    'xp',
-                ]
-            }
-        ),
         (
             'Parameters', {
                 'fields': [
                     'voltage',
                     'duration',
                     'interval',
-                ]
-            }
-        ),
-        (
-            'Run Information', {
-                'fields': [
-                    'running',
-                    'run_start',
-                    'run_end',
+                    'startup_delay',
                 ]
             }
         ),
     ]
 
     list_display = (
-        'name',
-        'xp',
-        'run_start',
-        'running',
+        'voltage',
+        'duration',
+        'interval',
+        'startup_delay'
     )
 
-admin.site.register(models.CaptureJob, CaptureJobAdmin)
+admin.site.register(models.CaptureJobTemplate, CaptureJobTemplateAdmin)
+
+class CaptureJobRecordAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (
+            'Parameters', {
+                'fields': [
+                    'xp',
+                    'voltage',
+                    'job_start',
+                    'job_stop',
+                    'running',
+                ]
+            }
+        ),
+    ]
+
+    list_display = (
+        'xp',
+        'voltage',
+        'running',
+        'job_start',
+        'job_stop',
+    )
+
+admin.site.register(models.CaptureJobRecord, CaptureJobRecordAdmin)
