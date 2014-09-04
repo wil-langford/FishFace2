@@ -5,9 +5,9 @@
 
 {% block content %}
     <ol>
-    {% for sp in sp_context %}
+    {% for sp in context %}
                 <li>
-                    <a href="{% url 'djff:sp_update' sp.id %}">
+                    <a href="{% url 'djff:sp_detail' sp.id %}">
                         {{ sp.species_name }}
                     </a>
                     <br><em>Shortname</em>: {{ sp.species_shortname }}
@@ -15,18 +15,16 @@
                     <br><em>Image</em>:
                         <br> {{ sp.inline_image|mark_safe }}
                     {% endif %}
-                    <br>
-                    <form action="{% url 'djff:sp_delete' sp.id %}"
-                            method="post">
-                        {% csrf_token %}
-                        <input type="submit"
-                               value="Delete this species" />
-                    </form>
                 </li>
     {% empty %}
         <p>There are no stored species.</p>
     {% endfor %}
     </ol>
 
-    <p>Add a <a href="{% url 'djff:sp_add' %}">new species</a>.</p>
+    <div class="boxed">
+        Please note that all species information must be unique or an error
+    message will be raised.  That is, if you already see a plecostomus
+    species entry above, adding another one would be an error.
+    </div>
+    <p>Add a <a href="{% url 'djff:sp_new' %}">new species</a>.</p>
 {% endblock %}

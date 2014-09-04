@@ -10,12 +10,21 @@ class Species(models.Model):
     species_name = models.CharField(
         'the full species of the fish',
         max_length=200,
-        default='hypostomus plecostomus',
+        default='genus species',
+        unique=True,
+    )
+    common_name = models.CharField(
+        'the common name of the fish species',
+        max_length=200,
+        blank=True,
+        null=True,
+        unique=True,
     )
     species_shortname = models.CharField(
         'a short abbreviation for the species of fish',
         max_length=5,
-        default='HP',
+        default='ABC',
+        unique=True,
     )
     sample_image = models.ImageField(
         'a sample image of the fish species',
