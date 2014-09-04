@@ -2,12 +2,6 @@ import django.conf.urls as dcu
 import djff.views as views
 urlpatterns = dcu.patterns(
     '',
-    # TODO: is this some sort of orphan?  check.
-    # dcu.url(
-    #     r'^hc/image_upload/(?P<chain_id>\d+)/$',
-    #     views.image_capturer,
-    #     name='image_capturer'
-    # ),
     dcu.url(
         r'^upload_imagery/$',
         views.image_capturer,
