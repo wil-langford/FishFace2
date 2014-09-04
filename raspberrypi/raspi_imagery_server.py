@@ -131,9 +131,12 @@ class ImageryServer(object):
 
         since_epoch = time.time()
 
-        image_filename = '{}_{}.jpg'.format(
+        image_filename = '{}_{}_{}_{}_{}.jpg'.format(
+            metadata['xp_id'],
+            metadata['cjr_id'],
+            metadata['species'],
             image_dtg,
-            since_epoch
+            since_epoch,
         )
 
         print 'posting {}'.format(image_filename)

@@ -156,17 +156,29 @@ def experiment_renamer(request, xp_id):
 
 
 def experiment_capturer(request):
+    xp = ds.get_object_or_404(Experiment, pk=int(request.POST['xp_id']))
+
     payload = {
         'command': 'post_image',
-        'xp_id': request.POST['xp_id'],
+        'xp_id': xp.id,
         'voltage': request.POST['voltage'],
+        'species': xp.species.species_shortname
     }
 
+    # default value for is_cal_image
     payload['is_cal_image'] = request.POST.get(
         'is_cal_image',
         False
     )
 
+    # default value for cjr_id
+    payload['cjr_id'] = request.POST.get(
+        'cjr_id',
+        0
+    )
+
+    # if it's not a cal image OR if it's a cal image and the user
+    # checked the "ready to capture cal image" box...
     if (not request.POST['is_cal_image'] == 'True' or
         request.POST.get('cal_ready', '') == 'True'):
         r = requests.get(IMAGERY_SERVER_URL, params=payload)
@@ -206,8 +218,6 @@ def experiment_capture(request, xp_id):
         running=True
     )
 
-    blah = "active capturejobs: {}".format(len(capturerecords))
-
     return ds.render(
         request,
         'djff/experiment_capture.html',
@@ -218,7 +228,6 @@ def experiment_capture(request, xp_id):
             'data_images': data_images,
             'capturerecords': capturerecords,
             'capturejob_templates': capturejob_templates,
-            'blah': blah,
         }
     )
 
@@ -294,11 +303,18 @@ def image_capturer(request):
     if request.method == 'POST':
         logger.debug(request.POST)
 
+        logger.info("command: {}".format(request.POST['command']))
+
         if request.POST['command'] == 'post_image':
             xp = ds.get_object_or_404(
                 Experiment,
                 pk=request.POST['xp_id']
             )
+
+            logger.info("Experiment: {} (ID {})".format(
+                xp.experiment_name,
+                xp.id
+            ))
 
             is_cal_image = (str(request.POST['is_cal_image']).lower()
                             in ['true', 't', 'yes', 'y', '1'])
@@ -308,10 +324,15 @@ def image_capturer(request):
                 float(request.POST['capture_time'])
             ).replace(tzinfo=dut.utc)
 
-            cjr = ds.get_object_or_404(
-                CaptureJobRecord,
-                pk=int(request.POST['cjr_id'])
-            )
+            try:
+                cjr = ds.get_object_or_404(
+                    CaptureJobRecord,
+                    pk=int(request.POST['cjr_id'])
+                )
+            except dh.Http404:
+                cjr = None
+
+            logger.info("storing image")
 
             captured_image = Image(
                 experiment=xp,
@@ -324,6 +345,10 @@ def image_capturer(request):
                 ],
             )
             captured_image.save()
+
+            logger.info("image stored with ID {}".format(
+                captured_image.id
+            ))
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:experiment_index'),
