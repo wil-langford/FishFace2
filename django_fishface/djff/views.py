@@ -41,6 +41,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
 def _image_response_from_numpy_array(img, extension):
     """
     Returns an HttpResponse with an image mimetype based on the
@@ -151,8 +152,9 @@ def experiment_renamer(request, xp_id):
     xp.experiment_name = request.POST['new_name']
     xp.save()
 
-    return dh.HttpResponseRedirect(dcu.reverse('djff:experiment_capture',
-                                               args=(xp.id,)))
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:experiment_capture', args=(xp.id,))
+    )
 
 
 def experiment_capturer(request):
@@ -180,7 +182,7 @@ def experiment_capturer(request):
     # if it's not a cal image OR if it's a cal image and the user
     # checked the "ready to capture cal image" box...
     if (not request.POST['is_cal_image'] == 'True' or
-        request.POST.get('cal_ready', '') == 'True'):
+            request.POST.get('cal_ready', '') == 'True'):
         r = requests.get(IMAGERY_SERVER_URL, params=payload)
 
     return dh.HttpResponseRedirect(
