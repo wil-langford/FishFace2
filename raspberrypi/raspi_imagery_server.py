@@ -13,13 +13,23 @@ import BaseHTTPServer
 import urlparse
 import requests
 import datetime
+
+import logging
+
 import instruments as ik
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(message)s',
+    filename='/tmp/djangoLog.log',)
+
+logger = logging.getLogger(__name__)
 
 HOST = ''
 PORT = 18765
 
-IMAGE_POST_URL = "http://localhost:8100/fishface/upload_imagery/"
-TELEMETRY_URL = "http://localhost:8100/fishface/telemetry/"
+IMAGE_POST_URL = "http://fishfacehost:8000/fishface/upload_imagery/"
+TELEMETRY_URL = "http://fishfacehost:8000/fishface/telemetry/"
 
 DATE_FORMAT = "%Y-%m-%d-%H:%M:%S"
 
