@@ -10,15 +10,30 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+from django.utils.crypto import get_random_string
+
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+
+
+def generate_secret_key(filename):
+    chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
+    key =  get_random_string(50, chars)
+    with open(filename, 'w') as f:
+        f.write(
+            "SECRET_KEY = '{}'".format(key)
+        )
+
+
+try:
+    from secret_key import *
+except ImportError:
+    SETTINGS_DIR=os.path.abspath(os.path.dirname(__file__))
+    generate_secret_key(os.path.join(SETTINGS_DIR, 'secret_key.py'))
+    from secret_key import *
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
-
-# TODO: Generate new key before non-localhost use/testing.
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'u31m(@%v2=dp$y(04hpr9-a1r#c@j4&6n9hvrl6(tdpxce)*l%'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
