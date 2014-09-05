@@ -65,4 +65,5 @@ db.sqlite3
 eph*
 
 migrations
+
 secret_key.py
