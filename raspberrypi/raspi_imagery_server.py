@@ -159,14 +159,22 @@ class ImageryServer(object):
                 data=metadata
             )
             print time.time() - t
+            if r.status_code == 500:
+                with open('/tmp/latest_500.html', 'w') as f:
+                    f.write(r.text)
+
             return r
         else:
             def async_image_post(url, files_to_post, metadata_to_post):
-                return requests.post(
+                r = requests.post(
                     url,
                     files=files_to_post,
                     data=metadata_to_post
                 )
+                if r.status_code == 500:
+                    with open('/tmp/latest_500.html', 'w') as f:
+                        f.write(r.text)
+                return r
 
             async_thread = threading.Thread(
                 target=async_image_post,
@@ -285,14 +293,14 @@ class ImageryServer(object):
             args=(metadata, capture_times)
         )
         print (
-            ("sending images for capturejob {} for" +
-                "experiment {}").format(
+            ("sending images for cjr {} for" +
+                "xp {}").format(
                     payload['cjr_id'],
                     payload['xp_id'],
                 )
         )
         thread.start()
-        print "capturejob thread started"
+        print "cjr thread started"
 
         # TODO: this could make more sense, but I'm not sure how.  yet.
 

@@ -8,10 +8,10 @@
     {% for sp in context %}
                 <li>
                     <a href="{% url 'djff:sp_detail' sp.id %}">
-                        {{ sp.species_name }}
+                        {{ sp.name }}
                     </a>
-                    <br><em>Shortname</em>: {{ sp.species_shortname }}
-                    {% if sp.sample_image %}
+                    <br><em>Shortname</em>: {{ sp.shortname }}
+                    {% if sp.image %}
                     <br><em>Image</em>:
                         <br> {{ sp.inline_image|mark_safe }}
                     {% endif %}

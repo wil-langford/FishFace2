@@ -9,104 +9,36 @@ urlpatterns = dcu.patterns(
     ),
     dcu.url(
         r'^imagery_request/$',
-        views.experiment_capturer,
-        name='experiment_capturer'
+        views.xp_capturer,
+        name='xp_capturer'
     ),
 
     dcu.url(r'^$', views.index, name='index'),
 
     dcu.url(
         r'^xp/$',
-        views.experiment_index,
-        name='experiment_index'
+        views.xp_index,
+        name='xp_index'
     ),
     dcu.url(
         r'^xp/rename/(?P<xp_id>\d+)/$',
-        views.experiment_rename,
-        name='experiment_rename'
+        views.xp_rename,
+        name='xp_rename'
     ),
     dcu.url(
         r'^xp/renamer/(?P<xp_id>\d+)/$',
-        views.experiment_renamer,
-        name='experiment_renamer'
+        views.xp_renamer,
+        name='xp_renamer'
     ),
     dcu.url(
         r'^xp/capture/(?P<xp_id>\d+)/$',
-        views.experiment_capture,
-        name='experiment_capture'
+        views.xp_capture,
+        name='xp_capture'
     ),
     dcu.url(
         r'^xp/new/$',
-
-
-        views.experiment_new,
-        name='experiment_new'
-    ),
-
-    dcu.url(
-        r'^hc/$',
-        views.hopperchain_index,
-        name='hopperchain_index'
-    ),
-    dcu.url(
-        r'^hc/rename/(?P<chain_id>\d+)/$',
-        views.hopperchain_rename,
-        name='hopperchain_rename'
-    ),
-    dcu.url(
-        r'^hc/renamer/(?P<chain_id>\d+)/$',
-        views.hopperchain_renamer,
-        name='hopperchain_renamer'
-    ),
-    dcu.url(
-        r'^hc/edit/(?P<chain_id>\d+)/delete/(?P<hopper_index>\d+)/$',
-        views.hopperchain_delete_hopper,
-        name='hopperchain_delete_hopper'
-    ),
-    dcu.url(
-        r'^hc/edit/(?P<chain_id>\d+)/insert/(?P<hopper_index>\d+)/$',
-        views.hopperchain_insert_hopper,
-        name='hopperchain_insert_hopper'
-    ),
-    dcu.url(
-        r'^hc/edit/(?P<chain_id>\d+)/editor/$',
-        views.hopperchain_editor,
-        name='hopperchain_editor'
-    ),
-    dcu.url(
-        r'^hc/edit/(?P<chain_id>\d+)/up/(?P<hopper_index>\d+)/$',
-        views.hopperchain_up,
-        name='hopperchain_up'
-    ),
-    dcu.url(
-        r'^hc/edit/(?P<chain_id>\d+)/down/(?P<hopper_index>\d+)/$',
-        views.hopperchain_down,
-        name='hopperchain_down'
-    ),
-    dcu.url(
-        r'^hc/edit/(?P<chain_id>\d+)/set/(?P<hopper_index>\d+)/(?P<hop_type>\w+)/$',
-        views.hopperchain_set,
-        name='hopperchain_set'
-    ),
-    dcu.url(
-        r'^hc/edit/(?P<chain_id>\d+)/$',
-        views.hopperchain_edit,
-        name='hopperchain_edit'
-    ),
-    dcu.url(
-        r'^hc/deleter/(?P<chain_id>\d+)/$',
-        views.hopperchain_deleter,
-        name='hopperchain_deleter'
-    ),
-    dcu.url(
-        r'^hc/new/$',
-        views.hopperchain_new,
-        name='hopperchain_new'
-    ),
-    dcu.url(
-        r'^hc/preview/(?P<chain_id>\d+)/preview.jpg$',
-        views.hopperchain_preview_image,
-        name='hopperchain_preview_image'
+        views.xp_new,
+        name='xp_new'
     ),
 
     dcu.url(

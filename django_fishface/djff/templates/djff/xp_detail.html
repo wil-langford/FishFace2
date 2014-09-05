@@ -8,8 +8,8 @@
 
 {% block content %}
     <h1>
-        <a href="{% url 'djff:experiment_rename' xp.id %}">
-            {{ xp.experiment_name }}
+        <a href="{% url 'djff:xp_rename' xp.id %}">
+            {{ xp.name }}
         </a>
     </h1>
 
@@ -27,7 +27,7 @@
     <div class="boxed">
     <h3>Calibration Images</h3>
     <form method="post"
-          action="{% url 'djff:experiment_capturer' %}">
+          action="{% url 'djff:xp_capturer' %}">
         {% csrf_token %}
 
         <input type="hidden" value="0" name="voltage">
@@ -48,11 +48,11 @@
 
     <br>
 
-    {% if not running_jobs and cal_images and capturejob_templates %}
+    {% if not running_jobs and cal_images and cjts %}
         <div class="boxed">
         <h3>Capture Jobs</h3>
             <ol>
-    {% for cjt in capturejob_templates %}
+    {% for cjt in cjts %}
         <li>
         <form method="post" action="{% url 'djff:run_capturejob' xp.id cjt.id %}">
         {% csrf_token %}

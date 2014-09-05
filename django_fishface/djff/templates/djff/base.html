@@ -12,14 +12,14 @@
 <body>
 
 <header>
-    <h2><a href="{% url 'djff:experiment_index' %}">FishFace</a></h2>
+    <h2><a href="{% url 'djff:xp_index' %}">FishFace</a></h2>
     <h4>{% block subtitle %}{% endblock %}</h4>
 </header>
 
 <div id="sidebar">
     {% block sidebar %}
         <ul>
-        <li><a href="{% url 'djff:experiment_index' %}">Experiments</a></li>
+        <li><a href="{% url 'djff:xp_index' %}">Experiments</a></li>
         <li><a href="{% url 'djff:sp_index' %}">Species</a></li>
         <li><a href="{% url 'djff:cjt_index' %}">CapJob Templates</a></li>
         </ul>
