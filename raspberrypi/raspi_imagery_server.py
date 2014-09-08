@@ -13,10 +13,19 @@ import BaseHTTPServer
 import urlparse
 import requests
 import datetime
+import sys
 
 import logging
 
 import instruments as ik
+
+DEBUG_DEFAULT = True
+
+# TODO: implement an argparse-based option system
+if sys.argv[0] == "--debug":
+    DEBUG = True
+else:
+    DEBUG = DEBUG_DEFAULT
 
 logging.basicConfig(
     level=logging.INFO,
@@ -28,8 +37,8 @@ logger = logging.getLogger(__name__)
 HOST = ''
 PORT = 18765
 
-IMAGE_POST_URL = "http://fishfacehost:8000/fishface/upload_imagery/"
-TELEMETRY_URL = "http://fishfacehost:8000/fishface/telemetry/"
+IMAGE_POST_URL = "http://localhost:8100/fishface/upload_imagery/"
+TELEMETRY_URL = "http://localhost:8100/fishface/telemetry/"
 
 DATE_FORMAT = "%Y-%m-%d-%H:%M:%S"
 
@@ -198,7 +207,7 @@ class ImageryServer(object):
             result = self.run_capturejob(payload)
 
         if payload['command'] == 'job_status':
-            result = self.post_job_status_update(payload)
+            result = self.post_job_status_update()
 
         if result and result.status_code == 500:
             result = result.text
@@ -243,8 +252,8 @@ class ImageryServer(object):
         first_capture_at = time.time() + startup_delay
 
         capture_times = [first_capture_at]
-        for i in range(1, int(duration / interval) + 1):
-            capture_times.append(first_capture_at + i*interval)
+        for j in range(1, int(duration / interval) + 1):
+            capture_times.append(first_capture_at + j*interval)
 
         self._keep_capturejob_looping = True
 
