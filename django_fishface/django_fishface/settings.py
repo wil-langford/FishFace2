@@ -13,23 +13,33 @@ import os
 from django.utils.crypto import get_random_string
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+DB_PASSWD_FILE = os.path.expanduser('~/fishface_db_password')
 
+# These get imported/generated later.
+DB_PASSWD = None
+SECRET_KEY = None
 
-def generate_secret_key(filename):
+def generate_and_collect_secret_keys():
+    length = 50
     chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
-    key =  get_random_string(50, chars)
-    with open(filename, 'w') as f:
+    django_key =  get_random_string(length, chars)
+
+    with open(DB_PASSWD_FILE, 'r') as f:
+        db_key = f.read().strip()
+
+    with open(os.path.join(
+            os.path.abspath(os.path.dirname(__file__)),
+            'secret_keys.py'), 'w') as f:
         f.write(
-            "SECRET_KEY = '{}'".format(key)
+            """SECRET_KEY = '{}'\nDB_PASSWD = '{}'""".format(
+                django_key, db_key)
         )
 
-
 try:
-    from secret_key import *
+    from secret_keys import *
 except ImportError:
-    SETTINGS_DIR=os.path.abspath(os.path.dirname(__file__))
-    generate_secret_key(os.path.join(SETTINGS_DIR, 'secret_key.py'))
-    from secret_key import *
+    generate_and_collect_secret_keys()
+    from secret_keys import *
 
 
 # Quick-start development settings - unsuitable for production
@@ -75,6 +85,14 @@ WSGI_APPLICATION = 'django_fishface.wsgi.application'
 
 DATABASES = {
     'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'fishfacedb',
+        'USER': 'fishfacedbuser',
+        'PASSWORD': DB_PASSWD,
+        'HOST': 'localhost',
+        'PORT': '',
+    },
+    'dev': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
