@@ -98,8 +98,9 @@ DATETIME_FORMAT = 'Y-m-d H:i:s.u'
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
+STATIC_ROOT = os.path.join('djff/static/')
 STATIC_URL = '/static/'
 
 # TODO: Change to a non-temporary MEDIA_ROOT after move to server.
-MEDIA_ROOT = '/home/wil/PycharmProjects/FishFace2/eph/media/'
+MEDIA_ROOT = os.path.join('djff/media/')
 MEDIA_URL = '/media/'
