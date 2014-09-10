@@ -240,23 +240,22 @@ class ImageryServer(object):
         if enable_output:
             self.power_supply.enable_output = enable_output
 
-        def post_power_supply_sensed_data(payload):
+        def post_power_supply_sensed_data(inner_payload):
             time.sleep(5)
-            payload['command'] = 'power_supply_report'
-            payload['voltage_sense'] = self.power_supply.voltage_sense
-            payload['current_sense'] = self.power_supply.current_sense
-            payload['is_output_enabled'] = self.power_supply.enable_output
+            inner_payload['command'] = 'power_supply_report'
+            inner_payload['voltage_sense'] = self.power_supply.voltage_sense
+            inner_payload['current_sense'] = self.power_supply.current_sense
+            inner_payload['is_output_enabled'] = self.power_supply.enable_output
 
-            self.send_telemetry(payload)
+            self.send_telemetry(inner_payload)
 
         thread = threading.Thread(
             target=post_power_supply_sensed_data,
-            args=(payload)
+            args=(payload,)
         )
         thread.start()
 
         return False
-
 
     def post_job_status_update(self):
         if self._job_status is None:
