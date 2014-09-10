@@ -95,6 +95,7 @@ class Experiment(models.Model):
 class CaptureJobRecord(models.Model):
     xp = models.ForeignKey(Experiment)
     voltage = models.FloatField(default=0)
+    current = models.FloatField(default=18)
 
     job_start = models.DateTimeField(null=True, blank=True)
     running = models.NullBooleanField(default=None)

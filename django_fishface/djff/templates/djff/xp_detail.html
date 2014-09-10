@@ -83,7 +83,8 @@
         {% for cjr, imageset in images_by_cjr %}
             Started: {{ cjr.job_start }}<br>
             Completed: {{ cjr.job_stop }}<br>
-            Captured {{ imageset.count }} images at {{ cjr.voltage }} volts:<br>
+            Captured {{ imageset.count }} images at {{ cjr.voltage }}
+            volts (max {{ cjr.current }} amps):<br>
             {% for img in imageset %}
                 {{ img.linked_inline_bullet|mark_safe }}
             {% endfor %}
