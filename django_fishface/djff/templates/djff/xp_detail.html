@@ -69,7 +69,8 @@
         <div class="boxed">
         {% for cjr in running_jobs %}
             <strong>Active capture job:</strong><br>
-            <em>Voltage</em>: {{ cjr.voltage }}<br>
+            <em>Voltage</em>: {{ cjr.voltage }} V<br>
+            <em>Current</em>: {{ cjr.voltage }} A<br>
             <em>Remaining</em>: {{ cjr.remaining }}/{{ cjr.total }}
         {% endfor %}
         </div>
