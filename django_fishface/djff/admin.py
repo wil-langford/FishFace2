@@ -93,6 +93,7 @@ class CaptureJobTemplateAdmin(admin.ModelAdmin):
             'Parameters', {
                 'fields': [
                     'voltage',
+                    'current',
                     'duration',
                     'interval',
                     'startup_delay',
@@ -103,6 +104,7 @@ class CaptureJobTemplateAdmin(admin.ModelAdmin):
 
     list_display = (
         'voltage',
+        'current',
         'duration',
         'interval',
         'startup_delay'
@@ -117,6 +119,7 @@ class CaptureJobRecordAdmin(admin.ModelAdmin):
                 'fields': [
                     'xp',
                     'voltage',
+                    'current',
                     'job_start',
                     'job_stop',
                     'running',
@@ -128,6 +131,7 @@ class CaptureJobRecordAdmin(admin.ModelAdmin):
     list_display = (
         'xp',
         'voltage',
+        'current',
         'running',
         'job_start',
         'job_stop',

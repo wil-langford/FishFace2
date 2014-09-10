@@ -172,6 +172,7 @@ def xp_capturer(request):
     payload = {
         'command': 'post_image',
         'xp_id': xp.id,
+        'current': request.POST['current'],
         'voltage': request.POST['voltage'],
         'species': xp.species.shortname
     }
@@ -326,6 +327,8 @@ def run_capturejob(request, xp_id, cjt_id):
     cjr = CaptureJobRecord(
         xp=xp,
         voltage=cjt.voltage,
+        current=cjt.current,
+        running=True,
     )
     cjr.save()
 
@@ -335,6 +338,7 @@ def run_capturejob(request, xp_id, cjt_id):
         'species': xp.species.shortname,
         'cjr_id': cjr.id,
         'voltage': cjr.voltage,
+        'current': cjr.current,
         'duration': cjt.duration,
         'interval': cjt.interval,
         'startup_delay': cjt.startup_delay,
@@ -376,6 +380,7 @@ def image_capturer(request):
             is_cal_image = (str(request.POST['is_cal_image']).lower()
                             in ['true', 't', 'yes', 'y', '1'])
             voltage = float(request.POST['voltage'])
+            current = float(request.POST['current'])
 
             capture_timestamp = datetime.datetime.utcfromtimestamp(
                 float(request.POST['capture_time'])

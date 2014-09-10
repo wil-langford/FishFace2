@@ -169,7 +169,6 @@ class Image(models.Model):
     linked_inline_image.allow_tags = True
 
 
-
 class ImageAnalysis(models.Model):
     # link to a specific image
     image = models.ForeignKey(Image)
@@ -208,6 +207,10 @@ class CaptureJobTemplate(models.Model):
     voltage = models.FloatField(
         'the voltage that the power supply will be set to',
         default=0,
+    )
+    current = models.FloatField(
+        'maximum current in amps that the power supply will provide',
+        default=15,
     )
     duration = models.FloatField(
         'the number of seconds to run the job',
