@@ -31,6 +31,8 @@
         {% csrf_token %}
 
         <input type="hidden" value="0" name="voltage">
+{# TODO: make current default not hard coded       #}
+        <input type="hidden" value="18" name="current">
         <input type="hidden" value="True" name="is_cal_image">
         <input type="checkbox" value="True" name="cal_ready">
         Ready to capture calibration image (no fish):
@@ -58,7 +60,8 @@
         {% csrf_token %}
             Duration: {{ cjt.duration }},
             Interval: {{ cjt.interval }},
-            Voltage: {{ cjt.voltage }}
+            Voltage: {{ cjt.voltage }} V,
+            Current: {{ cjt.current }} A
         <input type="submit" value="Run this capture job" />
         </form>
         </li>
