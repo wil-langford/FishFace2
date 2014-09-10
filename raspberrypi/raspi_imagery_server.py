@@ -211,6 +211,9 @@ class ImageryServer(object):
         if payload['command'] == 'job_status':
             result = self.post_job_status_update()
 
+        if payload['command'] == 'set_psu':
+            result = self.set_psu(payload)
+
         if result and result.status_code == 500:
             result = result.text
 
@@ -222,6 +225,36 @@ class ImageryServer(object):
             data=payload,
             files=files,
         )
+
+    def set_psu(self, payload):
+        voltage = float(payload.get('voltage', False))
+        current = float(payload.get('current', False))
+        enable_output = bool(int(payload.get('enable_output', False)))
+        
+        if voltage:
+            self.power_supply.voltage = voltage
+        
+        if current:
+            self.power_supply.current = current
+        
+        if enable_output:
+            self.power_supply.enable_output = enable_output
+
+        def post_power_supply_sensed_data(payload):
+            time.sleep(5)
+            payload['command'] = 'power_supply_report'
+            payload['voltage_sense'] = self.power_supply.voltage_sense
+            payload['current_sense'] = self.power_supply.current_sense
+            payload['is_output_enabled'] = self.power_supply.enable_output
+
+            self.send_telemetry(payload)
+
+        thread = threading.Thread(
+            target=post_power_supply_sensed_data,
+            args=(payload)
+        )
+        thread.start()
+        
 
     def post_job_status_update(self):
         if self._job_status is None:
