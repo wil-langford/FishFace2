@@ -121,7 +121,7 @@ def xp_index(request):
     return ds.render(request, 'djff/xp_index.html', context)
 
 
-def xp_new_init():
+def xp_new(request):
     xp = Experiment()
     xp.xp_start = du.timezone.now()
     xp.name = "New experiment"
@@ -134,11 +134,6 @@ def xp_new_init():
         default_species.save()
         xp.species = default_species
     xp.save()
-    return xp
-
-
-def xp_new(request):
-    xp = xp_new_init()
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:xp_rename',
