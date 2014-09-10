@@ -254,7 +254,9 @@ class ImageryServer(object):
             args=(payload)
         )
         thread.start()
-        
+
+        return False
+
 
     def post_job_status_update(self):
         if self._job_status is None:
