@@ -9,7 +9,9 @@
                     <a href="{% url 'djff:cjt_detail' cjt.id %}">
                         Capture Job Template
                     </a>
-                    <br><em>Voltage</em>: {{ cjt.voltage }}
+                    <br><em>Voltage</em>: {{ cjt.voltage }} V
+                    <br><em>Max current</em>: {{ cjt.current }} A
+                    <br>
                     <br><em>Duration</em>: {{ cjt.duration }}
                     <br><em>Interval</em>: {{ cjt.interval }}
                     <br><em>Startup Delay</em>: {{ cjt.startup_delay }}
