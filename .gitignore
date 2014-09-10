@@ -66,4 +66,4 @@ eph*
 
 migrations
 
-secret_key.py
+secret_keys.py
