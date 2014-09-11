@@ -346,7 +346,6 @@ def run_capturejob(request, xp_id, cjt_id):
 
     logger.info(str(payload))
 
-
     def job_thread(inner_payload):
         time.sleep(cjt.startup_delay)
 
@@ -361,16 +360,17 @@ def run_capturejob(request, xp_id, cjt_id):
 
         requests.get(IMAGERY_SERVER_URL, params=inner_payload)
 
-        return dh.HttpResponseRedirect(
-            dcu.reverse('djff:xp_capture',
-                        args=(payload['xp_id'],))
-        )
-
     thread = threading.Thread(
         target=job_thread,
         args=(payload,)
     )
     thread.start()
+
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:xp_capture',
+                    args=(payload['xp_id'],))
+    )
+
 
 ################################
 ###  Internal Capture views  ###
