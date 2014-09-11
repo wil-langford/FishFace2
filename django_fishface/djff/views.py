@@ -341,7 +341,7 @@ def run_capturejob(request, xp_id, cjt_id):
         'duration': cjt.duration,
         'interval': cjt.interval,
         'startup_delay': cjt.startup_delay,
-        'enable_output': True,
+        'enable_output': int(True),
     }
 
     logger.info(str(payload))
@@ -356,7 +356,7 @@ def run_capturejob(request, xp_id, cjt_id):
         requests.get(IMAGERY_SERVER_URL, params=inner_payload)
 
         inner_payload['command'] = 'set_psu'
-        inner_payload['enable_output'] = False
+        inner_payload['enable_output'] = int(False)
 
         requests.get(IMAGERY_SERVER_URL, params=inner_payload)
 
