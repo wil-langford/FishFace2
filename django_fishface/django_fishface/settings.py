@@ -42,6 +42,15 @@ except ImportError:
     from secret_keys import *
 
 
+import uwsgi
+import uwsgidecorators as ud
+import django.utils as du
+
+@ud.timer(3)
+def change_code_gracefull_reload(sig):
+    if du.autoreload.code_changed(): uwsgi.reload()
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
 
