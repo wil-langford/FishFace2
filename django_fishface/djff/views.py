@@ -2,6 +2,7 @@ import logging
 import numpy as np
 import datetime
 import time
+import threading
 
 import requests
 
@@ -331,7 +332,7 @@ def run_capturejob(request, xp_id, cjt_id):
     cjr.save()
 
     payload = {
-        'command': 'run_capturejob',
+        'command': 'set_psu',
         'xp_id': xp.id,
         'species': xp.species.shortname,
         'cjr_id': cjr.id,
@@ -340,23 +341,36 @@ def run_capturejob(request, xp_id, cjt_id):
         'duration': cjt.duration,
         'interval': cjt.interval,
         'startup_delay': cjt.startup_delay,
+        'enable_output': True,
     }
 
     logger.info(str(payload))
 
-    r = requests.get(IMAGERY_SERVER_URL, params=payload)
 
-    payload['command'] = 'set_psu'
-    payload['enable_output'] = True
+    def job_thread(inner_payload):
+        time.sleep(cjt.startup_delay)
 
-    time.sleep(cjt.startup_delay)
+        requests.get(IMAGERY_SERVER_URL, params=inner_payload)
 
-    r = requests.post(IMAGERY_SERVER_URL, params=payload)
+        inner_payload['command'] = 'run_capturejob'
 
-    return dh.HttpResponseRedirect(
-        dcu.reverse('djff:xp_capture',
-                    args=(payload['xp_id'],))
+        requests.get(IMAGERY_SERVER_URL, params=inner_payload)
+
+        inner_payload['command'] = 'set_psu'
+        inner_payload['enable_output'] = False
+
+        requests.get(IMAGERY_SERVER_URL, params=inner_payload)
+
+        return dh.HttpResponseRedirect(
+            dcu.reverse('djff:xp_capture',
+                        args=(payload['xp_id'],))
+        )
+
+    thread = threading.Thread(
+        target=job_thread,
+        args=(payload,)
     )
+    thread.start()
 
 ################################
 ###  Internal Capture views  ###
