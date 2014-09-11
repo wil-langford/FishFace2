@@ -1,7 +1,10 @@
 import logging
 import numpy as np
 import datetime
+import time
+
 import requests
+
 import django.shortcuts as ds
 import django.http as dh
 import django.utils as du
@@ -342,6 +345,13 @@ def run_capturejob(request, xp_id, cjt_id):
     logger.info(str(payload))
 
     r = requests.get(IMAGERY_SERVER_URL, params=payload)
+
+    payload['command'] = 'set_psu'
+    payload['enable_output'] = True
+
+    time.sleep(cjt.startup_delay)
+
+    r = requests.post(IMAGERY_SERVER_URL, params=payload)
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:xp_capture',
