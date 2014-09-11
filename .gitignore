@@ -67,3 +67,5 @@ eph*
 migrations
 
 secret_keys.py
+
+django_fishface/djff/static/admin/
