@@ -13,13 +13,34 @@ import BaseHTTPServer
 import urlparse
 import requests
 import datetime
+import sys
+
+import logging
+
 import instruments as ik
+
+DEBUG_DEFAULT = True
+
+# TODO: implement an argparse-based option system
+if sys.argv[0] == "--debug":
+    DEBUG = True
+else:
+    DEBUG = DEBUG_DEFAULT
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s',
+    filename='/tmp/djangoLog.log',
+)
+
+logger = logging.getLogger(__name__)
 
 HOST = ''
 PORT = 18765
 
-IMAGE_POST_URL = "http://localhost:8100/fishface/upload_imagery/"
-TELEMETRY_URL = "http://localhost:8100/fishface/telemetry/"
+BASE_URL = "http://fishfacehost:8000/fishface/"
+IMAGE_POST_URL = "{}upload_imagery/".format(BASE_URL)
+TELEMETRY_URL = "{}telemetry/".format(BASE_URL)
 
 DATE_FORMAT = "%Y-%m-%d-%H:%M:%S"
 
@@ -96,10 +117,10 @@ class ImageryServer(object):
             self.camera.close()
 
         thread = threading.Thread(target=image_capture_loop)
-        print "starting thread"
+        logger.info("starting capture thread loop")
         thread.start()
 
-        print "thread started"
+        logger.info("capture thread loop started")
 
         server_address = (HOST, PORT)
         httpd = BaseHTTPServer.HTTPServer(
@@ -108,7 +129,7 @@ class ImageryServer(object):
         )
         httpd.parent = self
 
-        print "about to start http server"
+        logger.info("starting http server")
 
         try:
             httpd.serve_forever()
@@ -121,10 +142,10 @@ class ImageryServer(object):
         current_frame = self._current_frame
         current_frame_capture_time = self._current_frame_capture_time
 
-        stream = io.BytesIO(current_frame)
+        stream = io.BytesIO(current_frame).read()
 
         image_dtg = datetime.datetime.fromtimestamp(
-            current_frame_capture_time
+            float(current_frame_capture_time)
         ).strftime(
             DATE_FORMAT
         )
@@ -139,7 +160,7 @@ class ImageryServer(object):
             since_epoch,
         )
 
-        print 'posting {}'.format(image_filename)
+        logger.debug('posting image {}'.format(image_filename))
 
         is_cal_image = (str(metadata['is_cal_image']).lower()
                         in ['true', 't', 'yes', 'y', '1'])
@@ -158,15 +179,25 @@ class ImageryServer(object):
                 files=files,
                 data=metadata
             )
-            print time.time() - t
+            logger.debug("image posted in {} seconds".format(
+                time.time() - t
+            ))
+            if r.status_code == 500:
+                with open('/tmp/latest_500.html', 'w') as f:
+                    f.write(r.text)
+
             return r
         else:
             def async_image_post(url, files_to_post, metadata_to_post):
-                return requests.post(
+                r = requests.post(
                     url,
                     files=files_to_post,
                     data=metadata_to_post
                 )
+                if r.status_code == 500:
+                    with open('/tmp/latest_500.html', 'w') as f:
+                        f.write(r.text)
+                return r
 
             async_thread = threading.Thread(
                 target=async_image_post,
@@ -179,6 +210,11 @@ class ImageryServer(object):
         payload = dict([field.split('=')
                         for field in raw_payload.split('&')])
 
+        logger.debug("received telemetry command: {}\n{}".format(
+            payload['command'],
+            payload
+        ))
+
         result = "no result"
 
         if payload['command'] == 'post_image':
@@ -188,7 +224,14 @@ class ImageryServer(object):
             result = self.run_capturejob(payload)
 
         if payload['command'] == 'job_status':
-            result = self.post_job_status_update(payload)
+            result = self.post_job_status_update()
+
+        if payload['command'] == 'set_psu':
+            result = self.set_psu(payload)
+
+        if result == "no result":
+            logger.warning("I don't know what to do with this " +
+                           "telemetry payload:\n{}".format(payload))
 
         if result and result.status_code == 500:
             result = result.text
@@ -196,11 +239,54 @@ class ImageryServer(object):
         return result
 
     def send_telemetry(self, payload, files=None):
-        return requests.post(
-            TELEMETRY_URL,
-            data=payload,
-            files=files,
+        if files is None:
+            return requests.post(TELEMETRY_URL, data=payload)
+        else:
+            return requests.post(TELEMETRY_URL, data=payload, files=files)
+
+    def set_psu(self, payload):
+        voltage = float(payload.get('voltage', False))
+        current = float(payload.get('current', False))
+        enable_output = bool(int(payload.get('enable_output', False)))
+        
+        if voltage:
+            logger.debug("setting psu voltage to {} V".format(
+                voltage
+            ))
+            self.power_supply.voltage = voltage
+
+        if current:
+            logger.debug("setting psu max current to {} A".format(
+                current
+            ))
+            self.power_supply.current = current
+
+        if enable_output:
+            logger.debug("enabling psu output")
+        else:
+            logger.debug("disabling psu output")
+
+        self.power_supply.output = enable_output
+
+        def post_power_supply_sensed_data(inner_payload):
+            time.sleep(5)
+            inner_payload['command'] = 'power_supply_report'
+            inner_payload['voltage_sense'] = float(
+                self.power_supply.voltage_sense)
+            inner_payload['current_sense'] = float(
+                self.power_supply.current_sense)
+
+            logger.debug('Posting psu sensed data:\n{}'.format(inner_payload))
+
+            self.send_telemetry(inner_payload)
+
+        thread = threading.Thread(
+            target=post_power_supply_sensed_data,
+            args=(payload,)
         )
+        thread.start()
+
+        return False
 
     def post_job_status_update(self):
         if self._job_status is None:
@@ -233,8 +319,8 @@ class ImageryServer(object):
         first_capture_at = time.time() + startup_delay
 
         capture_times = [first_capture_at]
-        for i in range(1, int(duration / interval) + 1):
-            capture_times.append(first_capture_at + i*interval)
+        for j in range(1, int(duration / interval) + 1):
+            capture_times.append(first_capture_at + j*interval)
 
         self._keep_capturejob_looping = True
 
@@ -242,6 +328,7 @@ class ImageryServer(object):
             'command': 'post_image',
             'is_cal_image': False,
             'voltage': payload['voltage'],
+            'current': payload['current'],
             'xp_id': payload['xp_id'],
             'cjr_id': payload['cjr_id'],
             'species': payload['species']
@@ -284,15 +371,15 @@ class ImageryServer(object):
             target=capturejob_loop,
             args=(metadata, capture_times)
         )
-        print (
-            ("sending images for capturejob {} for" +
-                "experiment {}").format(
+        logger.debug((
+            ("sending images for cjr {} for " +
+                "xp {}").format(
                     payload['cjr_id'],
                     payload['xp_id'],
                 )
-        )
+        ))
         thread.start()
-        print "capturejob thread started"
+        logger.info("cjr thread started")
 
         # TODO: this could make more sense, but I'm not sure how.  yet.
 
@@ -320,11 +407,13 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 def main():
+    print "Starting Raspi unprivileged server."
+
     imagery_server = ImageryServer()
 
     imagery_server.run()
 
-    print "exiting"
+    print "\nExiting Raspi unprivileged server."
 
 
 if __name__ == '__main__':

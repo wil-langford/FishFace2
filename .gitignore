@@ -65,4 +65,7 @@ db.sqlite3
 eph*
 
 migrations
-secret_key.py
+
+secret_keys.py
+
+django_fishface/djff/static/admin/

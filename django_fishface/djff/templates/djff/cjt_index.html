@@ -4,12 +4,14 @@
 
 {% block content %}
     <ol>
-    {% for cjt in cjt_context %}
+    {% for cjt in context %}
                 <li>
-                    <a href="{% url 'djff:cjt_update' cjt.id %}">
+                    <a href="{% url 'djff:cjt_detail' cjt.id %}">
                         Capture Job Template
                     </a>
-                    <br><em>Voltage</em>: {{ cjt.voltage }}
+                    <br><em>Voltage</em>: {{ cjt.voltage }} V
+                    <br><em>Max current</em>: {{ cjt.current }} A
+                    <br>
                     <br><em>Duration</em>: {{ cjt.duration }}
                     <br><em>Interval</em>: {{ cjt.interval }}
                     <br><em>Startup Delay</em>: {{ cjt.startup_delay }}
@@ -26,5 +28,5 @@
     {% endfor %}
     </ol>
 
-    <p>Add a <a href="{% url 'djff:cjt_add' %}">new capture job template</a>.</p>
+    <p>Add a <a href="{% url 'djff:cjt_new' %}">new capture job template</a>.</p>
 {% endblock %}

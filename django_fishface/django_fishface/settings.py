@@ -19,10 +19,11 @@ DB_PASSWD_FILE = os.path.expanduser('~fishface/fishface_db_password')
 DB_PASSWD = None
 SECRET_KEY = None
 
+
 def generate_and_collect_secret_keys():
     length = 50
     chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
-    django_key =  get_random_string(length, chars)
+    django_key = get_random_string(length, chars)
 
     with open(DB_PASSWD_FILE, 'r') as f:
         db_key = f.read().strip()
@@ -120,5 +121,5 @@ STATIC_ROOT = os.path.join('djff/static/')
 STATIC_URL = '/static/'
 
 # TODO: Change to a non-temporary MEDIA_ROOT after move to server.
-MEDIA_ROOT = os.path.join('djff/media/')
+MEDIA_ROOT = '/mnt/server_storage/media/'
 MEDIA_URL = '/media/'

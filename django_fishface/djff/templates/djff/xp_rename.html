@@ -4,9 +4,9 @@
 
 {% block content %}
 {% if xp %}
-    <form action="{% url 'djff:experiment_renamer' xp.id %}" method="post">
+    <form action="{% url 'djff:xp_renamer' xp.id %}" method="post">
     {% csrf_token %}
-    <input type="text" name="new_name" value="{{ xp.experiment_name }}" />
+    <input type="text" name="new_name" value="{{ xp.name }}" />
     <input type="submit" value="Rename" />
     </form>
 

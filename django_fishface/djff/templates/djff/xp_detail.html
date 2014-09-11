@@ -8,8 +8,8 @@
 
 {% block content %}
     <h1>
-        <a href="{% url 'djff:experiment_rename' xp.id %}">
-            {{ xp.experiment_name }}
+        <a href="{% url 'djff:xp_rename' xp.id %}">
+            {{ xp.name }}
         </a>
     </h1>
 
@@ -27,10 +27,12 @@
     <div class="boxed">
     <h3>Calibration Images</h3>
     <form method="post"
-          action="{% url 'djff:experiment_capturer' %}">
+          action="{% url 'djff:xp_capturer' %}">
         {% csrf_token %}
 
         <input type="hidden" value="0" name="voltage">
+{# TODO: make current default not hard coded       #}
+        <input type="hidden" value="18" name="current">
         <input type="hidden" value="True" name="is_cal_image">
         <input type="checkbox" value="True" name="cal_ready">
         Ready to capture calibration image (no fish):
@@ -48,17 +50,18 @@
 
     <br>
 
-    {% if not running_jobs and cal_images and capturejob_templates %}
+    {% if not running_jobs and cal_images and cjts %}
         <div class="boxed">
         <h3>Capture Jobs</h3>
             <ol>
-    {% for cjt in capturejob_templates %}
+    {% for cjt in cjts %}
         <li>
         <form method="post" action="{% url 'djff:run_capturejob' xp.id cjt.id %}">
         {% csrf_token %}
             Duration: {{ cjt.duration }},
             Interval: {{ cjt.interval }},
-            Voltage: {{ cjt.voltage }}
+            Voltage: {{ cjt.voltage }} V,
+            Current: {{ cjt.current }} A
         <input type="submit" value="Run this capture job" />
         </form>
         </li>
@@ -69,7 +72,8 @@
         <div class="boxed">
         {% for cjr in running_jobs %}
             <strong>Active capture job:</strong><br>
-            <em>Voltage</em>: {{ cjr.voltage }}<br>
+            <em>Voltage</em>: {{ cjr.voltage }} V<br>
+            <em>Current</em>: {{ cjr.voltage }} A<br>
             <em>Remaining</em>: {{ cjr.remaining }}/{{ cjr.total }}
         {% endfor %}
         </div>
@@ -83,7 +87,8 @@
         {% for cjr, imageset in images_by_cjr %}
             Started: {{ cjr.job_start }}<br>
             Completed: {{ cjr.job_stop }}<br>
-            Captured {{ imageset.count }} images at {{ cjr.voltage }} volts:<br>
+            Captured {{ imageset.count }} images at {{ cjr.voltage }}
+            volts (max {{ cjr.current }} amps):<br>
             {% for img in imageset %}
                 {{ img.linked_inline_bullet|mark_safe }}
             {% endfor %}

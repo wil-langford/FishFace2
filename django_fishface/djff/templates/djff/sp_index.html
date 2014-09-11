@@ -1,0 +1,30 @@
+{% extends "djff/base.html" %}
+{% load djff_filters %}
+
+{% block subtitle %}Species{% endblock %}
+
+{% block content %}
+    <ol>
+    {% for sp in context %}
+                <li>
+                    <a href="{% url 'djff:sp_detail' sp.id %}">
+                        {{ sp.name }}
+                    </a>
+                    <br><em>Shortname</em>: {{ sp.shortname }}
+                    {% if sp.image %}
+                    <br><em>Image</em>:
+                        <br> {{ sp.inline_image|mark_safe }}
+                    {% endif %}
+                </li>
+    {% empty %}
+        <p>There are no stored species.</p>
+    {% endfor %}
+    </ol>
+
+    <div class="boxed">
+        Please note that all species information must be unique or an error
+    message will be raised.  That is, if you already see a plecostomus
+    species entry above, adding another one would be an error.
+    </div>
+    <p>Add a <a href="{% url 'djff:sp_new' %}">new species</a>.</p>
+{% endblock %}

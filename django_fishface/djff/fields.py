@@ -3,29 +3,6 @@ from django.db import models
 
 import south.modelsinspector as smi
 
-import utils.hopperchain as hc
-
-
-class HopperchainSpecField(models.Field):
-    __metaclass__ = models.SubfieldBase
-
-    def __init__(self, *args, **kwargs):
-        super(HopperchainSpecField, self).__init__(*args, **kwargs)
-
-    def get_internal_type(self):
-        return 'TextField'
-
-    def to_python(self, value):
-        if isinstance(value, basestring):
-            return hc.string_to_spec(value)
-
-        return value
-
-    def get_prep_value(self, value):
-        return hc.spec_to_string(value)
-
-smi.add_introspection_rules([], [r"^djff.fields.HopperchainSpecField"])
-
 
 class PickleField(models.Field):
     __metaclass__ = models.SubfieldBase

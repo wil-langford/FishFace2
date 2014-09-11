@@ -10,8 +10,8 @@ class ExperimentAdmin(admin.ModelAdmin):
     fieldsets = [
         ('Experiment Information', {
             'fields': [
-                'experiment_name',
-                'experiment_start_dtg',
+                'name',
+                'xp_start',
                 'species'
             ]
         }),
@@ -24,12 +24,12 @@ class ExperimentAdmin(admin.ModelAdmin):
     ]
     inlines = [ImageInline]
     list_display = (
-        'experiment_name',
-        'experiment_start_dtg',
+        'name',
+        'xp_start',
         'researcher_name'
     )
     list_filter = [
-        'experiment_start_dtg',
+        'xp_start',
         'species',
         'researcher_name'
     ]
@@ -46,7 +46,7 @@ class ImageAdmin(admin.ModelAdmin):
     fieldsets = [
         ('Image Information', {
             'fields': [
-                'dtg_capture',
+                'capture_timestamp',
                 'voltage',
                 'is_cal_image',
                 'image_file'
@@ -57,13 +57,13 @@ class ImageAdmin(admin.ModelAdmin):
     # inlines = [ImageAnalysisInline]
     list_display = (
         'voltage',
-        'dtg_capture',
+        'capture_timestamp',
         'is_cal_image',
-        'experiment',
-        'capturejob',
+        'xp',
+        'cjr',
         'inline_image'
     )
-    list_filter = ('dtg_capture',)
+    list_filter = ('capture_timestamp',)
 
 admin.site.register(models.Image, ImageAdmin)
 
@@ -72,17 +72,17 @@ class SpeciesAdmin(admin.ModelAdmin):
     fieldsets = [
         ('Species Information', {
             'fields': [
-                'species_name',
-                'species_shortname',
+                'name',
+                'shortname',
             ]
         }),
         ('Sample image', {
             'fields': [
-                'sample_image',
+                'image',
             ]
         }),
     ]
-    list_display = ('species_name', 'species_shortname', 'inline_image')
+    list_display = ('name', 'shortname', 'inline_image')
 
 admin.site.register(models.Species, SpeciesAdmin)
 
@@ -93,6 +93,7 @@ class CaptureJobTemplateAdmin(admin.ModelAdmin):
             'Parameters', {
                 'fields': [
                     'voltage',
+                    'current',
                     'duration',
                     'interval',
                     'startup_delay',
@@ -103,6 +104,7 @@ class CaptureJobTemplateAdmin(admin.ModelAdmin):
 
     list_display = (
         'voltage',
+        'current',
         'duration',
         'interval',
         'startup_delay'
@@ -117,6 +119,7 @@ class CaptureJobRecordAdmin(admin.ModelAdmin):
                 'fields': [
                     'xp',
                     'voltage',
+                    'current',
                     'job_start',
                     'job_stop',
                     'running',
@@ -128,6 +131,7 @@ class CaptureJobRecordAdmin(admin.ModelAdmin):
     list_display = (
         'xp',
         'voltage',
+        'current',
         'running',
         'job_start',
         'job_stop',

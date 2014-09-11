@@ -1,0 +1,20 @@
+{% extends "djff/base.html" %}
+
+{% block subtitle %}Experiments{% endblock %}
+
+{% block content %}
+    <ol>
+    {% for xp in xp_list %}
+                <li>
+                    <a href="{% url 'djff:xp_capture' xp.id %}">
+                        {{ xp.name }}</a>
+                    <br><em>Species</em>: {{ xp.species.shortname }}
+                    <br><em>Started</em>: {{ xp.xp_start }}
+                </li>
+    {% empty %}
+        <p>No experiments have been stored.</p>
+    {% endfor %}
+    </ol>
+
+    <p>Add a <a href="{% url 'djff:xp_new' %}">new experiment</a>.</p>
+{% endblock %}

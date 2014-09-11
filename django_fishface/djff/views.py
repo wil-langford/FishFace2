@@ -1,7 +1,11 @@
 import logging
 import numpy as np
 import datetime
+import time
+import threading
+
 import requests
+
 import django.shortcuts as ds
 import django.http as dh
 import django.utils as du
@@ -21,9 +25,6 @@ from djff.models import (
     CaptureJobTemplate,
     CaptureJobRecord,
 )
-from djff.models import HopperChain
-from utils.hoppers import CLASS_PARAMS
-import djff.utils
 
 
 IMAGERY_SERVER_IP = 'raspi'
@@ -77,7 +78,7 @@ def _file_path_to_numpy_array(image_file_path):
 
 
 def index(request):
-    return dh.HttpResponseRedirect(dcu.reverse('djff:experiment_index'))
+    return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
 
 
 @csrf_dec.csrf_exempt
@@ -108,7 +109,7 @@ def receive_telemetry(request):
 
         cjr.save()
 
-    return dh.HttpResponseRedirect(dcu.reverse('djff:experiment_index'))
+    return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
 
 
 ##########################
@@ -116,66 +117,63 @@ def receive_telemetry(request):
 ##########################
 
 
-def experiment_index(request):
-    experiment_list = Experiment.objects.all().order_by(
-        'experiment_start_dtg'
+def xp_index(request):
+    xp_list = Experiment.objects.all().order_by(
+        'xp_start'
     )
-    context = {'experiment_list': experiment_list}
-    return ds.render(request, 'djff/experiment_index.html', context)
+    context = {'xp_list': xp_list}
+    return ds.render(request, 'djff/xp_index.html', context)
 
 
-def experiment_new_init():
+def xp_new(request):
     xp = Experiment()
-    xp.experiment_start_dtg = du.timezone.now()
-    xp.experiment_name = "New experiment"
+    xp.xp_start = du.timezone.now()
+    xp.name = "New experiment"
     try:
         xp.species = Species.objects.all()[0]
     except IndexError:
-        defaultSpecies = Species()
-        defaultSpecies.species_name = "hypostomus plecostomus"
-        defaultSpecies.species_shortname = "HP"
-        defaultSpecies.save()
-        xp.species = defaultSpecies
+        default_species = Species()
+        default_species.name = "hypostomus plecostomus"
+        default_species.shortname = "HP"
+        default_species.save()
+        xp.species = default_species
     xp.save()
-    return xp
-
-def experiment_new(request):
-    xp = experiment_new_init()
 
     return dh.HttpResponseRedirect(
-        dcu.reverse('djff:experiment_rename',
+        dcu.reverse('djff:xp_rename',
                     args=(xp.id,))
     )
 
 
-def experiment_rename(request, xp_id):
+def xp_rename(request, xp_id):
     xp = ds.get_object_or_404(Experiment, pk=xp_id)
     return ds.render(
         request,
-        'djff/experiment_rename.html',
+        'djff/xp_rename.html',
         {'xp': xp}
     )
 
 
-def experiment_renamer(request, xp_id):
+def xp_renamer(request, xp_id):
     xp = ds.get_object_or_404(Experiment, pk=xp_id)
 
-    xp.experiment_name = request.POST['new_name']
+    xp.name = request.POST['new_name']
     xp.save()
 
     return dh.HttpResponseRedirect(
-        dcu.reverse('djff:experiment_capture', args=(xp.id,))
+        dcu.reverse('djff:xp_capture', args=(xp.id,))
     )
 
 
-def experiment_capturer(request):
+def xp_capturer(request):
     xp = ds.get_object_or_404(Experiment, pk=int(request.POST['xp_id']))
 
     payload = {
         'command': 'post_image',
         'xp_id': xp.id,
+        'current': request.POST['current'],
         'voltage': request.POST['voltage'],
-        'species': xp.species.species_shortname
+        'species': xp.species.shortname
     }
 
     # default value for is_cal_image
@@ -197,24 +195,24 @@ def experiment_capturer(request):
         r = requests.get(IMAGERY_SERVER_URL, params=payload)
 
     return dh.HttpResponseRedirect(
-        dcu.reverse('djff:experiment_capture',
+        dcu.reverse('djff:xp_capture',
                     args=(payload['xp_id'],))
     )
 
 
-def experiment_capture(request, xp_id):
+def xp_capture(request, xp_id):
     try:
         xp = ds.get_object_or_404(Experiment, pk=xp_id)
     except ds.Http404:
         return dh.HttpResponseRedirect(
             dcu.reverse(
-                'djff:experiment_new',
+                'djff:xp_new',
                 args=tuple(),
             )
         )
 
     xp_images = Image.objects.filter(
-        experiment__id=xp_id
+        xp__id=xp_id
     )
 
     cal_images = xp_images.filter(
@@ -225,7 +223,7 @@ def experiment_capture(request, xp_id):
         is_cal_image=False
     )
 
-    capturejob_templates = CaptureJobTemplate.objects.all()
+    cjts = CaptureJobTemplate.objects.all()
 
     running_jobs = CaptureJobRecord.objects.filter(
         running=True
@@ -234,21 +232,21 @@ def experiment_capture(request, xp_id):
     cjrs = CaptureJobRecord.objects.filter(xp__id=xp.id)
 
     images_by_cjr = [
-        (cjr_obj, Image.objects.filter(capturejob__id=cjr_obj.id))
+        (cjr_obj, Image.objects.filter(cjr__id=cjr_obj.id))
         for cjr_obj in
         cjrs
     ]
 
     return ds.render(
         request,
-        'djff/experiment_capture.html',
+        'djff/xp_detail.html',
         {
             'xp': xp,
             'xp_images': xp_images,
             'cal_images': cal_images,
             'data_images': data_images,
             'running_jobs': running_jobs,
-            'capturejob_templates': capturejob_templates,
+            'cjts': cjts,
             'images_by_cjr': images_by_cjr,
         }
     )
@@ -260,61 +258,66 @@ def experiment_capture(request, xp_id):
 
 
 class SpeciesIndex(dvg.ListView):
-    context_object_name = 'sp_context'
-    template_name = 'djff/species_list.html'
-
-    def get_queryset(self):
-        return Species.objects.all()
-
-
-class SpeciesCreate(dvge.CreateView):
+    context_object_name = 'context'
+    template_name = 'djff/sp_index.html'
     model = Species
-    context_object_name = 'sp_context'
-    template_name = 'djff/species_add.html'
 
 
 class SpeciesUpdate(dvge.UpdateView):
     model = Species
-    context_object_name = 'sp_context'
-    template_name = 'djff/species_update.html'
-    success_url = dcu.reverse_lazy('djff:sp_list')
+    context_object_name = 'context'
+    template_name = 'djff/sp_detail.html'
+    success_url = dcu.reverse_lazy('djff:sp_index')
 
 
 class SpeciesDelete(dvge.DeleteView):
     model = Species
-    context_object_name = 'sp_context'
-    success_url = dcu.reverse_lazy('djff:sp_list')
-    
+    context_object_name = 'context'
+    success_url = dcu.reverse_lazy('djff:sp_index')
+
+
+def sp_new(request):
+    sp = Species()
+    sp.save()
+
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:sp_detail',
+                    args=(sp.id,))
+    )
+
+
 ##################################
 ###  CaptureJobTemplate views  ###
 ##################################
 
 
 class CaptureJobTemplateIndex(dvg.ListView):
-    context_object_name = 'cjt_context'
-    template_name = 'djff/capturejobtemplate_list.html'
-
-    def get_queryset(self):
-        return CaptureJobTemplate.objects.all()
-
-
-class CaptureJobTemplateCreate(dvge.CreateView):
+    context_object_name = 'context'
+    template_name = 'djff/cjt_index.html'
     model = CaptureJobTemplate
-    context_object_name = 'cjt_context'
-    template_name = 'djff/capturejobtemplate_add.html'
 
 
 class CaptureJobTemplateUpdate(dvge.UpdateView):
     model = CaptureJobTemplate
-    context_object_name = 'cjt_context'
-    template_name = 'djff/capturejobtemplate_update.html'
-    success_url = dcu.reverse_lazy('djff:cjt_list')
+    context_object_name = 'context'
+    template_name = 'djff/cjt_detail.html'
+    success_url = dcu.reverse_lazy('djff:cjt_index')
 
 
 class CaptureJobTemplateDelete(dvge.DeleteView):
     model = CaptureJobTemplate
-    context_object_name = 'cjt_context'
-    success_url = dcu.reverse_lazy('djff:cjt_list')
+    context_object_name = 'context'
+    success_url = dcu.reverse_lazy('djff:cjt_index')
+
+
+def cjt_new(request):
+    cjt = CaptureJobTemplate()
+    cjt.save()
+
+    return dh.HttpResponseRedirect(
+        dcu.reverse('djff:cjt_detail',
+                    args=(cjt.id,))
+    )
 
 
 def run_capturejob(request, xp_id, cjt_id):
@@ -323,28 +326,54 @@ def run_capturejob(request, xp_id, cjt_id):
     cjr = CaptureJobRecord(
         xp=xp,
         voltage=cjt.voltage,
+        current=cjt.current,
+        running=True,
     )
     cjr.save()
 
     payload = {
-        'command': 'run_capturejob',
+        'command': 'set_psu',
         'xp_id': xp.id,
-        'species': xp.species.species_shortname,
+        'species': xp.species.shortname,
         'cjr_id': cjr.id,
         'voltage': cjr.voltage,
+        'current': cjr.current,
         'duration': cjt.duration,
         'interval': cjt.interval,
         'startup_delay': cjt.startup_delay,
+        'enable_output': int(True),
     }
 
     logger.info(str(payload))
 
-    r = requests.get(IMAGERY_SERVER_URL, params=payload)
+    def job_thread(inner_payload):
+        requests.get(IMAGERY_SERVER_URL, params=inner_payload)
+
+        time.sleep(cjt.startup_delay)
+
+        inner_payload['command'] = 'run_capturejob'
+
+        requests.get(IMAGERY_SERVER_URL, params=inner_payload)
+
+        inner_payload['command'] = 'set_psu'
+        inner_payload['enable_output'] = int(False)
+
+        while CaptureJobRecord.objects.filter(running=True):
+            time.sleep(1)
+
+        requests.get(IMAGERY_SERVER_URL, params=inner_payload)
+
+    thread = threading.Thread(
+        target=job_thread,
+        args=(payload,)
+    )
+    thread.start()
 
     return dh.HttpResponseRedirect(
-        dcu.reverse('djff:experiment_capture',
+        dcu.reverse('djff:xp_capture',
                     args=(payload['xp_id'],))
     )
+
 
 ################################
 ###  Internal Capture views  ###
@@ -366,15 +395,16 @@ def image_capturer(request):
             )
 
             logger.info("Experiment: {} (ID {})".format(
-                xp.experiment_name,
+                xp.name,
                 xp.id
             ))
 
             is_cal_image = (str(request.POST['is_cal_image']).lower()
                             in ['true', 't', 'yes', 'y', '1'])
             voltage = float(request.POST['voltage'])
+            current = float(request.POST['current'])
 
-            dtg_capture = datetime.datetime.utcfromtimestamp(
+            capture_timestamp = datetime.datetime.utcfromtimestamp(
                 float(request.POST['capture_time'])
             ).replace(tzinfo=dut.utc)
 
@@ -389,11 +419,11 @@ def image_capturer(request):
             logger.info("storing image")
 
             captured_image = Image(
-                experiment=xp,
-                dtg_capture=dtg_capture,
+                xp=xp,
+                capture_timestamp=capture_timestamp,
                 voltage=voltage,
                 is_cal_image=is_cal_image,
-                capturejob=cjr,
+                cjr=cjr,
                 image_file=request.FILES[
                     request.POST['filename']
                 ],
@@ -405,198 +435,5 @@ def image_capturer(request):
             ))
 
     return dh.HttpResponseRedirect(
-        dcu.reverse('djff:experiment_index'),
+        dcu.reverse('djff:xp_index'),
     )
-
-
-###########################
-###  HopperChain views  ###
-###########################
-
-
-def hopperchain_index(request):
-    hopperchain_list = HopperChain.objects.all().order_by(
-        'hopperchain_name'
-    )
-    context = {'hopperchain_list': hopperchain_list}
-    return ds.render(request, 'djff/hopperchain_index.html', context)
-
-
-def hopperchain_delete_hopper(request, chain_id, hopper_index):
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-    hopper_index = int(hopper_index)
-
-    del chain.hopperchain_spec[hopper_index]
-    chain.save()
-
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_edit',
-                                               args=(chain.id,)))
-
-
-def hopperchain_insert_hopper(request, chain_id, hopper_index):
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-    hopper_index = int(hopper_index)
-
-    chain.hopperchain_spec.insert(hopper_index, ('null', dict()))
-    chain.save()
-
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_edit',
-                                               args=(chain.id,)))
-
-
-def hopperchain_up(request, chain_id, hopper_index):
-    logger.info(
-        "Moving hopper {} in chain {} up.\n".format(
-            hopper_index,
-            chain_id,
-        )
-    )
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-    hopper_index = int(hopper_index)
-
-    if hopper_index > 0:
-        (chain.hopperchain_spec[hopper_index],
-            chain.hopperchain_spec[hopper_index-1]) = (
-                chain.hopperchain_spec[hopper_index-1],
-                chain.hopperchain_spec[hopper_index]
-            )
-    chain.save()
-
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_edit',
-                                               args=(chain.id,)))
-
-
-def hopperchain_down(request, chain_id, hopper_index):
-    logger.info(
-        "Moving hopper {} in chain {} down.\n".format(
-            hopper_index,
-            chain_id,
-        )
-    )
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-    hopper_index = int(hopper_index)
-
-    if hopper_index < len(chain.hopperchain_spec) - 1:
-        (chain.hopperchain_spec[hopper_index],
-            chain.hopperchain_spec[hopper_index+1]) = (
-                chain.hopperchain_spec[hopper_index+1],
-                chain.hopperchain_spec[hopper_index]
-            )
-
-    chain.save()
-
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_edit',
-                                               args=(chain.id,)))
-
-
-def hopperchain_renamer(request, chain_id):
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-
-    chain.hopperchain_name = request.POST['new_name']
-    chain.save()
-
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_edit',
-                                               args=(chain.id,)))
-
-
-def hopperchain_rename(request, chain_id):
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-    return ds.render(
-        request,
-        'djff/hopperchain_rename.html',
-        {'chain': chain}
-    )
-
-
-def hopperchain_edit(request, chain_id):
-    logger.info("Edit page loaded.\n")
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-
-    hopper_classes = CLASS_PARAMS.keys()
-    hopper_classes.remove('null')
-
-    for hop_type, hop_params in chain.hopperchain_spec:
-        def_params = CLASS_PARAMS[hop_type]['params']
-        for key in def_params:
-            if key not in hop_params:
-                if def_params[key][1]:
-                    hop_params[key] = def_params[key][1]
-                else:
-                    hop_params[key] = ''
-
-    return ds.render(
-        request,
-        'djff/hopperchain_edit.html',
-        {
-            'chain': chain,
-            'hopper_classes': hopper_classes,
-        }
-    )
-
-
-def hopperchain_editor(request, chain_id):
-    logger.info("Editing chain {}.".format(chain_id))
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-
-    for key, value in request.POST.iteritems():
-        if 'editparam ' == key[:10]:
-            hopper_index, param_name = key[10:].split(" ")
-            hopper_index = int(hopper_index)
-            chain.hopperchain_spec[hopper_index][1][param_name] = value
-
-    chain.save()
-
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_edit',
-                                               args=(chain.id,)))
-
-
-def hopperchain_set(request, chain_id, hopper_index, hop_type):
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-    hopper_index = int(hopper_index)
-
-    chain.hopperchain_spec[hopper_index] = (
-        hop_type,
-        CLASS_PARAMS[hop_type]['defaults']
-    )
-    chain.save()
-
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_edit',
-                                               args=(chain.id,)))
-
-
-def hopperchain_new(request):
-    chain = HopperChain()
-    chain.hopperchain_spec = [('null', dict())]
-    chain.hopperchain_name = "New HopperChain"
-    chain.save()
-
-    return dh.HttpResponseRedirect(
-        dcu.reverse('djff:hopperchain_rename',
-                    args=(chain.id,))
-    )
-
-
-def hopperchain_deleter(request, chain_id):
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-
-    chain.hopperchain_name = request.POST['new_name']
-    chain.save()
-
-    return dh.HttpResponseRedirect(dcu.reverse('djff:hopperchain_edit',
-                                               args=(chain.id,)))
-
-
-def hopperchain_preview_image(request, chain_id):
-    src_img = _file_path_to_numpy_array('sample-DATA.jpg')
-
-    chain = ds.get_object_or_404(HopperChain, pk=chain_id)
-
-    image_source = djff.utils.hopperchain.ImageSource([src_img])
-
-    real_hc = djff.utils.hopperchain.HopperChain(
-        chain.hopperchain_spec,
-        source_obj=image_source
-    )
-
-    img = real_hc.next()[0]
-    return _image_response_from_numpy_array(img, 'jpg')

@@ -7,17 +7,26 @@ import django.core.urlresolvers as dcu
 
 
 class Species(models.Model):
-    species_name = models.CharField(
+    name = models.CharField(
         'the full species of the fish',
         max_length=200,
-        default='hypostomus plecostomus',
+        default='genus species',
+        unique=True,
     )
-    species_shortname = models.CharField(
+    common_name = models.CharField(
+        'the common name of the fish species',
+        max_length=200,
+        blank=True,
+        null=True,
+        unique=True,
+    )
+    shortname = models.CharField(
         'a short abbreviation for the species of fish',
         max_length=5,
-        default='HP',
+        default='ABC',
+        unique=True,
     )
-    sample_image = models.ImageField(
+    image = models.ImageField(
         'a sample image of the fish species',
         blank=True,
         null=True,
@@ -26,21 +35,21 @@ class Species(models.Model):
 
     def inline_image(self):
         return '<img width=200 src="/media/{}" />'.format(
-            self.sample_image
+            self.image
         )
     inline_image.allow_tags = True
 
     def linked_inline_image(self):
         return '<a href="/media/{}" target="_newtab">{}</a>'.format(
-            self.sample_image,
+            self.image,
             self.inline_image(),
         )
     linked_inline_image.allow_tags = True
 
     def __unicode__(self):
         return u'{}({})'.format(
-            self.species_name,
-            self.species_shortname,
+            self.name,
+            self.shortname,
         )
 
     def get_absolute_url(self):
@@ -52,15 +61,15 @@ class Species(models.Model):
 
 class Experiment(models.Model):
     """
-    The model for experiment-level data.
+    The model for xp-level data.
     """
-    experiment_name = models.CharField(
-        'descriptive name of experiment',
+    name = models.CharField(
+        'descriptive name of xp',
         max_length=250,
         default='New Experiment'
     )
-    experiment_start_dtg = models.DateTimeField(
-        'start date/time of experiment'
+    xp_start = models.DateTimeField(
+        'start date/time of xp'
     )
     species = models.ForeignKey(Species)
 
@@ -78,7 +87,7 @@ class Experiment(models.Model):
 
     def __unicode__(self):
         return "{} (ID {})".format(
-            self.experiment_name,
+            self.name,
             self.id,
         )
 
@@ -86,6 +95,7 @@ class Experiment(models.Model):
 class CaptureJobRecord(models.Model):
     xp = models.ForeignKey(Experiment)
     voltage = models.FloatField(default=0)
+    current = models.FloatField(default=18)
 
     job_start = models.DateTimeField(null=True, blank=True)
     running = models.NullBooleanField(default=None)
@@ -105,20 +115,20 @@ class Image(models.Model):
     capture time.
     """
 
-    # Link to a specific experiment
-    experiment = models.ForeignKey(
+    # Link to a specific xp
+    xp = models.ForeignKey(
         Experiment,
         editable=False,
     )
-    # Link to a specific capturejob
-    capturejob = models.ForeignKey(
+    # Link to a specific cjr
+    cjr = models.ForeignKey(
         CaptureJobRecord,
         null=True,
         editable=False,
     )
 
     # Data available at capture time.
-    dtg_capture = models.DateTimeField(
+    capture_timestamp = models.DateTimeField(
         'DTG of image capture',
         default=du.timezone.now()
     )
@@ -160,7 +170,6 @@ class Image(models.Model):
     linked_inline_image.allow_tags = True
 
 
-
 class ImageAnalysis(models.Model):
     # link to a specific image
     image = models.ForeignKey(Image)
@@ -195,21 +204,14 @@ class ImageAnalysis(models.Model):
     )
 
 
-class HopperChain(models.Model):
-    hopperchain_name = models.CharField(
-        'descriptive name of hopperchain (optional)',
-        max_length=250,
-        blank=True,
-    )
-    hopperchain_spec = fields.HopperchainSpecField(
-        'specification of hopperchain',
-    )
-
-
 class CaptureJobTemplate(models.Model):
     voltage = models.FloatField(
         'the voltage that the power supply will be set to',
         default=0,
+    )
+    current = models.FloatField(
+        'maximum current in amps that the power supply will provide',
+        default=15,
     )
     duration = models.FloatField(
         'the number of seconds to run the job',
