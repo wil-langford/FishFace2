@@ -19,10 +19,11 @@ DB_PASSWD_FILE = os.path.expanduser('~fishface/fishface_db_password')
 DB_PASSWD = None
 SECRET_KEY = None
 
+
 def generate_and_collect_secret_keys():
     length = 50
     chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
-    django_key =  get_random_string(length, chars)
+    django_key = get_random_string(length, chars)
 
     with open(DB_PASSWD_FILE, 'r') as f:
         db_key = f.read().strip()
@@ -40,15 +41,6 @@ try:
 except ImportError:
     generate_and_collect_secret_keys()
     from secret_keys import *
-
-
-import uwsgi
-import uwsgidecorators as ud
-import django.utils as du
-
-@ud.timer(3)
-def change_code_gracefull_reload(sig):
-    if du.autoreload.code_changed(): uwsgi.reload()
 
 
 # Quick-start development settings - unsuitable for production
