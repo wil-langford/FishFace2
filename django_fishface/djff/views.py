@@ -347,9 +347,9 @@ def run_capturejob(request, xp_id, cjt_id):
     logger.info(str(payload))
 
     def job_thread(inner_payload):
-        time.sleep(cjt.startup_delay)
-
         requests.get(IMAGERY_SERVER_URL, params=inner_payload)
+
+        time.sleep(cjt.startup_delay)
 
         inner_payload['command'] = 'run_capturejob'
 
@@ -357,6 +357,9 @@ def run_capturejob(request, xp_id, cjt_id):
 
         inner_payload['command'] = 'set_psu'
         inner_payload['enable_output'] = int(False)
+
+        while CaptureJobRecord.objects.filter(running=True):
+            time.sleep(1)
 
         requests.get(IMAGERY_SERVER_URL, params=inner_payload)
 
