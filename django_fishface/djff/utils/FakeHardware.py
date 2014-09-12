@@ -9,9 +9,12 @@ import quantities as pq
 MAX_VARIANCE_FACTOR = 0.05
 
 
-class FakePowersupply(object):
+class HP6652a(object):
     """
-    >>> fpsu = FakePowersupply()
+    Fakes an InstrumentKit power supply well enough to fool FishFace
+    during testing.
+
+    >>> fpsu = HP6652a()
     >>> fpsu.voltage
     array(5.0) * V
     >>> abs(fpsu.voltage_sense - fpsu.voltage) < fpsu.voltage * MAX_VARIANCE_FACTOR
@@ -30,11 +33,15 @@ class FakePowersupply(object):
     >>> fpsu.current
     array(10.2) * A
 
-    >>> fpsu.output
+    >>> fpsu.output = True
+    >>> fpsu.output = False
     """
     def __init__(self):
         self._voltage = 5.0 * pq.V
         self._current = 15.5 * pq.A
+
+    def open_serial(self, fake_serial_device, fake_rate):
+        pass
 
     @property
     def voltage(self):
