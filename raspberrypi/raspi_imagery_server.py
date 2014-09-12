@@ -5,7 +5,6 @@ This module is a small program intended to run on a Raspberry Pi with
 attached camera module and send imagery to a FishFace server.
 """
 
-import picamera
 import threading
 import time
 import io
@@ -13,19 +12,15 @@ import BaseHTTPServer
 import urlparse
 import requests
 import datetime
-import sys
-
 import logging
 
-import instruments as ik
+try:
+    import picamera
+    import instruments.hp as ik
+except ImportError:
+    import FakeHardware as picamera
+    import FakeHardware as ik
 
-DEBUG_DEFAULT = True
-
-# TODO: implement an argparse-based option system
-if sys.argv[0] == "--debug":
-    DEBUG = True
-else:
-    DEBUG = DEBUG_DEFAULT
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -68,7 +63,7 @@ class ImageryServer(object):
 
         self._current_frame_capture_time = None
 
-        self.power_supply = ik.hp.HP6652a.open_serial('/dev/ttyUSB0',
+        self.power_supply = ik.HP6652a.open_serial('/dev/ttyUSB0',
                                                       57600)
 
         self._current_frame = None
