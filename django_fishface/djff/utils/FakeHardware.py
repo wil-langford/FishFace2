@@ -2,11 +2,31 @@
 """
 
 import random
+import copy
+import io
 
 import instruments.units as units
 import quantities as pq
 
 MAX_VARIANCE_FACTOR = 0.05
+
+class PiCamera(object):
+    def __init__(self):
+        self.resolution = (2048, 1536)
+        self.rotation = 180
+
+        self._fake_image = io.BytesIO()
+        with open("../static/djff/sample-DATA.jpg", 'rb') as f:
+            self._fake_image.write(f.read())
+
+    def capture(self, stream, format='jpeg'):
+        if format != 'jpeg':
+            raise NotImplementedError("Can only fake jpegs currently.")
+
+        if isinstance(stream, io.BytesIO):
+            stream.write(self._fake_image.getvalue())
+        else:
+            raise Exception("Can only write to io.BytesIO streams.")
 
 
 class HP6652a(object):
@@ -83,3 +103,10 @@ class HP6652a(object):
         if not isinstance(boolean_value, bool):
             raise Exception("Output state setting should be a bool.")
 
+
+def main():
+    cam = PiCamera()
+    psu = HP6652a()
+
+if __name__ == '__main__':
+    main()
