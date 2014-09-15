@@ -16,10 +16,12 @@ import logging
 
 try:
     REAL_HARDWARE = True
+    BASE_URL = "http://fishfacehost:8000/fishface/"
     import picamera
     import instruments.hp as ik
 except ImportError:
     REAL_HARDWARE = False
+    BASE_URL = "http://localhost:8000/fishface/"
     import FakeHardware as picamera
     import FakeHardware as ik
 
@@ -35,7 +37,6 @@ logger = logging.getLogger(__name__)
 HOST = ''
 PORT = 18765
 
-BASE_URL = "http://fishfacehost:8000/fishface/"
 IMAGE_POST_URL = "{}upload_imagery/".format(BASE_URL)
 TELEMETRY_URL = "{}telemetry/".format(BASE_URL)
 
@@ -68,25 +69,30 @@ class ImageryServer(object):
 
         self._job_status = None
 
-        self._current_frame_capture_time = None
-
-
-
         self._current_frame = None
+        self._current_frame_capture_time = None
 
     def _capture_new_current_frame(self):
         stream = io.BytesIO()
+        if REAL_HARDWARE:
 
-        new_frame_capture_time = time.time()
-        self.camera.capture(
-            stream,
-            format='jpeg'
-        )
+            new_frame_capture_time = time.time()
+            self.camera.capture(
+                stream,
+                format='jpeg'
+            )
 
-        image = stream.getvalue()
+            image = stream.getvalue()
 
-        self._current_frame_capture_time = new_frame_capture_time
-        self._current_frame = image
+            self._current_frame = image
+            self._current_frame_capture_time = new_frame_capture_time
+        else:
+            if self._current_frame is None:
+                self.camera.capture(stream, format='jpeg')
+                self._current_frame = stream.getvalue()
+            self._current_frame_capture_time = time.time()
+            time.sleep(0.2)
+
 
     def get_current_frame(self):
         return self._current_frame
