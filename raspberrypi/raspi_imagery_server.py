@@ -15,9 +15,11 @@ import datetime
 import logging
 
 try:
+    REAL_HARDWARE = True
     import picamera
     import instruments.hp as ik
 except ImportError:
+    REAL_HARDWARE = False
     import FakeHardware as picamera
     import FakeHardware as ik
 
@@ -25,7 +27,7 @@ except ImportError:
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(levelname)s %(message)s',
-    filename='/tmp/djangoLog.log',
+    filename='imagery_server.log',
 )
 
 logger = logging.getLogger(__name__)
@@ -55,6 +57,11 @@ class ImageryServer(object):
         self._keep_capturing = True
         self._keep_capturejob_looping = True
 
+        if REAL_HARDWARE:
+            self.power_supply = ik.HP6652a.open_serial('/dev/ttyUSB0', 57600)
+        else:
+            self.power_supply = ik.HP6652a()
+
         self.camera = picamera.PiCamera()
         self.camera.resolution = (2048, 1536)
         self.camera.rotation = 180
@@ -63,8 +70,7 @@ class ImageryServer(object):
 
         self._current_frame_capture_time = None
 
-        self.power_supply = ik.HP6652a.open_serial('/dev/ttyUSB0',
-                                                      57600)
+
 
         self._current_frame = None
 
@@ -124,8 +130,8 @@ class ImageryServer(object):
         )
         httpd.parent = self
 
-        logger.info("starting http server")
 
+        logger.info("starting http server")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

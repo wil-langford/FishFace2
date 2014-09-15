@@ -15,17 +15,15 @@ class PiCamera(object):
         self.resolution = (2048, 1536)
         self.rotation = 180
 
-        self._fake_image = io.BytesIO()
-        with open(
-                "../static/djff/../django_fishface/djff/static/djff/sample-DATA.jpg", 'rb') as f:
-            self._fake_image.write(f.read())
+        with open("../django_fishface/djff/static/djff/sample-DATA.jpg", 'rb') as f:
+            self._fake_image = f.read()
 
     def capture(self, stream, format='jpeg'):
         if format != 'jpeg':
             raise NotImplementedError("Can only fake jpegs currently.")
 
         if isinstance(stream, io.BytesIO):
-            stream.write(self._fake_image.getvalue())
+            stream.write(self._fake_image)
         else:
             raise Exception("Can only write to io.BytesIO streams.")
 
@@ -60,9 +58,6 @@ class HP6652a(object):
     def __init__(self):
         self._voltage = 5.0 * pq.V
         self._current = 15.5 * pq.A
-
-    def open_serial(self, fake_serial_device, fake_rate):
-        pass
 
     @property
     def voltage(self):
