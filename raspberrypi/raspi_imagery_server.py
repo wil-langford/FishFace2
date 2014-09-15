@@ -14,18 +14,6 @@ import requests
 import datetime
 import logging
 
-try:
-    REAL_HARDWARE = True
-    BASE_URL = "http://fishfacehost:8000/fishface/"
-    import picamera
-    import instruments.hp as ik
-except ImportError:
-    REAL_HARDWARE = False
-    BASE_URL = "http://localhost:8000/fishface/"
-    import FakeHardware as picamera
-    import FakeHardware as ik
-
-
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(levelname)s %(message)s',
@@ -33,6 +21,20 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+try:
+    REAL_HARDWARE = True
+    BASE_URL = "http://fishfacehost:8000/fishface/"
+    import picamera
+    import instruments.hp as ik
+    logger.info("Running server on real Raspi hardware.")
+except ImportError:
+    REAL_HARDWARE = False
+    BASE_URL = "http://localhost:8000/fishface/"
+    import FakeHardware as picamera
+    import FakeHardware as ik
+    logger.warning("Emulating raspi hardware.")
+    logger.warning("Real data collection is disabled.")
 
 HOST = ''
 PORT = 18765
