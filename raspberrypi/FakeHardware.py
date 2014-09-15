@@ -9,6 +9,7 @@ import quantities as pq
 
 MAX_VARIANCE_FACTOR = 0.05
 
+
 class PiCamera(object):
     def __init__(self):
         self.resolution = (2048, 1536)
@@ -17,8 +18,8 @@ class PiCamera(object):
         with open("../django_fishface/djff/static/djff/sample-DATA.jpg", 'rb') as f:
             self._fake_image = f.read()
 
-    def capture(self, stream, format='jpeg'):
-        if format != 'jpeg':
+    def capture(self, stream, img_format='jpeg'):
+        if img_format != 'jpeg':
             raise NotImplementedError("Can only fake jpegs currently.")
 
         if isinstance(stream, io.BytesIO):
@@ -29,6 +30,7 @@ class PiCamera(object):
 
     def close(self):
         pass
+
 
 class HP6652a(object):
     """
