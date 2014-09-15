@@ -4,7 +4,7 @@ import fields
 import django.dispatch.dispatcher
 import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
-
+import django.conf.global_settings as dcg
 
 class Species(models.Model):
     name = models.CharField(
@@ -147,12 +147,9 @@ class Image(models.Model):
         default=False
     )
 
-    # TODO: check to see if there's a way to look up '/media/' instead
-    # TODO: of hard coding it
-
     def inline_image(self):
-        return '<img width=200 src="/media/{}" />'.format(
-            self.image_file
+        return '<img width=200 src="{}" />'.format(
+            dcg.MEDIA_URL + self.image_file
         )
     inline_image.allow_tags = True
 
