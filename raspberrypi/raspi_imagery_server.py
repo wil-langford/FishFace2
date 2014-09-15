@@ -76,24 +76,16 @@ class ImageryServer(object):
 
     def _capture_new_current_frame(self):
         stream = io.BytesIO()
-        if REAL_HARDWARE:
+        new_frame_capture_time = time.time()
+        self.camera.capture(
+            stream,
+            format='jpeg'
+        )
 
-            new_frame_capture_time = time.time()
-            self.camera.capture(
-                stream,
-                format='jpeg'
-            )
+        image = stream.getvalue()
 
-            image = stream.getvalue()
-
-            self._current_frame = image
-            self._current_frame_capture_time = new_frame_capture_time
-        else:
-            if self._current_frame is None:
-                self.camera.capture(stream, format='jpeg')
-                self._current_frame = stream.getvalue()
-            self._current_frame_capture_time = time.time()
-            time.sleep(0.2)
+        self._current_frame = image
+        self._current_frame_capture_time = new_frame_capture_time
 
 
     def get_current_frame(self):

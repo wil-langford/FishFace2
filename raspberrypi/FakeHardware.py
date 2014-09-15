@@ -2,10 +2,9 @@
 """
 
 import random
-import copy
 import io
+import time
 
-import instruments.units as units
 import quantities as pq
 
 MAX_VARIANCE_FACTOR = 0.05
@@ -23,10 +22,13 @@ class PiCamera(object):
             raise NotImplementedError("Can only fake jpegs currently.")
 
         if isinstance(stream, io.BytesIO):
+            time.sleep(0.2)
             stream.write(self._fake_image)
         else:
             raise Exception("Can only write to io.BytesIO streams.")
 
+    def close(self):
+        pass
 
 class HP6652a(object):
     """
