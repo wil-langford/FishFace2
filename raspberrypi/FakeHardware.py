@@ -66,9 +66,10 @@ class HP6652a(object):
     @property
     def voltage(self):
         return self._voltage
+
     @voltage.setter
     def voltage(self, quantity):
-        if isinstance(quantity, (int,float)):
+        if isinstance(quantity, (int, float)):
             self._voltage = quantity * pq.V
         else:
             self._voltage = quantity.rescale(pq.V)
@@ -80,13 +81,13 @@ class HP6652a(object):
                          - max_variance)
         return self._voltage + this_variance
 
-
     @property
     def current(self):
         return self._current
+
     @current.setter
     def current(self, quantity):
-        if isinstance(quantity, (int,float)):
+        if isinstance(quantity, (int, float)):
             self._current = quantity * pq.A
         else:
             self._current = quantity.rescale(pq.A)
@@ -98,6 +99,7 @@ class HP6652a(object):
     @property
     def output(self):
         raise Exception("Cannot read output state of PSU; can only set it.")
+
     @output.setter
     def output(self, boolean_value):
         if not isinstance(boolean_value, bool):
