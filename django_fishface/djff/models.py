@@ -86,7 +86,7 @@ class Experiment(models.Model):
     )
 
     def __unicode__(self):
-        return "{} (ID {})".format(
+        return "{} (XP-{})".format(
             self.name,
             self.id,
         )
@@ -104,8 +104,9 @@ class CaptureJobRecord(models.Model):
     job_stop = models.DateTimeField(null=True, blank=True)
 
     def __unicode__(self):
-        return u'CaptureJobRecord {} (XP {})'.format(self.id,
-                                                     self.xp.id)
+        return u'CaptureJobRecord {} (XP-{}_CJR_{})'.format(self.id,
+                                                     self.xp.id,
+                                                     self.id)
 
 
 class Image(models.Model):
