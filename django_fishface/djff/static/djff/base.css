@@ -168,3 +168,8 @@ div.bad
 {
     color: red;
 }
+
+.deleterbutton
+{
+    background-color: lightcoral;
+}

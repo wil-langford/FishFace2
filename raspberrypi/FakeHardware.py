@@ -109,6 +109,10 @@ class HP6652a(object):
         if not isinstance(boolean_value, bool):
             raise Exception("Output state setting should be a bool.")
 
+    def reset(self):
+        self.voltage = 0
+        self.current = 0
+        self.output = False
 
 def main():
     cam = PiCamera()

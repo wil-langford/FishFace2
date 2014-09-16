@@ -4,8 +4,6 @@
 
 {% block subtitle %}Experiment Details{% endblock %}
 
-
-
 {% block content %}
     <h1>
         <a href="{% url 'djff:xp_rename' xp.id %}">
@@ -32,7 +30,7 @@
 
         <input type="hidden" value="0" name="voltage">
 {# TODO: make current default not hard coded       #}
-        <input type="hidden" value="18" name="current">
+        <input type="hidden" value="15" name="current">
         <input type="hidden" value="True" name="is_cal_image">
         <input type="checkbox" value="True" name="cal_ready">
         Ready to capture calibration image (no fish):
@@ -75,6 +73,12 @@
             <em>Voltage</em>: {{ cjr.voltage }} V<br>
             <em>Current</em>: {{ cjr.voltage }} A<br>
             <em>Remaining</em>: {{ cjr.remaining }}/{{ cjr.total }}
+            <form method="post" action="{% url 'djff:abort_capturejob' %}">
+                {% csrf_token %}
+                <input type="hidden" name="xp_id" value="{{ xp.id }}" />
+                <input type="hidden" name="cjr_id" value="{{ cjr.id }}" />
+                <input type="submit" class="deleterbutton" value="Abort this capturejob" />
+            </form>
         {% endfor %}
         </div>
     {% endif %}
@@ -83,6 +87,13 @@
         <div class="boxed">
         <h3>Capture Job Records</h3>
         <hr width="30%" />
+        {% if running_jobs %}
+        <form method="post" action="{% url 'djff:abort_capturejob' %}">
+            {% csrf_token %}
+            <input type="hidden" name="xp_id" value="{{ xp.id }}" />
+            <input type="submit" class="deleterbutton" value="Abort any running capturejob(s)" />
+        </form>
+        {% endif %}
 
         {% for cjr, imageset in images_by_cjr %}
             <div align="center"><strong>XP-{{ xp.id }}_CJR-{{ cjr.id }}</strong><br></div>

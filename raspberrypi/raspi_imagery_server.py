@@ -230,7 +230,10 @@ class ImageryServer(object):
         if payload['command'] == 'set_psu':
             result = self.set_psu(payload)
 
-        if result == "no result":
+        if payload['command'] == 'abort_capturejob':
+            result = self.abort_capturejob(payload)
+
+        if result and result == "no result":
             logger.warning("I don't know what to do with this " +
                            "telemetry payload:\n{}".format(payload))
 
@@ -245,7 +248,15 @@ class ImageryServer(object):
         else:
             return requests.post(TELEMETRY_URL, data=payload, files=files)
 
+    def abort_capturejob(self, payload):
+        self._keep_capturejob_looping = False
+        self.set_psu({'reset': True})
+
     def set_psu(self, payload):
+        if bool(int(payload.get('reset', False))):
+            self.power_supply.reset()
+            return False
+
         voltage = float(payload.get('voltage', False))
         current = float(payload.get('current', False))
         enable_output = bool(int(payload.get('enable_output', False)))
