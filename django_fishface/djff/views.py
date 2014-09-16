@@ -375,6 +375,10 @@ def run_capturejob(request, xp_id, cjt_id):
 def abort_capturejob(request):
     requests.get(IMAGERY_SERVER_URL, params={'command': 'abort_capturejob'})
 
+    running_jobs = CaptureJobRecord.objects.filter(running=True)
+    for cjr in running_jobs:
+        cjr.running=False
+
     xp_id = request.POST.get('xp_id', False)
     cjr_id = request.POST.get('cjr_id', False)
 
@@ -387,8 +391,8 @@ def abort_capturejob(request):
             dcu.reverse('djff:xp_capture',
                         args=(xp_id,))
         )
-    else:
-        return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
+
+    return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
 
 
 
