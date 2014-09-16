@@ -112,6 +112,5 @@ DATETIME_FORMAT = 'Y-m-d H:i:s.u'
 STATIC_ROOT = os.path.join('djff/static/')
 STATIC_URL = '/static/'
 
-# TODO: Change to a non-temporary MEDIA_ROOT after move to server.
 MEDIA_ROOT = '/mnt/server_storage/media/'
 MEDIA_URL = '/media/'
