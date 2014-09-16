@@ -88,6 +88,11 @@ urlpatterns = dcu.patterns(
         views.run_capturejob,
         name='run_capturejob'
     ),
+    dcu.url(
+        r'^cj/abort/$',
+        views.abort_capturejob,
+        name='abort_capturejob'
+    ),
 
     dcu.url(
         r'^telemetry/$',
