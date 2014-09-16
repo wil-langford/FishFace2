@@ -49,6 +49,8 @@ try:
         DEBUG,
         TEMPLATE_DEBUG,
         DATABASES,
+        IMAGERY_SERVER_HOST,
+        IMAGERY_SERVER_PORT,
     )
 except ImportError:
     DEBUG = False
@@ -64,6 +66,9 @@ except ImportError:
             'PORT': '',
         },
     }
+
+    IMAGERY_SERVER_HOST = 'raspi'
+    IMAGERY_SERVER_PORT = 18765
 
 ALLOWED_HOSTS = ['.pdx.edu']
 
