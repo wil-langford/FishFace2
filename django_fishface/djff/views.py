@@ -378,6 +378,7 @@ def abort_capturejob(request):
     running_jobs = CaptureJobRecord.objects.filter(running=True)
     for cjr in running_jobs:
         cjr.running=False
+        cjr.save()
 
     xp_id = request.POST.get('xp_id', False)
     cjr_id = request.POST.get('cjr_id', False)
@@ -393,7 +394,6 @@ def abort_capturejob(request):
         )
 
     return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
-
 
 
 ################################
