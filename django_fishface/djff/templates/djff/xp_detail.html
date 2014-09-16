@@ -10,7 +10,7 @@
     <h1>
         <a href="{% url 'djff:xp_rename' xp.id %}">
             {{ xp.name }}
-        </a>
+        </a> (XP-{{ xp.id }})
     </h1>
 
     {% if not cal_images %}
@@ -85,6 +85,7 @@
         <hr width="30%" />
 
         {% for cjr, imageset in images_by_cjr %}
+            <div align="center"><strong>XP-{{ xp.id }}_CJR-{{ cjr.id }}</strong><br></div>
             Started: {{ cjr.job_start }}<br>
             Completed: {{ cjr.job_stop }}<br>
             Captured {{ imageset.count }} images at {{ cjr.voltage }}

@@ -153,7 +153,7 @@ class ImageryServer(object):
 
         since_epoch = time.time()
 
-        image_filename = '{}_{}_{}_{}_{}.jpg'.format(
+        image_filename = 'XP-{}_CJR-{}_{}_{}_{}.jpg'.format(
             metadata['xp_id'],
             metadata['cjr_id'],
             metadata['species'],
