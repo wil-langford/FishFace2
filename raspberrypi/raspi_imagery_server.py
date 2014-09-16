@@ -5,7 +5,6 @@ This module is a small program intended to run on a Raspberry Pi with
 attached camera module and send imagery to a FishFace server.
 """
 
-import picamera
 import threading
 import time
 import io
@@ -13,32 +12,33 @@ import BaseHTTPServer
 import urlparse
 import requests
 import datetime
-import sys
-
 import logging
-
-import instruments as ik
-
-DEBUG_DEFAULT = True
-
-# TODO: implement an argparse-based option system
-if sys.argv[0] == "--debug":
-    DEBUG = True
-else:
-    DEBUG = DEBUG_DEFAULT
 
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s %(levelname)s %(message)s',
-    filename='/tmp/djangoLog.log',
+    filename='imagery_server.log',
 )
 
 logger = logging.getLogger(__name__)
 
+try:
+    REAL_HARDWARE = True
+    BASE_URL = "http://fishfacehost:8000/fishface/"
+    import picamera
+    import instruments.hp as ik
+    logger.info("Running server on real Raspi hardware.")
+except ImportError:
+    REAL_HARDWARE = False
+    BASE_URL = "http://localhost:8000/fishface/"
+    import FakeHardware as picamera
+    import FakeHardware as ik
+    logger.warning("Emulating raspi hardware.")
+    logger.warning("Real data collection is disabled.")
+
 HOST = ''
 PORT = 18765
 
-BASE_URL = "http://fishfacehost:8000/fishface/"
 IMAGE_POST_URL = "{}upload_imagery/".format(BASE_URL)
 TELEMETRY_URL = "{}telemetry/".format(BASE_URL)
 
@@ -60,22 +60,22 @@ class ImageryServer(object):
         self._keep_capturing = True
         self._keep_capturejob_looping = True
 
+        if REAL_HARDWARE:
+            self.power_supply = ik.HP6652a.open_serial('/dev/ttyUSB0', 57600)
+        else:
+            self.power_supply = ik.HP6652a()
+
         self.camera = picamera.PiCamera()
         self.camera.resolution = (2048, 1536)
         self.camera.rotation = 180
 
         self._job_status = None
 
-        self._current_frame_capture_time = None
-
-        self.power_supply = ik.hp.HP6652a.open_serial('/dev/ttyUSB0',
-                                                      57600)
-
         self._current_frame = None
+        self._current_frame_capture_time = None
 
     def _capture_new_current_frame(self):
         stream = io.BytesIO()
-
         new_frame_capture_time = time.time()
         self.camera.capture(
             stream,
@@ -84,8 +84,9 @@ class ImageryServer(object):
 
         image = stream.getvalue()
 
-        self._current_frame_capture_time = new_frame_capture_time
         self._current_frame = image
+        self._current_frame_capture_time = new_frame_capture_time
+
 
     def get_current_frame(self):
         return self._current_frame
@@ -129,8 +130,8 @@ class ImageryServer(object):
         )
         httpd.parent = self
 
-        logger.info("starting http server")
 
+        logger.info("starting http server")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
