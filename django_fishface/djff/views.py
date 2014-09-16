@@ -363,16 +363,33 @@ def run_capturejob(request, xp_id, cjt_id):
 
         requests.get(IMAGERY_SERVER_URL, params=inner_payload)
 
-    thread = threading.Thread(
-        target=job_thread,
-        args=(payload,)
-    )
+    thread = threading.Thread(target=job_thread, args=(payload,) )
     thread.start()
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:xp_capture',
                     args=(payload['xp_id'],))
     )
+
+
+def abort_capturejob(request):
+    requests.get(IMAGERY_SERVER_URL, params={'command': 'abort_capturejob'})
+
+    xp_id = request.POST.get('xp_id', False)
+    cjr_id = request.POST.get('cjr_id', False)
+
+    if cjr_id and not xp_id:
+        cjr = ds.get_object_or_404(CaptureJobRecord, pk=int(cjr_id))
+        xp_id = cjr.xp_id
+
+    if xp_id:
+        return dh.HttpResponseRedirect(
+            dcu.reverse('djff:xp_capture',
+                        args=(xp_id,))
+        )
+    else:
+        return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
+
 
 
 ################################
