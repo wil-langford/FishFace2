@@ -18,8 +18,12 @@ class PiCamera(object):
         with open("../django_fishface/djff/static/djff/sample-DATA.jpg", 'rb') as f:
             self._fake_image = f.read()
 
-    def capture(self, stream, img_format='jpeg'):
-        if img_format != 'jpeg':
+    def capture(self, stream, format='jpeg'):
+        # shadowing 'format' can't be helped because
+        # of the use of it by picamera's capture().
+        # plus, isn't Python's 'format' only used on
+        # strings?
+        if format != 'jpeg':
             raise NotImplementedError("Can only fake jpegs currently.")
 
         if isinstance(stream, io.BytesIO):
