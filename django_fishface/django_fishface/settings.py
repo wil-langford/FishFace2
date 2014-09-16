@@ -13,6 +13,8 @@ import os
 from django.utils.crypto import get_random_string
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+
+# TODO: change for full production
 DB_PASSWD_FILE = os.path.expanduser('~fishface/fishface_db_password')
 
 # These get imported/generated later.
@@ -42,17 +44,33 @@ except ImportError:
     generate_and_collect_secret_keys()
     from secret_keys import *
 
+try:
+    from dev_settings import (
+        DEBUG,
+        TEMPLATE_DEBUG,
+        DATABASES,
+        IMAGERY_SERVER_HOST,
+        IMAGERY_SERVER_PORT,
+    )
+except ImportError:
+    DEBUG = False
+    TEMPLATE_DEBUG = False
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/1.6/howto/deployment/checklist/
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': 'fishfacedb',
+            'USER': 'fishfacedbuser',
+            'PASSWORD': DB_PASSWD,
+            'HOST': 'localhost',
+            'PORT': '',
+        },
+    }
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+    IMAGERY_SERVER_HOST = 'raspi'
+    IMAGERY_SERVER_PORT = 18765
 
-TEMPLATE_DEBUG = True
-
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ['.pdx.edu']
 
 # Application definition
 
@@ -81,35 +99,14 @@ ROOT_URLCONF = 'django_fishface.urls'
 WSGI_APPLICATION = 'django_fishface.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/1.6/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'fishfacedb',
-        'USER': 'fishfacedbuser',
-        'PASSWORD': DB_PASSWD,
-        'HOST': 'localhost',
-        'PORT': '',
-    },
-    'dev': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
-}
-
 # Internationalization
 # https://docs.djangoproject.com/en/1.6/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'America/Los_Angeles'
 
 USE_I18N = True
-
 USE_L10N = False
-
 USE_TZ = True
 
 DATETIME_FORMAT = 'Y-m-d H:i:s.u'
@@ -120,6 +117,5 @@ DATETIME_FORMAT = 'Y-m-d H:i:s.u'
 STATIC_ROOT = os.path.join('djff/static/')
 STATIC_URL = '/static/'
 
-# TODO: Change to a non-temporary MEDIA_ROOT after move to server.
 MEDIA_ROOT = '/mnt/server_storage/media/'
 MEDIA_URL = '/media/'

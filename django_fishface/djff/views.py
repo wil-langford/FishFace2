@@ -15,6 +15,7 @@ import django.views.decorators.csrf as csrf_dec
 import django.utils.timezone as dut
 import django.views.generic as dvg
 import django.views.generic.edit as dvge
+from django.conf import settings
 
 import cv2
 
@@ -26,9 +27,8 @@ from djff.models import (
     CaptureJobRecord,
 )
 
-
-IMAGERY_SERVER_IP = 'raspi'
-IMAGERY_SERVER_PORT = 18765
+IMAGERY_SERVER_IP = settings.IMAGERY_SERVER_HOST
+IMAGERY_SERVER_PORT = settings.IMAGERY_SERVER_PORT
 
 IMAGERY_SERVER_URL = 'http://{}:{}/'.format(
     IMAGERY_SERVER_IP,

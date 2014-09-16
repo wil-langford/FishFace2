@@ -4,7 +4,7 @@ import fields
 import django.dispatch.dispatcher
 import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
-
+from django.conf import settings
 
 class Species(models.Model):
     name = models.CharField(
@@ -86,7 +86,7 @@ class Experiment(models.Model):
     )
 
     def __unicode__(self):
-        return "{} (ID {})".format(
+        return "{} (XP-{})".format(
             self.name,
             self.id,
         )
@@ -104,8 +104,9 @@ class CaptureJobRecord(models.Model):
     job_stop = models.DateTimeField(null=True, blank=True)
 
     def __unicode__(self):
-        return u'CaptureJobRecord {} (XP {})'.format(self.id,
-                                                     self.xp.id)
+        return u'CaptureJobRecord {} (XP-{}_CJR_{})'.format(self.id,
+                                                     self.xp.id,
+                                                     self.id)
 
 
 class Image(models.Model):
@@ -147,12 +148,9 @@ class Image(models.Model):
         default=False
     )
 
-    # TODO: check to see if there's a way to look up '/media/' instead
-    # TODO: of hard coding it
-
     def inline_image(self):
-        return '<img width=200 src="/media/{}" />'.format(
-            self.image_file
+        return '<img width=200 src="{}{}" />'.format(
+            settings.MEDIA_URL, self.image_file
         )
     inline_image.allow_tags = True
 
