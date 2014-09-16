@@ -77,7 +77,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="xp_id" value="{{ xp.id }}" />
                 <input type="hidden" name="cjr_id" value="{{ cjr.id }}" />
-                <input type="submit" value="Abort this capturejob" />
+                <input type="submit" class="deleterbutton" value="Abort this capturejob" />
             </form>
         {% endfor %}
         </div>
@@ -91,7 +91,7 @@
         <form method="post" action="{% url 'djff:abort_capturejob' %}">
             {% csrf_token %}
             <input type="hidden" name="xp_id" value="{{ xp.id }}" />
-            <input type="submit" value="Abort any running capturejob(s)" />
+            <input type="submit" class="deleterbutton" value="Abort any running capturejob(s)" />
         </form>
         {% endif %}
 
