@@ -248,6 +248,10 @@ class ImageryServer(object):
         else:
             return requests.post(TELEMETRY_URL, data=payload, files=files)
 
+    def abort_capturejob(self):
+        self._keep_capturejob_looping = False
+        self.set_psu({'reset': True})
+
     def set_psu(self, payload):
         if bool(int(payload.get('reset', False))):
             self.power_supply.reset()
