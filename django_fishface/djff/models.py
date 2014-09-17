@@ -7,31 +7,14 @@ import django.core.urlresolvers as dcu
 from django.conf import settings
 
 class Species(models.Model):
-    name = models.CharField(
-        'the full species of the fish',
-        max_length=200,
-        default='genus species',
-        unique=True,
-    )
-    common_name = models.CharField(
-        'the common name of the fish species',
-        max_length=200,
-        blank=True,
-        null=True,
-        unique=True,
-    )
-    shortname = models.CharField(
-        'a short abbreviation for the species of fish',
-        max_length=5,
-        default='ABC',
-        unique=True,
-    )
-    image = models.ImageField(
-        'a sample image of the fish species',
-        blank=True,
-        null=True,
-        upload_to="species_sample_images"
-    )
+    name = models.CharField('the full species of the fish', max_length=200,
+                            default='genus species', unique=True)
+    common_name = models.CharField('the common name of the fish species', max_length=200,
+                                   blank=True, null=True, unique=True)
+    shortname = models.CharField('a short abbreviation for the species of fish', max_length=5,
+                                 default='ABC', unique=True)
+    image = models.ImageField('a sample image of the fish species',
+                              blank=True, null=True, upload_to="species_sample_images" )
 
     def inline_image(self):
         return '<img width=200 src="/media/{}" />'.format(
@@ -63,27 +46,10 @@ class Experiment(models.Model):
     """
     The model for xp-level data.
     """
-    name = models.CharField(
-        'descriptive name of xp',
-        max_length=250,
-        default='New Experiment'
-    )
-    xp_start = models.DateTimeField(
-        'start date/time of xp'
-    )
+    name = models.CharField('descriptive name of xp', max_length=250, default='New Experiment' )
+    xp_start = models.DateTimeField('start date/time of xp')
     species = models.ForeignKey(Species)
-
-    researcher_name = models.CharField(
-        'the name of the researcher',
-        max_length=100,
-        null=True,
-        blank=True
-    )
-    researcher_email = models.EmailField(
-        'the email address of the researcher',
-        null=True,
-        blank=True
-    )
+    researcher = models.ForeignKey(Researcher, null=True, blank=True)
 
     def __unicode__(self):
         return "{} (XP-{})".format(
@@ -116,37 +82,15 @@ class Image(models.Model):
     capture time.
     """
 
-    # Link to a specific xp
-    xp = models.ForeignKey(
-        Experiment,
-        editable=False,
-    )
-    # Link to a specific cjr
-    cjr = models.ForeignKey(
-        CaptureJobRecord,
-        null=True,
-        editable=False,
-    )
+    xp = models.ForeignKey(Experiment, editable=False, )
+    cjr = models.ForeignKey(CaptureJobRecord, null=True, editable=False, )
 
     # Data available at capture time.
-    capture_timestamp = models.DateTimeField(
-        'DTG of image capture',
-        default=du.timezone.now()
-    )
-    voltage = models.FloatField(
-        'voltage at power supply',
-        default=0
-    )
-
-    image_file = models.ImageField(
-        'path of image file',
-        upload_to="experiment_imagery/stills/%Y.%m.%d"
-    )
-
-    is_cal_image = models.BooleanField(
-        'is this image a calibration image?',
-        default=False
-    )
+    capture_timestamp = models.DateTimeField('DTG of image capture', default=du.timezone.now() )
+    voltage = models.FloatField('voltage at power supply', default=0 )
+    image_file = models.ImageField('path of image file',
+                                   upload_to="experiment_imagery/stills/%Y.%m.%d")
+    is_cal_image = models.BooleanField('is this image a calibration image?', default=False )
 
     def inline_image(self):
         return '<img width=200 src="{}{}" />'.format(
@@ -173,55 +117,31 @@ class ImageAnalysis(models.Model):
     image = models.ForeignKey(Image)
 
     # Data available after processing.
-    analysis_dtg = models.DateTimeField(
-        'the time/date that this analysis was performed'
-    )
-    orientation = models.SmallIntegerField(
-        'angle between the water flow source and the fish',
-        default=None,
-    )
-    location = fields.LocationField(
-        'the x,y coordinates of the fish in the image',
-    )
-    silhouette = fields.ContourField(
-        'The OpenCV contour of the outline of the fish'
-    )
+    analysis_datetime = models.DateTimeField('the time/date that this analysis was performed')
+    orientation = models.SmallIntegerField('angle between the water flow source and the fish',
+                                           default=None)
+    location = fields.LocationField('the x,y coordinates of the fish in the image')
+    silhouette = fields.ContourField('The OpenCV contour of the outline of the fish')
 
-    # Verification
-    _VERIFICATION_KWARGS = dict()
-    _VERIFICATION_KWARGS['blank'] = True
-    _VERIFICATION_KWARGS['null'] = True
+    verified_dtg = models.DateTimeField('the dtg at which verification took place',
+                                        blank=True, null=True)
+    verified_by = models.ForeignKey(Researcher)
 
-    verified_dtg = models.DateTimeField(
-        'the dtg at which verification took place',
-        **_VERIFICATION_KWARGS
-    )
-    verified_by = models.CharField(
-        max_length=100,
-        **_VERIFICATION_KWARGS
-    )
+
+class ManualMeasurement(models.Model):
+    orientation = models.SmallIntegerField('angle between the water flow source and the fish',
+                                           default=None)
+    analysis_datetime = models.DateTimeField('the time/date that this analysis was performed')
+    researcher = models.ForeignKey(Researcher)
 
 
 class CaptureJobTemplate(models.Model):
-    voltage = models.FloatField(
-        'the voltage that the power supply will be set to',
-        default=0,
-    )
-    current = models.FloatField(
-        'maximum current in amps that the power supply will provide',
-        default=15,
-    )
-    duration = models.FloatField(
-        'the number of seconds to run the job',
-        default=0,
-    )
-    interval = models.FloatField(
-        'the number of seconds between image captures',
-        default=1,
-    )
+    voltage = models.FloatField('the voltage that the power supply will be set to', default=0, )
+    current = models.FloatField('maximum current in amps that the power supply will provide', default=15, )
+    duration = models.FloatField('the number of seconds to run the job', default=0, )
+    interval = models.FloatField('the number of seconds between image captures', default=1, )
     startup_delay = models.FloatField(
-        ('the number of seconds to delay between setting voltage' +
-         ' and image capture'),
+        'the number of seconds to delay between setting voltage and image capture',
         default=30.0
     )
 
@@ -230,6 +150,22 @@ class CaptureJobTemplate(models.Model):
             'djff:cjt_update',
             kwargs={'pk': self.pk}
         )
+
+
+class Fish(models.Model):
+    species = models.ForeignKey(Species)
+    comment = models.TextField('description of the fish (optional)')
+
+
+class FishLocale(models.Model):
+    fish = models.ForeignKey(Fish)
+    tank = models.CharField('the tank holding the fish', max_length=50)
+    datetime_in_tank = models.DateTimeField('the date and time that the fish was in the tank')
+
+
+class Researcher(models.Model):
+    name = models.CharField('name of the researcher', max_length=200)
+    email = models.EmailField('email address of the researcher (optional)', null=True, blank=True)
 
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
