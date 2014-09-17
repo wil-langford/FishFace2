@@ -70,7 +70,8 @@ except ImportError:
     IMAGERY_SERVER_HOST = 'raspi'
     IMAGERY_SERVER_PORT = 18765
 
-ALLOWED_HOSTS = ['.pdx.edu']
+# Set to wildcard pending fixed IP assignment
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
