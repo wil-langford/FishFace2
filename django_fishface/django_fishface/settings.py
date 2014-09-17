@@ -71,6 +71,7 @@ except ImportError:
     IMAGERY_SERVER_PORT = 18765
 
 # Set to wildcard pending fixed IP assignment
+# TODO: After fixed IP assignment, put real value here.
 ALLOWED_HOSTS = ['*']
 
 # Application definition
