@@ -244,9 +244,16 @@ class ImageryServer(object):
 
     def send_telemetry(self, payload, files=None):
         if files is None:
-            return requests.post(TELEMETRY_URL, data=payload)
+            result = requests.post(TELEMETRY_URL, data=payload)
         else:
-            return requests.post(TELEMETRY_URL, data=payload, files=files)
+            result = requests.post(TELEMETRY_URL, data=payload, files=files)
+
+        if result.status_code == 500:
+            with open('/tmp/latest_500.html', 'w') as f:
+                f.write(result.text)
+
+        return result
+
 
     def abort_capturejob(self, payload):
         self._keep_capturejob_looping = False
@@ -280,25 +287,27 @@ class ImageryServer(object):
 
         self.power_supply.output = enable_output
 
-        def post_power_supply_sensed_data(inner_payload):
-            time.sleep(5)
-            inner_payload['command'] = 'power_supply_report'
-            inner_payload['voltage_sense'] = float(
-                self.power_supply.voltage_sense)
-            inner_payload['current_sense'] = float(
-                self.power_supply.current_sense)
-
-            logger.debug('Posting psu sensed data:\n{}'.format(inner_payload))
-
-            self.send_telemetry(inner_payload)
-
         thread = threading.Thread(
-            target=post_power_supply_sensed_data,
-            args=(payload,)
+            target=self.post_power_supply_sensed_data,
+            args=(payload, 1,)
         )
         thread.start()
 
         return False
+
+    def post_power_supply_sensed_data(self, payload, delay=None):
+        if delay is not None:
+            time.sleep(delay)
+        payload['command'] = 'power_supply_log'
+        payload['voltage_meas'] = float(
+            self.power_supply.voltage_sense)
+        payload['current_meas'] = float(
+            self.power_supply.current_sense)
+
+        logger.debug('Posting psu sensed data:\n{}'.format(payload))
+
+        self.send_telemetry(payload)
+
 
     def post_job_status_update(self):
         if self._job_status is None:
@@ -357,6 +366,7 @@ class ImageryServer(object):
             for i, next_capture_time in enumerate(capture_times_list):
                 if not self._keep_capturejob_looping:
                     break
+
 
                 delay_until(next_capture_time)
                 self.post_current_image_to_server(
