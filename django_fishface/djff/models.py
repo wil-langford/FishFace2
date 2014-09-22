@@ -42,6 +42,19 @@ class Species(models.Model):
         )
 
 
+class Researcher(models.Model):
+    name = models.CharField('name of the researcher', max_length=200)
+    email = models.EmailField('email address of the researcher (optional)', null=True, blank=True, )
+
+    def __unicode__(self):
+        return u'{}'.format(self.name)
+
+class PowerSupplyLog(models.Model):
+    measurement_datetime = models.DateTimeField('timestamp of measurement', auto_now_add=True)
+    current_meas = models.FloatField('current measured by power supply', null=True)
+    voltage_meas = models.FloatField('voltage measured by power supply', null=True)
+
+
 class Experiment(models.Model):
     """
     The model for xp-level data.
@@ -49,13 +62,19 @@ class Experiment(models.Model):
     name = models.CharField('descriptive name of xp', max_length=250, default='New Experiment' )
     xp_start = models.DateTimeField('start date/time of xp')
     species = models.ForeignKey(Species)
+    comment = models.TextField('general comments about this experiment (optional)',
+                               null=True, blank=True, )
     researcher = models.ForeignKey(Researcher, null=True, blank=True)
 
     def __unicode__(self):
-        return "{} (XP-{})".format(
+        return "{} ({})".format(
             self.name,
-            self.id,
+            self.slug,
         )
+
+    @property
+    def slug(self):
+        return u"XP_{}".format(self.id)
 
 
 class CaptureJobRecord(models.Model):
@@ -63,16 +82,25 @@ class CaptureJobRecord(models.Model):
     voltage = models.FloatField(default=0)
     current = models.FloatField(default=18)
 
+    researcher = models.ForeignKey(Researcher, null=True, blank=True)
+
     job_start = models.DateTimeField(null=True, blank=True)
     running = models.NullBooleanField(default=None)
     total = models.IntegerField(null=True, blank=True)
     remaining = models.IntegerField(null=True, blank=True)
     job_stop = models.DateTimeField(null=True, blank=True)
 
+    comment = models.TextField('general comments about this Capture Job Record (optional)',
+                               null=True, blank=True, )
+
     def __unicode__(self):
         return u'CaptureJobRecord {} (XP-{}_CJR_{})'.format(self.id,
                                                      self.xp.id,
                                                      self.id)
+
+    @property
+    def slug(self):
+        return u'CJR_{}'.format(self.id)
 
 
 class Image(models.Model):
@@ -87,10 +115,13 @@ class Image(models.Model):
 
     # Data available at capture time.
     capture_timestamp = models.DateTimeField('DTG of image capture', default=du.timezone.now() )
-    voltage = models.FloatField('voltage at power supply', default=0 )
+    voltage = models.FloatField('voltage at power supply', default=0)
     image_file = models.ImageField('path of image file',
                                    upload_to="experiment_imagery/stills/%Y.%m.%d")
     is_cal_image = models.BooleanField('is this image a calibration image?', default=False )
+
+    psu_log = models.ForeignKey(PowerSupplyLog,
+                                null=True, blank=True)
 
     def inline_image(self):
         return '<img width=200 src="{}{}" />'.format(
@@ -144,6 +175,9 @@ class CaptureJobTemplate(models.Model):
         'the number of seconds to delay between setting voltage and image capture',
         default=30.0
     )
+    description = models.TextField('a description of this capture job template (optional)',
+                                   null=True, blank=True, )
+
 
     def get_absolute_url(self):
         return dcu.reverse(
@@ -154,18 +188,33 @@ class CaptureJobTemplate(models.Model):
 
 class Fish(models.Model):
     species = models.ForeignKey(Species)
-    comment = models.TextField('description of the fish (optional)')
+    comment = models.TextField('description of the fish (optional)',
+                               blank=True, null=True)
+
+    def last_seen_in(self):
+        fl = FishLocale.objects.filter(fish=self.id).order_by('datetime_in_tank')[0]
+        return fl.tank.short_name
+
+    @property
+    def slug(self):
+        return u'{}_{}'.format(self.species.shortname, self.id)
+
+
+class Tank(models.Model):
+    short_name = models.CharField('a short tag describing the tank',
+                                  max_length=10, default='', unique=True)
+    description = models.TextField('a longer name or description of the tank (optional)',
+                                   null=True, blank=True, )
+
+    def __unicode__(self):
+        return u'{}'.format(self.short_name)
 
 
 class FishLocale(models.Model):
     fish = models.ForeignKey(Fish)
-    tank = models.CharField('the tank holding the fish', max_length=50)
-    datetime_in_tank = models.DateTimeField('the date and time that the fish was in the tank')
-
-
-class Researcher(models.Model):
-    name = models.CharField('name of the researcher', max_length=200)
-    email = models.EmailField('email address of the researcher (optional)', null=True, blank=True)
+    tank = models.ForeignKey(Tank)
+    datetime_in_tank = models.DateTimeField('the date and time that the fish was in the tank',
+                                            auto_now_add=True)
 
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)

@@ -25,6 +25,7 @@ from djff.models import (
     Species,
     CaptureJobTemplate,
     CaptureJobRecord,
+    PowerSupplyLog,
 )
 
 IMAGERY_SERVER_IP = settings.IMAGERY_SERVER_HOST
@@ -108,6 +109,20 @@ def receive_telemetry(request):
             ).replace(tzinfo=dut.utc)
 
         cjr.save()
+
+    if payload['command'] == 'power_supply_log':
+
+        logger.info("posting power supply log:\n{}".format(payload))
+
+        voltage_meas = float(payload['voltage_meas'])
+        current_meas = float(payload['current_meas'])
+
+        logger.info("voltage: {}, current: {}".format(voltage_meas, current_meas))
+
+        psl = PowerSupplyLog()
+        psl.voltage_meas = voltage_meas
+        psl.current_meas = current_meas
+        psl.save()
 
     return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
 

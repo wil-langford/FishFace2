@@ -6,32 +6,38 @@ class ImageInline(admin.TabularInline):
     model = models.Image
 
 
+class CaptureJobRecordInline(admin.TabularInline):
+    model = models.CaptureJobRecord
+
+
+class ResearcherInline(admin.TabularInline):
+    model = models.Researcher
+
+
+class FishLocaleInline(admin.TabularInline):
+    model = models.FishLocale
+
+
 class ExperimentAdmin(admin.ModelAdmin):
     fieldsets = [
         ('Experiment Information', {
             'fields': [
                 'name',
                 'xp_start',
-                'species'
+                'species',
+                'researcher'
             ]
         }),
-        ('Researcher (optional)', {
-            'fields': [
-                'researcher_name',
-                'researcher_email'
-            ]
-        })
     ]
-    inlines = [ImageInline]
+
+    inlines = [CaptureJobRecordInline]
     list_display = (
         'name',
         'xp_start',
-        'researcher_name'
     )
     list_filter = [
         'xp_start',
         'species',
-        'researcher_name'
     ]
     search_fields = ['question_text']
 
@@ -49,12 +55,13 @@ class ImageAdmin(admin.ModelAdmin):
                 'capture_timestamp',
                 'voltage',
                 'is_cal_image',
-                'image_file'
+                'psu_log',
+                'image_file',
             ]
         })
     ]
     # TODO: uncomment following line
-    # inlines = [ImageAnalysisInline]
+    # inlines = [PowerSupplyLogInline]
     list_display = (
         'voltage',
         'capture_timestamp',
@@ -138,3 +145,67 @@ class CaptureJobRecordAdmin(admin.ModelAdmin):
     )
 
 admin.site.register(models.CaptureJobRecord, CaptureJobRecordAdmin)
+
+
+class ResearcherAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (
+            'Researcher Information', {
+                'fields': [
+                    'name',
+                    'email',
+                ]
+            }
+        )
+    ]
+
+    list_display = (
+        'name',
+        'email',
+    )
+
+admin.site.register(models.Researcher, ResearcherAdmin)
+
+
+class TankAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (
+            'Tank Information', {
+                'fields': [
+                    'short_name',
+                    'description',
+                ]
+            }
+        )
+    ]
+
+    list_display = (
+        'short_name',
+        'description',
+    )
+
+admin.site.register(models.Tank, TankAdmin)
+
+
+class FishAdmin(admin.ModelAdmin):
+    fieldsets = [
+        (
+            'Fish Information', {
+                'fields': [
+                    'species',
+                    'comment',
+                ]
+            }
+        )
+    ]
+
+    list_display = (
+        'species',
+        'slug',
+        'comment',
+        'last_seen_in'
+    )
+
+    inlines = [FishLocaleInline]
+
+admin.site.register(models.Fish, FishAdmin)
