@@ -15,7 +15,7 @@ class PiCamera(object):
         self.resolution = (2048, 1536)
         self.rotation = 180
 
-        with open("../django_fishface/djff/static/djff/sample-DATA.jpg", 'rb') as f:
+        with open("sample-DATA.jpg", 'rb') as f:
             self._fake_image = f.read()
 
     def capture(self, stream, format='jpeg'):
