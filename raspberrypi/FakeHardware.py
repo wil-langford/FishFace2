@@ -4,18 +4,20 @@
 import random
 import io
 import time
+import os
 
 import quantities as pq
 
 MAX_VARIANCE_FACTOR = 0.05
-
+HOME_DIR = os.getenv("HOME")
+PROJECT_DIR = 'FishFace2/raspberrypi' 
 
 class PiCamera(object):
     def __init__(self):
         self.resolution = (2048, 1536)
         self.rotation = 180
 
-        with open("../django_fishface/djff/static/djff/sample-DATA.jpg", 'rb') as f:
+        with open(os.path.join(HOME_DIR, PROJECT_DIR,"sample-DATA.jpg"), 'rb') as f:
             self._fake_image = f.read()
 
     def capture(self, stream, format='jpeg'):
