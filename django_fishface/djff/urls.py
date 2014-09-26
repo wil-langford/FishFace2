@@ -105,6 +105,12 @@ urlpatterns = dcu.patterns(
         views.cq_interface,
         name='cq_interface'
     ),
+
+    dcu.url(
+        r'^cjr/new_for_raspi/$',
+        views.cjr_new_for_raspi,
+        name='cjr_new_for_raspi'
+    ),
 )
 
 
