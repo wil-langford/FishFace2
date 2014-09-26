@@ -13,6 +13,7 @@ import urlparse
 import requests
 import datetime
 import logging
+import json
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -41,6 +42,8 @@ PORT = 18765
 
 IMAGE_POST_URL = "{}upload_imagery/".format(BASE_URL)
 TELEMETRY_URL = "{}telemetry/".format(BASE_URL)
+CJR_URL = "{}cjr/".format(BASE_URL)
+CJR_NEW_URL = "{}cjr/new_for_raspi/".format(BASE_URL)
 
 DATE_FORMAT = "%Y-%m-%d-%H:%M:%S"
 
@@ -50,6 +53,116 @@ def delay_until(unix_timestamp):
     while now < unix_timestamp:
         time.sleep(unix_timestamp-now)
         now = time.time()
+
+
+def delay_for_seconds(seconds):
+    later = time.time() + seconds
+    delay_until(later)
+
+
+class CaptureJob(object):
+    def __init__(self, controller, **kwargs):
+        self.controller = controller
+
+        self.startup_delay = kwargs['startup_delay']
+        self.interval = kwargs['interval']
+        self.duration = kwargs['duration']
+        self.voltage = kwargs['voltage']
+        self.current = kwargs['current']
+
+        self.xp_id = kwargs['xp_id']
+        self.cjr_id = None
+
+        self.total = None
+        self.remaining = None
+
+        self.start_timestamp = None
+        self.stop_timestamp = None
+
+        self.start_timestamp = time.time()
+
+        self._keep_looping = None
+
+    def run_job(self):
+
+        logger.info("starting up job for experiment {}".format(self.xp_id))
+        self.status = 'startup_delay'
+        self.controller.set_psu({
+            'enable_output': True,
+            'voltage': self.voltage,
+            'current': self.current,
+        })
+
+        delay_for_seconds(self.startup_delay)
+
+        self.status = 'running'
+
+        payload = {
+            'xp_id': self.xp_id,
+            'voltage': self.voltage,
+            'current': self.current,
+            'start_timestamp': self.start_timestamp
+        }
+
+        response = requests.POST(CJR_NEW_URL, data=payload)
+        self.cjr_id = response.json()['cjr_id']
+
+        if self.interval > 0:
+            logger.info('preparing to capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
+            first_capture_at = self.start_timestamp + self.startup_delay
+
+            self.capture_times = [first_capture_at]
+            for j in range(1, int(self.duration / self.interval) + 1):
+                self.capture_times.append(first_capture_at + j*self.interval)
+
+            def job_loop():
+                self.total = len(self.capture_times) + 1
+                self.remaining = len(self.capture_times) - 1
+
+                for i, next_capture_time in enumerate(self.capture_times):
+                    if not self._keep_looping:
+                        break
+
+                    delay_until(next_capture_time)
+                    self.controller.post_current_image_to_server(self, sync=False)
+
+                    self.remaining = self.total - i
+        else:
+            logger.info('starting captureless wait period')
+            self.controller.set_psu({
+                'enable_output': True,
+                'voltage': self.voltage,
+                'current': self.current,
+            })
+
+            def job_loop():
+                while self._keep_looping:
+                    time.sleep(1)
+
+        self._keep_looping = True
+        thread = threading.Thread(target=job_loop)
+        thread.start()
+
+        self._keep_looping = False
+        self.stop_timestamp = time.time()
+
+
+
+
+class CaptureJobController(object):
+    def __init__(self, imagery_server):
+        self._queue = list()
+        self._current_job = dict()
+        self._staged_job = dict()
+
+    def run(self):
+        def capturejob_controller_loop():
+            pass
+
+
+        thread = threading.Thread(target=capturejob_controller_loop())
+        logger.info("starting capturejob controller loop")
+        thread.start()
 
 
 class ImageryServer(object):
@@ -86,7 +199,6 @@ class ImageryServer(object):
 
         self._current_frame = image
         self._current_frame_capture_time = new_frame_capture_time
-
 
     def get_current_frame(self):
         return self._current_frame
@@ -254,7 +366,6 @@ class ImageryServer(object):
 
         return result
 
-
     def abort_capturejob(self, payload):
         self._keep_capturejob_looping = False
         self.set_psu({'reset': True})
@@ -307,7 +418,6 @@ class ImageryServer(object):
         logger.debug('Posting psu sensed data:\n{}'.format(payload))
 
         self.send_telemetry(payload)
-
 
     def post_job_status_update(self):
         if self._job_status is None:
