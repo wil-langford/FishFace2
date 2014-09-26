@@ -3,7 +3,10 @@ import numpy as np
 import datetime
 import time
 import threading
+import json
 
+import cv2
+import pytz
 import requests
 
 import django.shortcuts as ds
@@ -16,8 +19,6 @@ import django.utils.timezone as dut
 import django.views.generic as dvg
 import django.views.generic.edit as dvge
 from django.conf import settings
-
-import cv2
 
 from djff.models import (
     Experiment,
@@ -127,6 +128,11 @@ def receive_telemetry(request):
     return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
 
 
+#############################
+###  Capture Queue Views  ###
+#############################
+
+
 def cq_interface(request):
     context = {
         'cq_list': 'one two three four five'.split(' '),
@@ -134,6 +140,26 @@ def cq_interface(request):
         }
     return ds.render(request, 'djff/cq_interface.html', context)
 
+
+def cjr_new_for_raspi(request):
+    cjr = CaptureJobRecord()
+
+    cjr.xp_id = int(request.POST['xp_id'])
+    cjr.voltage = float(request.POST['voltage'])
+    cjr.current = float(request.POST['current'])
+
+    cjr.running = True
+
+    cjr.job_start = datetime.datetime.utcfromtimestamp(request.POST['start_timestamp']).replace(tzinfo=pytz.utc)
+
+
+    data = json.dumps({
+        'cjr_id': cjr.id,
+        'species': cjr.xp.species.shortname
+    })
+    cjr.save()
+
+    return dh.HttpResponse(data, mimetype='application/json')
 
 ##########################
 ###  Experiment views  ###
