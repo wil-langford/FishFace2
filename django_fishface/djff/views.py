@@ -127,6 +127,14 @@ def receive_telemetry(request):
     return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
 
 
+def cq_interface(request):
+    context = {
+        'cq_list': 'one two three four five'.split(' '),
+        'cjts': CaptureJobTemplate.objects.all()
+        }
+    return ds.render(request, 'djff/cq_interface.html', context)
+
+
 ##########################
 ###  Experiment views  ###
 ##########################

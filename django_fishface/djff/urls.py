@@ -98,7 +98,13 @@ urlpatterns = dcu.patterns(
         r'^telemetry/$',
         views.receive_telemetry,
         name='receive_telemetry'
-    )
+    ),
+
+    dcu.url(
+        r'^cq/$',
+        views.cq_interface,
+        name='cq_interface'
+    ),
 )
 
 

@@ -15,7 +15,7 @@ from django.utils.crypto import get_random_string
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 # TODO: change for full production
-DB_PASSWD_FILE = os.path.expanduser('~fishface/fishface_db_password')
+DB_PASSWD_FILE = 'fishface_db_password'
 
 # These get imported/generated later.
 DB_PASSWD = None
