@@ -60,17 +60,20 @@ def delay_for_seconds(seconds):
     delay_until(later)
 
 
-class CaptureJob(object):
-    def __init__(self, controller, **kwargs):
+class CaptureJob(threading.Thread):
+    def __init__(self, controller, startup_delay, interval, duration, voltage, current, xp_id):
         self.controller = controller
 
-        self.startup_delay = kwargs['startup_delay']
-        self.interval = kwargs['interval']
-        self.duration = kwargs['duration']
-        self.voltage = kwargs['voltage']
-        self.current = kwargs['current']
+        self.status = 'staged'
 
-        self.xp_id = kwargs['xp_id']
+        self.startup_delay = startup_delay
+        self.interval = interval
+        self.duration = duration
+        self.voltage = voltage
+        self.current = current
+
+        self.xp_id = xp_id
+
         self.cjr_id = None
 
         self.total = None
@@ -79,11 +82,10 @@ class CaptureJob(object):
         self.start_timestamp = None
         self.stop_timestamp = None
 
-        self.start_timestamp = time.time()
-
         self._keep_looping = None
 
-    def run_job(self):
+    def run(self):
+        self.start_timestamp = time.time()
 
         logger.info("starting up job for experiment {}".format(self.xp_id))
         self.status = 'startup_delay'
@@ -108,61 +110,110 @@ class CaptureJob(object):
         self.cjr_id = response.json()['cjr_id']
 
         if self.interval > 0:
-            logger.info('preparing to capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
-            first_capture_at = self.start_timestamp + self.startup_delay
-
-            self.capture_times = [first_capture_at]
-            for j in range(1, int(self.duration / self.interval) + 1):
-                self.capture_times.append(first_capture_at + j*self.interval)
-
-            def job_loop():
-                self.total = len(self.capture_times) + 1
-                self.remaining = len(self.capture_times) - 1
-
-                for i, next_capture_time in enumerate(self.capture_times):
-                    if not self._keep_looping:
-                        break
-
-                    delay_until(next_capture_time)
-                    self.controller.post_current_image_to_server(self, sync=False)
-
-                    self.remaining = self.total - i
+            self.job_with_capture()
         else:
-            logger.info('starting captureless wait period')
-            self.controller.set_psu({
-                'enable_output': True,
-                'voltage': self.voltage,
-                'current': self.current,
-            })
+            self.job_without_capture()
 
-            def job_loop():
-                while self._keep_looping:
-                    time.sleep(1)
-
-        self._keep_looping = True
-        thread = threading.Thread(target=job_loop)
-        thread.start()
-
-        self._keep_looping = False
         self.stop_timestamp = time.time()
+        if self.status == 'running':
+            self.status = 'completed'
+
+    def job_without_capture(self):
+        logger.info('starting captureless wait period')
+        self.controller.set_psu({
+            'enable_output': True,
+            'voltage': self.voltage,
+            'current': self.current,
+        })
+
+        stop_at = time.time() + self.duration
+
+        while self._keep_looping and time.time() < stop_at:
+            time.sleep(1)
+
+    def job_with_capture(self):
+        logger.info('preparing to capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
+        first_capture_at = self.start_timestamp + self.startup_delay
+
+        self.capture_times = [first_capture_at]
+        for j in range(1, int(self.duration / self.interval) + 1):
+            self.capture_times.append(first_capture_at + j*self.interval)
+
+        self.total = len(self.capture_times) + 1
+        self.remaining = len(self.capture_times) - 1
+
+        for i, next_capture_time in enumerate(self.capture_times):
+            delay_until(next_capture_time)
+            if not self._keep_looping:
+                break
+
+            self.controller.post_current_image_to_server(self, sync=False)
+
+            self.remaining = self.total - i
+
+    def abort_job(self):
+        self.status = 'aborted'
+        self._keep_looping = False
+
+    def get_status_dict(self):
+        # status xp_id cjr_id total remaining start_timestamp stop_timestamp
+        return {
+            'status': self.status,
+            'xp_id': self.xp_id,
+            'cjr_id': self.cjr_id,
+            'total': self.total,
+            'remaining': self.remaining,
+            'start_timestamp': self.start_timestamp,
+            'stop_timestamp': self.stop_timestamp,
+        }
 
 
-
-
-class CaptureJobController(object):
+class CaptureJobController(threading.Thread):
     def __init__(self, imagery_server):
         self._queue = list()
         self._current_job = dict()
         self._staged_job = dict()
 
+        self._keep_controller_running = True
+
+        self.server = imagery_server
+
     def run(self):
-        def capturejob_controller_loop():
-            pass
+        while self._keep_controller_running:
+            if (self._current_job is not None and self._current_job.is_alive()):
+                self.report_current_job_status()
+                if self._staged_job:
+                    self._current_job = self._staged_job
+                    self._current_job.start()
 
+                    if self._queue:
+                        self._staged_job = CaptureJob(**self._queue.pop(0))
 
-        thread = threading.Thread(target=capturejob_controller_loop())
-        logger.info("starting capturejob controller loop")
-        thread.start()
+            time.sleep(0.5)
+
+    def report_current_job_status(self):
+        return self._current_job.get_status_dict()
+
+    def abort_running_job(self):
+        self._current_job.abort_job()
+
+    def abort_all(self):
+        self._staged_job = None
+        self._queue = list()
+        self._current_job.abort_job()
+
+    def insert_job(self, job_spec, position):
+        self._queue.insert(position, job_spec)
+
+    def set_psu(self, *args, **kwargs):
+        self.server.set_psu(*args, **kwargs)
+
+    def complete_status(self):
+        return {
+            'current': self._current_job.get_status_dict(),
+            'staged': self._staged_job.get_status_dict(),
+            'queue': self._queue,
+        }
 
 
 class ImageryServer(object):
