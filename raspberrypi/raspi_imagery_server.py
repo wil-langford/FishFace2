@@ -28,6 +28,7 @@ except ImportError:
     BASE_URL = "http://localhost:8000/fishface/"
     # noinspection PyPep8Naming
     import FakeHardware as picamera
+    # noinspection PyPep8Naming
     import FakeHardware as ik
     logger.warning("Emulating raspi hardware.")
     logger.warning("Real data collection is disabled.")
@@ -171,8 +172,8 @@ class CaptureJobController(threading.Thread):
     def __init__(self, imagery_server):
         super(CaptureJobController, self).__init__()
         self._queue = list()
-        self._current_job = dict()
-        self._staged_job = dict()
+        self._current_job = None
+        self._staged_job = None
 
         self._keep_controller_running = True
 
@@ -180,14 +181,23 @@ class CaptureJobController(threading.Thread):
 
     def run(self):
         while self._keep_controller_running:
-            if self._current_job is not None and self._current_job.is_alive():
+            if self._current_job is not None:
                 self.report_current_job_status()
-                if self._staged_job:
-                    self._current_job = self._staged_job
-                    self._current_job.start()
 
-                    if self._queue:
-                        self._staged_job = CaptureJob(**self._queue.pop(0))
+            if self._current_job is None and self._staged_job is None and self._queue:
+                self._current_job = CaptureJob(**self._queue.pop(0))
+                self._current_job.start()
+
+                if self._queue:
+                    self._staged_job = CaptureJob(**self._queue.pop(0))
+
+            if (self._current_job is None and not self._current_job.is_alive()) and self._staged_job is not None:
+                self._current_job = self._staged_job
+                self._current_job.start()
+                self._staged_job = None
+
+            if self._staged_job is None and self._queue:
+                self._staged_job = CaptureJob(**self._queue.pop(0))
 
             time.sleep(1)
 
@@ -204,6 +214,9 @@ class CaptureJobController(threading.Thread):
 
     def insert_job(self, job_spec, position):
         self._queue.insert(position, job_spec)
+
+    def append_job(self, job_spec):
+        self.insert_job(len(self._queue), job_spec)
 
     def set_psu(self, *args, **kwargs):
         self.server.set_psu(*args, **kwargs)
@@ -451,7 +464,6 @@ class ImageryServer(object):
         logger.debug('Posting psu sensed data:\n{}'.format(payload))
 
         self.telemeter.post_to_fishface(payload)
-
 
 
 class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
