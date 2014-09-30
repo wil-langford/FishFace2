@@ -15,13 +15,7 @@ import datetime
 import logging
 import json
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s %(message)s',
-    filename='imagery_server.log',
-)
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('djff.raspi')
 
 try:
     REAL_HARDWARE = True
@@ -32,6 +26,7 @@ try:
 except ImportError:
     REAL_HARDWARE = False
     BASE_URL = "http://localhost:8000/fishface/"
+    # noinspection PyPep8Naming
     import FakeHardware as picamera
     import FakeHardware as ik
     logger.warning("Emulating raspi hardware.")
@@ -62,6 +57,8 @@ def delay_for_seconds(seconds):
 
 class CaptureJob(threading.Thread):
     def __init__(self, controller, startup_delay, interval, duration, voltage, current, xp_id):
+        super(CaptureJob, self).__init__()
+
         self.controller = controller
 
         self.status = 'staged'
@@ -78,6 +75,8 @@ class CaptureJob(threading.Thread):
 
         self.total = None
         self.remaining = None
+
+        self.capture_times = None
 
         self.start_timestamp = None
         self.stop_timestamp = None
@@ -106,7 +105,7 @@ class CaptureJob(threading.Thread):
             'start_timestamp': self.start_timestamp
         }
 
-        response = requests.POST(CJR_NEW_URL, data=payload)
+        response = requests.post(CJR_NEW_URL, data=payload)
         self.cjr_id = response.json()['cjr_id']
 
         if self.interval > 0:
@@ -170,6 +169,7 @@ class CaptureJob(threading.Thread):
 
 class CaptureJobController(threading.Thread):
     def __init__(self, imagery_server):
+        super(CaptureJobController, self).__init__()
         self._queue = list()
         self._current_job = dict()
         self._staged_job = dict()
@@ -180,7 +180,7 @@ class CaptureJobController(threading.Thread):
 
     def run(self):
         while self._keep_controller_running:
-            if (self._current_job is not None and self._current_job.is_alive()):
+            if self._current_job is not None and self._current_job.is_alive():
                 self.report_current_job_status()
                 if self._staged_job:
                     self._current_job = self._staged_job
@@ -189,7 +189,7 @@ class CaptureJobController(threading.Thread):
                     if self._queue:
                         self._staged_job = CaptureJob(**self._queue.pop(0))
 
-            time.sleep(0.5)
+            time.sleep(1)
 
     def report_current_job_status(self):
         return self._current_job.get_status_dict()
@@ -216,11 +216,52 @@ class CaptureJobController(threading.Thread):
         }
 
 
+class Telemeter(object):
+    def __init__(self, imagery_server):
+        self.server = imagery_server
+
+    def post_to_fishface(self, payload, files=None):
+        logger.debug('POSTing payload to remote host:\n{}'.format(payload))
+
+        if not isinstance(payload, basestring):
+            payload = json.dumps(payload)
+
+        if files is None:
+            response = requests.post(TELEMETRY_URL, data=payload)
+        else:
+            response = requests.post(TELEMETRY_URL, data=payload, files=files)
+
+        if response.status_code in [500, 501]:
+            with open('/tmp/latest_djff_{}.html'.format(response.status_code), 'w') as f:
+                f.write(response.text)
+
+    def handle_received_post(self, post_vars):
+        payload = post_vars.get('payload', False)
+
+        if not payload:
+            return False
+
+        logger.debug('received POST payload from remote host:\n{}'.format(payload))
+
+        method = self.server.command_dispatch.get(payload['command'], self.unrecognized_command)
+        result = method(payload)
+
+        if not result.get('no_reply', False):
+            return json.dumps(result)
+
+    def unrecognized_command(self, payload):
+        pass
+
+
 class ImageryServer(object):
     """
     """
 
     def __init__(self):
+        self.capturejob_controller = CaptureJobController(self)
+        self.capturejob_controller.start()
+
+
         self._keep_capturing = True
         self._keep_capturejob_looping = True
 
@@ -238,6 +279,19 @@ class ImageryServer(object):
         self._current_frame = None
         self._current_frame_capture_time = None
 
+        self.telemeter = Telemeter(self)
+
+        self.command_dispatch = {
+            'set_psu': self.set_psu,
+            'post_image': self.post_current_image_to_server,
+
+            'insert_job': self.capturejob_controller.insert_job,
+            'job_status': self.capturejob_controller.complete_status,
+
+            'abort_running_job': self.capturejob_controller.abort_running_job,
+            'abort_all': self.capturejob_controller.abort_all,
+        }
+
     def _capture_new_current_frame(self):
         stream = io.BytesIO()
         new_frame_capture_time = time.time()
@@ -251,28 +305,76 @@ class ImageryServer(object):
         self._current_frame = image
         self._current_frame_capture_time = new_frame_capture_time
 
+    def post_current_image_to_server(self, payload, sync=True):
+        current_frame = self._current_frame
+        current_frame_capture_time = self._current_frame_capture_time
+
+        stream = io.BytesIO(current_frame).read()
+
+        image_dtg = datetime.datetime.fromtimestamp(
+            float(current_frame_capture_time)
+        ).strftime(
+            DATE_FORMAT
+        )
+
+        since_epoch = time.time()
+
+        image_filename = 'XP-{}_CJR-{}_{}_{}_{}.jpg'.format(
+            payload['xp_id'],
+            payload['cjr_id'],
+            payload['species'],
+            image_dtg,
+            since_epoch,
+        )
+
+        logger.debug('posting image {}'.format(image_filename))
+
+        is_cal_image = (str(payload['is_cal_image']).lower()
+                        in ['true', 't', 'yes', 'y', '1'])
+
+        payload['filename'] = image_filename
+        payload['capture_time'] = current_frame_capture_time
+        payload['is_cal_image'] = str(is_cal_image)
+
+        files = {image_filename: stream}
+
+        t = time.time()
+
+        if sync:
+            r = requests.post(
+                IMAGE_POST_URL,
+                files=files,
+                data=payload
+            )
+            logger.debug("image posted in {} seconds".format(
+                time.time() - t
+            ))
+            if r.status_code == 500:
+                with open('/tmp/latest_500.html', 'w') as f:
+                    f.write(r.text)
+
+            return r
+        else:
+            def async_image_post(url, files_to_post, metadata_to_post):
+                result = requests.post(
+                    url,
+                    files=files_to_post,
+                    data=metadata_to_post
+                )
+                if result.status_code == 500:
+                    with open('/tmp/latest_500.html', 'w') as latest_500_file:
+                        latest_500_file.write(result.text)
+                return result
+
+            async_thread = threading.Thread(
+                target=async_image_post,
+                args=(IMAGE_POST_URL, files, payload)
+            )
+            async_thread.start()
+            return
+
     def get_current_frame(self):
         return self._current_frame
-
-    def awb_mode(self, mode=None):
-        if mode is None:
-            return self.camera.awb_mode
-
-        if mode in ['off', 'auto']:
-            self.camera.awb_mode = mode
-        else:
-            raise Exception("Invalid AWB mode for raspi camera: " +
-                            "{}".format(mode))
-
-    def brightness(self, br=None):
-        if br is None:
-            return self.camera.brightness
-
-        if 0 <= br <= 100:
-            self.camera.brightness = br
-        else:
-            raise Exception("Invalid brightness setting for raspi " +
-                            "camera: {}".format(br))
 
     def run(self):
         def image_capture_loop():
@@ -293,7 +395,6 @@ class ImageryServer(object):
         )
         httpd.parent = self
 
-
         logger.info("starting http server")
         try:
             httpd.serve_forever()
@@ -301,125 +402,6 @@ class ImageryServer(object):
             self._keep_capturing = False
             self._keep_capturejob_looping = False
             httpd.server_close()
-
-    def post_current_image_to_server(self, metadata, sync=True):
-        current_frame = self._current_frame
-        current_frame_capture_time = self._current_frame_capture_time
-
-        stream = io.BytesIO(current_frame).read()
-
-        image_dtg = datetime.datetime.fromtimestamp(
-            float(current_frame_capture_time)
-        ).strftime(
-            DATE_FORMAT
-        )
-
-        since_epoch = time.time()
-
-        image_filename = 'XP-{}_CJR-{}_{}_{}_{}.jpg'.format(
-            metadata['xp_id'],
-            metadata['cjr_id'],
-            metadata['species'],
-            image_dtg,
-            since_epoch,
-        )
-
-        logger.debug('posting image {}'.format(image_filename))
-
-        is_cal_image = (str(metadata['is_cal_image']).lower()
-                        in ['true', 't', 'yes', 'y', '1'])
-
-        metadata['filename'] = image_filename
-        metadata['capture_time'] = current_frame_capture_time
-        metadata['is_cal_image'] = str(is_cal_image)
-
-        files = {image_filename: stream}
-
-        t = time.time()
-
-        if sync:
-            r = requests.post(
-                IMAGE_POST_URL,
-                files=files,
-                data=metadata
-            )
-            logger.debug("image posted in {} seconds".format(
-                time.time() - t
-            ))
-            if r.status_code == 500:
-                with open('/tmp/latest_500.html', 'w') as f:
-                    f.write(r.text)
-
-            return r
-        else:
-            def async_image_post(url, files_to_post, metadata_to_post):
-                r = requests.post(
-                    url,
-                    files=files_to_post,
-                    data=metadata_to_post
-                )
-                if r.status_code == 500:
-                    with open('/tmp/latest_500.html', 'w') as f:
-                        f.write(r.text)
-                return r
-
-            async_thread = threading.Thread(
-                target=async_image_post,
-                args=(IMAGE_POST_URL, files, metadata)
-            )
-            async_thread.start()
-            return
-
-    def receive_telemetry(self, raw_payload):
-        payload = dict([field.split('=')
-                        for field in raw_payload.split('&')])
-
-        logger.debug("received telemetry command: {}\n{}".format(
-            payload['command'],
-            payload
-        ))
-
-        result = "no result"
-
-        if payload['command'] == 'post_image':
-            result = self.post_current_image_to_server(payload)
-
-        if payload['command'] == 'run_capturejob':
-            result = self.run_capturejob(payload)
-
-        if payload['command'] == 'job_status':
-            result = self.post_job_status_update()
-
-        if payload['command'] == 'set_psu':
-            result = self.set_psu(payload)
-
-        if payload['command'] == 'abort_capturejob':
-            result = self.abort_capturejob(payload)
-
-        if result and result == "no result":
-            logger.warning("I don't know what to do with this " +
-                           "telemetry payload:\n{}".format(payload))
-
-        if result and result.status_code == 500:
-            result = result.text
-
-        return result
-
-    def send_telemetry(self, payload, files=None):
-        if files is None:
-            result = requests.post(TELEMETRY_URL, data=payload)
-        else:
-            result = requests.post(TELEMETRY_URL, data=payload, files=files)
-
-        if result.status_code == 500:
-            with open('/tmp/latest_500.html', 'w') as f:
-                f.write(result.text)
-
-        return result
-
-    def abort_capturejob(self, payload):
-        self._keep_capturejob_looping = False
-        self.set_psu({'reset': True})
 
     def set_psu(self, payload):
         if bool(int(payload.get('reset', False))):
@@ -429,7 +411,7 @@ class ImageryServer(object):
         voltage = float(payload.get('voltage', False))
         current = float(payload.get('current', False))
         enable_output = bool(int(payload.get('enable_output', False)))
-        
+
         if voltage:
             logger.debug("setting psu voltage to {} V".format(
                 voltage
@@ -468,125 +450,42 @@ class ImageryServer(object):
 
         logger.debug('Posting psu sensed data:\n{}'.format(payload))
 
-        self.send_telemetry(payload)
+        self.telemeter.post_to_fishface(payload)
 
-    def post_job_status_update(self):
-        if self._job_status is None:
-            result = self.send_telemetry(
-                {
-                    'command': 'job_status_update',
-                    'status': 'no_job_running',
-                }
-            )
-        else:
-            payload = self._job_status.copy()
-            payload['command'] = 'job_status_update'
-
-            result = self.send_telemetry(payload)
-
-        return result
-
-    def run_capturejob(self, payload):
-        self._job_status = {
-            'cjr_id': payload['cjr_id'],
-            'status': 'running',
-            'job_start_timestamp': time.time(),
-            'job_end_timestamp': ''
-        }
-
-        duration = float(payload['duration'])
-        interval = float(payload['interval'])
-        startup_delay = float(payload['startup_delay'])
-
-        first_capture_at = time.time() + startup_delay
-
-        capture_times = [first_capture_at]
-        for j in range(1, int(duration / interval) + 1):
-            capture_times.append(first_capture_at + j*interval)
-
-        self._keep_capturejob_looping = True
-
-        metadata = {
-            'command': 'post_image',
-            'is_cal_image': False,
-            'voltage': payload['voltage'],
-            'current': payload['current'],
-            'xp_id': payload['xp_id'],
-            'cjr_id': payload['cjr_id'],
-            'species': payload['species']
-        }
-
-        def capturejob_loop(
-                metadata_dict,
-                capture_times_list):
-            self._job_status['total'] = len(capture_times_list) + 1
-            self._job_status['remaining'] = len(capture_times_list) + 1
-
-            total = self._job_status['total']
-
-            for i, next_capture_time in enumerate(capture_times_list):
-                if not self._keep_capturejob_looping:
-                    break
-
-
-                delay_until(next_capture_time)
-                self.post_current_image_to_server(
-                    metadata_dict,
-                    sync=False,
-                )
-
-                self._job_status['remaining'] = total - i
-
-                self.post_job_status_update()
-
-            self._job_status['job_end_timestamp'] = time.time()
-
-            self._job_status['command'] = 'job_status_update'
-            self._job_status['status'] = 'complete'
-
-            self.send_telemetry(
-                self._job_status
-            )
-
-            self._job_status = None
-
-        thread = threading.Thread(
-            target=capturejob_loop,
-            args=(metadata, capture_times)
-        )
-        logger.debug((
-            ("sending images for cjr {} for " +
-                "xp {}").format(
-                    payload['cjr_id'],
-                    payload['xp_id'],
-                )
-        ))
-        thread.start()
-        logger.info("cjr thread started")
-
-        # TODO: this could make more sense, but I'm not sure how.  yet.
-
-        return False
 
 
 class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
+    # noinspection PyPep8Naming
     def do_HEAD(self):
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
 
+    # noinspection PyPep8Naming
     def do_GET(self):
-        parsed_path = urlparse.urlparse(self.path)
+        self.send_response(410)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.wfile.write(str('GET REQUESTS NO LONGER SUPPORTED'))
 
-        # self.send_response(200)
-        # self.send_header("Contest-type", "type/html")
-        # self.end_headers()
+    # noinspection PyPep8Naming
+    def do_POST(self):
+        ctype, pdict = urlparse.parse_header(self.headers['content-type'])
+        if ctype == 'multipart/form-data':
+            post_vars = urlparse.parse_multipart(self.rfile, pdict)
+        elif ctype == 'application/x-www-form-urlencoded':
+            length = int(self.headers['content-length'])
+            post_vars = urlparse.parse_qs(
+                self.rfile.read(length),
+                keep_blank_values=1)
+        else:
+            post_vars = {}
 
-        result = self.server.parent.receive_telemetry(
-            parsed_path.query
-        )
-        self.wfile.write(str(result))
+        result = self.server.parent.telemeter.handle_received_post(post_vars)
+
+        if result:
+            self.wfile.write(str(result))
 
 
 def main():

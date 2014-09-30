@@ -5,13 +5,7 @@ import logging
 
 import RPi.GPIO as gpio
 
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(message)s',
-    filename='/home/pi/raspi_privileged_server.log',)
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('djff.raspi_privileged')
 
 __author__ = 'wil-langford'
 

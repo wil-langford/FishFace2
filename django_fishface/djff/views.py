@@ -31,18 +31,14 @@ from djff.models import (
 
 IMAGERY_SERVER_IP = settings.IMAGERY_SERVER_HOST
 IMAGERY_SERVER_PORT = settings.IMAGERY_SERVER_PORT
+LOG_FILE = settings.DJFF_LOG_FILE
 
 IMAGERY_SERVER_URL = 'http://{}:{}/'.format(
     IMAGERY_SERVER_IP,
     IMAGERY_SERVER_PORT
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(message)s',
-    filename='/tmp/djangoLog.log',)
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('djff.views')
 
 
 def _image_response_from_numpy_array(img, extension):

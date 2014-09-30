@@ -10,6 +10,8 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+import logging
+import logging.handlers
 from django.utils.crypto import get_random_string
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -121,3 +123,32 @@ STATIC_URL = '/static/'
 
 MEDIA_ROOT = '/mnt/server_storage/media/'
 MEDIA_URL = '/media/'
+
+# DJFF settings
+
+TELEMETRY_URL = "http://{}:{}/telemetry/".format(IMAGERY_SERVER_HOST, IMAGERY_SERVER_PORT)
+
+# Logging
+logger = logging.getLogger('djff')
+
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+
+LOG_TO_CONSOLE = True
+CONSOLE_LEVEL = logging.DEBUG
+SYSLOG_LEVEL = logging.INFO
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(CONSOLE_LEVEL)
+console_handler.setFormatter(formatter)
+
+syslog_handler = logging.handlers.SysLogHandler(facility='local0')
+syslog_handler.setLevel(SYSLOG_LEVEL)
+syslog_handler.setFormatter(formatter)
+
+logger.addHandler(syslog_handler)
+if LOG_TO_CONSOLE:
+    logger.addHandler(console_handler)
+
+
+
+
