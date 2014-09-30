@@ -13,23 +13,42 @@ import urlparse
 import requests
 import datetime
 import logging
+import logging.handlers
 import json
 
-logger = logging.getLogger('djff.raspi')
+logger = logging.getLogger('raspi')
+
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+
+LOG_TO_CONSOLE = True
+CONSOLE_LOG_LEVEL = logging.DEBUG
+FILE_LOG_LEVEL = logging.DEBUG
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(CONSOLE_LOG_LEVEL)
+console_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler('imagery_server.log')
+file_handler.setLevel(FILE_LOG_LEVEL)
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+if LOG_TO_CONSOLE:
+    logger.addHandler(console_handler)
 
 try:
-    REAL_HARDWARE = True
-    BASE_URL = "http://fishfacehost:8000/fishface/"
     import picamera
     import instruments.hp as ik
+    REAL_HARDWARE = True
+    BASE_URL = "http://fishfacehost:8000/fishface/"
     logger.info("Running server on real Raspi hardware.")
 except ImportError:
-    REAL_HARDWARE = False
-    BASE_URL = "http://localhost:8000/fishface/"
     # noinspection PyPep8Naming
     import FakeHardware as picamera
     # noinspection PyPep8Naming
     import FakeHardware as ik
+    REAL_HARDWARE = False
+    BASE_URL = "http://localhost:8000/fishface/"
     logger.warning("Emulating raspi hardware.")
     logger.warning("Real data collection is disabled.")
 
@@ -191,7 +210,7 @@ class CaptureJobController(threading.Thread):
                 if self._queue:
                     self._staged_job = CaptureJob(**self._queue.pop(0))
 
-            if (self._current_job is None and not self._current_job.is_alive()) and self._staged_job is not None:
+            if (self._current_job is None or not self._current_job.is_alive()) and self._staged_job is not None:
                 self._current_job = self._staged_job
                 self._current_job.start()
                 self._staged_job = None
@@ -227,6 +246,9 @@ class CaptureJobController(threading.Thread):
             'staged': self._staged_job.get_status_dict(),
             'queue': self._queue,
         }
+
+    def stop_controller(self):
+        self._keep_controller_running = False
 
 
 class Telemeter(object):
@@ -273,7 +295,6 @@ class ImageryServer(object):
     def __init__(self):
         self.capturejob_controller = CaptureJobController(self)
         self.capturejob_controller.start()
-
 
         self._keep_capturing = True
         self._keep_capturejob_looping = True
@@ -351,40 +372,23 @@ class ImageryServer(object):
 
         files = {image_filename: stream}
 
-        t = time.time()
+        image_start_post_time = time.time()
 
         if sync:
-            r = requests.post(
-                IMAGE_POST_URL,
-                files=files,
-                data=payload
-            )
-            logger.debug("image posted in {} seconds".format(
-                time.time() - t
-            ))
-            if r.status_code == 500:
-                with open('/tmp/latest_500.html', 'w') as f:
-                    f.write(r.text)
-
-            return r
+            self.telemeter.post_to_fishface(payload, files=files)
+            logger.debug("image posted in {} seconds".format(time.time() - image_start_post_time))
         else:
-            def async_image_post(url, files_to_post, metadata_to_post):
-                result = requests.post(
-                    url,
-                    files=files_to_post,
-                    data=metadata_to_post
-                )
-                if result.status_code == 500:
-                    with open('/tmp/latest_500.html', 'w') as latest_500_file:
-                        latest_500_file.write(result.text)
-                return result
+            def async_image_post(url, files_unshadow, payload_unshadow):
+                self.telemeter.post_to_fishface(payload_unshadow, files=files_unshadow)
+                logger.debug("file posted asynchronously in {} seconds".format(time.time() - image_start_post_time))
 
             async_thread = threading.Thread(
                 target=async_image_post,
                 args=(IMAGE_POST_URL, files, payload)
             )
             async_thread.start()
-            return
+
+        return False
 
     def get_current_frame(self):
         return self._current_frame
@@ -414,6 +418,7 @@ class ImageryServer(object):
         except KeyboardInterrupt:
             self._keep_capturing = False
             self._keep_capturejob_looping = False
+            self.capturejob_controller.stop_controller()
             httpd.server_close()
 
     def set_psu(self, payload):
