@@ -129,26 +129,38 @@ MEDIA_URL = '/media/'
 TELEMETRY_URL = "http://{}:{}/telemetry/".format(IMAGERY_SERVER_HOST, IMAGERY_SERVER_PORT)
 
 # Logging
-logger = logging.getLogger('djff')
+PRIMARY_LOGGER = logging.getLogger('djff')
 
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
 LOG_TO_CONSOLE = True
-CONSOLE_LEVEL = logging.DEBUG
-SYSLOG_LEVEL = logging.INFO
+LOG_TO_FILE = True
+LOG_TO_SYSLOG = True
 
-console_handler = logging.StreamHandler()
-console_handler.setLevel(CONSOLE_LEVEL)
-console_handler.setFormatter(formatter)
+SYSLOG_LOG_LEVEL = logging.INFO
+CONSOLE_LOG_LEVEL = logging.DEBUG
+FILE_LOG_LEVEL = logging.DEBUG
 
-syslog_handler = logging.handlers.SysLogHandler(facility='local0')
-syslog_handler.setLevel(SYSLOG_LEVEL)
-syslog_handler.setFormatter(formatter)
+if LOG_TO_SYSLOG:
+    syslog_handler = logging.handlers.SysLogHandler()
+    syslog_handler.setLevel(SYSLOG_LOG_LEVEL)
+    syslog_handler.setFormatter(formatter)
 
-logger.addHandler(syslog_handler)
+    PRIMARY_LOGGER.addHandler(syslog_handler)
+
 if LOG_TO_CONSOLE:
-    logger.addHandler(console_handler)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(CONSOLE_LOG_LEVEL)
+    console_handler.setFormatter(formatter)
 
+    PRIMARY_LOGGER.addHandler(console_handler)
+
+if LOG_TO_FILE:
+    file_handler = logging.FileHandler('django_fishface.log')
+    file_handler.setLevel(FILE_LOG_LEVEL)
+    file_handler.setFormatter(formatter)
+
+    PRIMARY_LOGGER.addHandler(file_handler)
 
 
 
