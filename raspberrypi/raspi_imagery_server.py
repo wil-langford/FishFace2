@@ -489,13 +489,13 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
 
 def main():
-    print "Starting Raspi unprivileged server."
+    logger.info("Starting Raspi unprivileged server.")
 
     imagery_server = ImageryServer()
 
     imagery_server.run()
 
-    print "\nExiting Raspi unprivileged server."
+    logger.info("Exiting Raspi unprivileged server.")
 
 
 if __name__ == '__main__':
