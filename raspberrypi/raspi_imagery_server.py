@@ -41,7 +41,7 @@ try:
     import instruments.hp as ik
     REAL_HARDWARE = True
     BASE_URL = "http://fishfacehost:8000/fishface/"
-    logger.info("Running server on real Raspi hardware.")
+    logger.info("Running server on real Raspi hardware with an HP power supply.")
 except ImportError:
     # noinspection PyPep8Naming
     import FakeHardware as picamera
@@ -204,19 +204,33 @@ class CaptureJobController(threading.Thread):
                 self.report_current_job_status()
 
             if self._current_job is None and self._staged_job is None and self._queue:
+                logger.info('No jobs active, but jobs in queue.')
                 self._current_job = CaptureJob(**self._queue.pop(0))
                 self._current_job.start()
+                logger.debug('Started new current job.')
 
                 if self._queue:
                     self._staged_job = CaptureJob(**self._queue.pop(0))
+                    logger.debug('Staged new job.')
 
             if (self._current_job is None or not self._current_job.is_alive()) and self._staged_job is not None:
+                logger.info('Current job is dead, promoting staged job.')
                 self._current_job = self._staged_job
                 self._current_job.start()
                 self._staged_job = None
 
-            if self._staged_job is None and self._queue:
+            if self._staged_job is None and self._queue and self._current_job.remaining < 5:
+                logger.info("New staged job being promoted from queue.")
                 self._staged_job = CaptureJob(**self._queue.pop(0))
+
+            if self._current_job is None and self._staged_job is None and not self._queue:
+                logger.debug('No current, staged, or queued jobs.  Shutting down PSU if necessary.')
+                if self.server.power_supply.voltage > 0:
+                    self.set_psu({
+                        'voltage': 0,
+                        'current': 0,
+                        'enable_output': 0,
+                    })
 
             time.sleep(1)
 
@@ -266,9 +280,11 @@ class Telemeter(object):
         else:
             response = requests.post(TELEMETRY_URL, data=payload, files=files)
 
-        if response.status_code in [500, 501]:
+        if response.status_code in [500, 410, 501]:
             with open('/tmp/latest_djff_{}.html'.format(response.status_code), 'w') as f:
                 f.write(response.text)
+        else:
+            return response.json()
 
     def handle_received_post(self, post_vars):
         payload = post_vars.get('payload', False)
@@ -283,6 +299,8 @@ class Telemeter(object):
 
         if not result.get('no_reply', False):
             return json.dumps(result)
+        else:
+            return ''
 
     def unrecognized_command(self, payload):
         pass
@@ -502,6 +520,9 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         result = self.server.parent.telemeter.handle_received_post(post_vars)
 
         if result:
+            self.send_response(200)
+            self.send_header("Content-type", "text/json")
+            self.end_headers()
             self.wfile.write(str(result))
 
 
