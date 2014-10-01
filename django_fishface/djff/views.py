@@ -29,9 +29,10 @@ from djff.models import (
     PowerSupplyLog,
 )
 
+import djff.utils.telemetry as telemetry
+
 IMAGERY_SERVER_IP = settings.IMAGERY_SERVER_HOST
 IMAGERY_SERVER_PORT = settings.IMAGERY_SERVER_PORT
-LOG_FILE = settings.DJFF_LOG_FILE
 
 IMAGERY_SERVER_URL = 'http://{}:{}/'.format(
     IMAGERY_SERVER_IP,
@@ -121,8 +122,10 @@ def receive_telemetry(request):
         psl.current_meas = current_meas
         psl.save()
 
-    return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
+    response = dh.HttpResponse(json.dumps({'payload': ""}), content_type='text/json')
+    response.status_code=200
 
+    return response
 
 #############################
 ###  Capture Queue Views  ###
@@ -133,7 +136,7 @@ def cq_interface(request):
     context = {
         'cq_list': 'one two three four five'.split(' '),
         'cjts': CaptureJobTemplate.objects.all()
-        }
+    }
     return ds.render(request, 'djff/cq_interface.html', context)
 
 
@@ -146,8 +149,8 @@ def cjr_new_for_raspi(request):
 
     cjr.running = True
 
-    cjr.job_start = datetime.datetime.utcfromtimestamp(request.POST['start_timestamp']).replace(tzinfo=pytz.utc)
-
+    cjr.job_start = datetime.datetime.utcfromtimestamp(request.POST['start_timestamp']).replace(
+        tzinfo=pytz.utc)
 
     data = json.dumps({
         'cjr_id': cjr.id,
@@ -364,6 +367,26 @@ def cjt_new(request):
                     args=(cjt.id,))
     )
 
+def insert_capturejob_into_queue(request):
+    post = request.POST
+    xp_id = post['xp_id']
+    xp = ds.get_object_or_404(Experiment, pk=xp_id)
+
+    payload = {
+        'command': 'insert_job',
+        'position': post['position'],
+        'xp_id': xp.id,
+        'species': xp.species.shortname,
+        'voltage': post['voltage'],
+        'current': post['current'],
+        'duration': post['duration'],
+        'interval': post['interval'],
+        'startup_delay': post['startup_delay'],
+    }
+
+    telemeter = telemetry.Telemeter()
+    response = telemeter.post_to_raspi(payload)
+    return response
 
 def run_capturejob(request, xp_id, cjt_id):
     cjt = ds.get_object_or_404(CaptureJobTemplate, pk=cjt_id)
@@ -408,7 +431,7 @@ def run_capturejob(request, xp_id, cjt_id):
 
         requests.get(IMAGERY_SERVER_URL, params=inner_payload)
 
-    thread = threading.Thread(target=job_thread, args=(payload,) )
+    thread = threading.Thread(target=job_thread, args=(payload,))
     thread.start()
 
     return dh.HttpResponseRedirect(
@@ -422,7 +445,7 @@ def abort_capturejob(request):
 
     running_jobs = CaptureJobRecord.objects.filter(running=True)
     for cjr in running_jobs:
-        cjr.running=False
+        cjr.running = False
         cjr.save()
 
     xp_id = request.POST.get('xp_id', False)
