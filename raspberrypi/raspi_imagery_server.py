@@ -77,7 +77,7 @@ def delay_for_seconds(seconds):
 
 class CaptureJob(threading.Thread):
     def __init__(self, controller, startup_delay, interval, duration, voltage, current, xp_id):
-        super(CaptureJob, self).__init__()
+        super(CaptureJob, self).__init__(name='capturejob')
 
         self.controller = controller
 
@@ -189,7 +189,7 @@ class CaptureJob(threading.Thread):
 
 class CaptureJobController(threading.Thread):
     def __init__(self, imagery_server):
-        super(CaptureJobController, self).__init__()
+        super(CaptureJobController, self).__init__(name='capturejob_controller')
         self._queue = list()
         self._current_job = None
         self._staged_job = None
@@ -199,9 +199,11 @@ class CaptureJobController(threading.Thread):
         self.server = imagery_server
 
     def run(self):
+        time.sleep(3)
         while self._keep_controller_running:
             if self._current_job is not None:
-                self.report_current_job_status()
+                logger.debug('Reporting on current job.')
+                self.get_current_job_status()
 
             if self._current_job is None and self._staged_job is None and self._queue:
                 logger.info('No jobs active, but jobs in queue.')
@@ -234,7 +236,7 @@ class CaptureJobController(threading.Thread):
 
             time.sleep(1)
 
-    def report_current_job_status(self):
+    def get_current_job_status(self):
         return self._current_job.get_status_dict()
 
     def abort_running_job(self):
@@ -417,7 +419,7 @@ class ImageryServer(object):
                 self._capture_new_current_frame()
             self.camera.close()
 
-        thread = threading.Thread(target=image_capture_loop)
+        thread = threading.Thread(name='capture' ,target=image_capture_loop)
         logger.info("starting capture thread loop")
         thread.start()
 
@@ -468,6 +470,7 @@ class ImageryServer(object):
         self.power_supply.output = enable_output
 
         thread = threading.Thread(
+            name='psu_sensed_data',
             target=self.post_power_supply_sensed_data,
             args=(payload, 1,)
         )
