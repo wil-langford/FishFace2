@@ -21,7 +21,8 @@ class Telemeter(object):
         if files is None:
             response = requests.post(settings.TELEMETRY_URL, data=payload)
         else:
-            response = requests.post(settings.TELEMETRY_URL, data=payload, files=files)
+            raise NotImplemented("Can't POST files to the Raspi.")
+            # response = requests.post(settings.TELEMETRY_URL, data=payload, files=files)
 
         if response.status_code in [500, 410]:
             with open('/tmp/latest_djff_{}.html'.format(response.status_code), 'w') as f:
