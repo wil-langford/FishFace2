@@ -130,6 +130,7 @@ TELEMETRY_URL = "http://{}:{}/telemetry/".format(IMAGERY_SERVER_HOST, IMAGERY_SE
 
 # Logging
 PRIMARY_LOGGER = logging.getLogger('djff')
+PRIMARY_LOGGER.setLevel(logging.DEBUG)
 
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 

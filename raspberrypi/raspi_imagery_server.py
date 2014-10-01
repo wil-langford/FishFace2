@@ -17,6 +17,7 @@ import logging.handlers
 import json
 
 logger = logging.getLogger('raspi')
+logger.setLevel(logging.DEBUG)
 
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
@@ -78,6 +79,7 @@ def delay_for_seconds(seconds):
 class CaptureJob(threading.Thread):
     def __init__(self, controller, startup_delay, interval, duration, voltage, current, xp_id):
         super(CaptureJob, self).__init__(name='capturejob')
+        self.logger = logging.getLogger('raspi.capturejob')
 
         self.controller = controller
 
@@ -103,10 +105,11 @@ class CaptureJob(threading.Thread):
 
         self._keep_looping = None
 
+
     def run(self):
         self.start_timestamp = time.time()
 
-        logger.info("starting up job for experiment {}".format(self.xp_id))
+        self.logger.info("starting up job for experiment {}".format(self.xp_id))
         self.status = 'startup_delay'
         self.controller.set_psu({
             'enable_output': True,
@@ -138,7 +141,7 @@ class CaptureJob(threading.Thread):
             self.status = 'completed'
 
     def job_without_capture(self):
-        logger.info('starting captureless wait period')
+        self.logger.info('starting captureless wait period')
         self.controller.set_psu({
             'enable_output': True,
             'voltage': self.voltage,
@@ -151,7 +154,7 @@ class CaptureJob(threading.Thread):
             time.sleep(1)
 
     def job_with_capture(self):
-        logger.info('preparing to capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
+        self.logger.info('preparing to capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
         first_capture_at = self.start_timestamp + self.startup_delay
 
         self.capture_times = [first_capture_at]
@@ -190,6 +193,8 @@ class CaptureJob(threading.Thread):
 class CaptureJobController(threading.Thread):
     def __init__(self, imagery_server):
         super(CaptureJobController, self).__init__(name='capturejob_controller')
+        self.logger = logging.getLogger('raspi.capturejob_controller')
+
         self._queue = list()
         self._current_job = None
         self._staged_job = None
@@ -199,35 +204,38 @@ class CaptureJobController(threading.Thread):
         self.server = imagery_server
 
     def run(self):
-        time.sleep(3)
+        wait_time = 3
+        self.logger.debug('Waiting {} seconds for the rest of the threads to catch up.'.format(wait_time))
+        delay_for_seconds(wait_time)
+        self.logger.info('CaptureJob Controller starting up.')
         while self._keep_controller_running:
             if self._current_job is not None:
-                logger.debug('Reporting on current job.')
+                self.logger.debug('Reporting on current job.')
                 self.get_current_job_status()
 
             if self._current_job is None and self._staged_job is None and self._queue:
-                logger.info('No jobs active, but jobs in queue.')
+                self.logger.info('No jobs active, but jobs in queue.')
                 self._current_job = CaptureJob(**self._queue.pop(0))
                 self._current_job.start()
-                logger.debug('Started new current job.')
+                self.logger.debug('Started new current job.')
 
                 if self._queue:
                     self._staged_job = CaptureJob(**self._queue.pop(0))
-                    logger.debug('Staged new job.')
+                    self.logger.debug('Staged new job.')
 
             if (self._current_job is None or not self._current_job.is_alive()) and self._staged_job is not None:
-                logger.info('Current job is dead, promoting staged job.')
+                self.logger.info('Current job is dead, promoting staged job.')
                 self._current_job = self._staged_job
                 self._current_job.start()
                 self._staged_job = None
 
             if self._staged_job is None and self._queue and self._current_job.remaining < 5:
-                logger.info("New staged job being promoted from queue.")
+                self.logger.info("New staged job being promoted from queue.")
                 self._staged_job = CaptureJob(**self._queue.pop(0))
 
             if self._current_job is None and self._staged_job is None and not self._queue:
-                logger.debug('No current, staged, or queued jobs.  Shutting down PSU if necessary.')
-                if self.server.power_supply.voltage > 0:
+                if self.server.power_supply.voltage_sense > 0.1:
+                    self.logger.info('Shutting down power supply until the next job arrives.')
                     self.set_psu({
                         'voltage': 0,
                         'current': 0,
@@ -240,20 +248,25 @@ class CaptureJobController(threading.Thread):
         return self._current_job.get_status_dict()
 
     def abort_running_job(self):
+        self.logger.info("Aborting current job.")
         self._current_job.abort_job()
 
     def abort_all(self):
+        self.logger.info("Aborting all jobs!")
         self._staged_job = None
         self._queue = list()
         self._current_job.abort_job()
 
     def insert_job(self, job_spec, position):
+        self.logger.info('Inserting job at position {} in queue.'.format(position))
         self._queue.insert(position, job_spec)
 
     def append_job(self, job_spec):
+        self.logger.info('Appending job to queue.')
         self.insert_job(len(self._queue), job_spec)
 
     def set_psu(self, *args, **kwargs):
+        self.logger.debug('Passing set_psu request up to the ImageryServer.')
         self.server.set_psu(*args, **kwargs)
 
     def complete_status(self):
@@ -264,15 +277,17 @@ class CaptureJobController(threading.Thread):
         }
 
     def stop_controller(self):
+        self.logger.info('Stopping capturejob controller.')
         self._keep_controller_running = False
 
 
 class Telemeter(object):
     def __init__(self, imagery_server):
+        self.logger = logging.getLogger('raspi.Telemeter')
         self.server = imagery_server
 
     def post_to_fishface(self, payload, files=None):
-        logger.debug('POSTing payload to remote host:\n{}'.format(payload))
+        self.logger.debug('POSTing payload to remote host:\n{}'.format(payload))
 
         if not isinstance(payload, basestring):
             payload = json.dumps(payload)
@@ -294,7 +309,7 @@ class Telemeter(object):
         if not payload:
             return False
 
-        logger.debug('received POST payload from remote host:\n{}'.format(payload))
+        self.logger.debug('received POST payload from remote host:\n{}'.format(payload))
 
         method = self.server.command_dispatch.get(payload['command'], self.unrecognized_command)
         result = method(payload)
@@ -305,7 +320,7 @@ class Telemeter(object):
             return ''
 
     def unrecognized_command(self, payload):
-        pass
+        self.logger.info("Unrecognized command received from server:\n{}".format(payload))
 
 
 class ImageryServer(object):
@@ -399,8 +414,9 @@ class ImageryServer(object):
             logger.debug("image posted in {} seconds".format(time.time() - image_start_post_time))
         else:
             def async_image_post(url, files_unshadow, payload_unshadow):
+                async_logger = logging.getLogger('raspi.async_image_post')
                 self.telemeter.post_to_fishface(payload_unshadow, files=files_unshadow)
-                logger.debug("file posted asynchronously in {} seconds".format(time.time() - image_start_post_time))
+                async_logger.debug("image posted in {} seconds".format(time.time() - image_start_post_time))
 
             async_thread = threading.Thread(
                 target=async_image_post,

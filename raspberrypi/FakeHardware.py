@@ -66,6 +66,7 @@ class HP6652a(object):
     >>> fpsu.output = False
     """
     def __init__(self):
+        self._output = False
         self._voltage = 5.0 * pq.V
         self._current = 15.5 * pq.A
 
@@ -82,10 +83,13 @@ class HP6652a(object):
 
     @property
     def voltage_sense(self):
-        max_variance = self._voltage * MAX_VARIANCE_FACTOR
-        this_variance = ((random.random() * max_variance * 2)
-                         - max_variance)
-        return self._voltage + this_variance
+        if self._output:
+            max_variance = self._voltage * MAX_VARIANCE_FACTOR
+            this_variance = ((random.random() * max_variance * 2)
+                             - max_variance)
+            return self._voltage + this_variance
+        else:
+            return random.random() * 0.01
 
     @property
     def current(self):
@@ -100,7 +104,10 @@ class HP6652a(object):
 
     @property
     def current_sense(self):
-        return random.random() * self._current
+        if self._output:
+            return random.random() * self._current
+        else:
+            return random.random() * 0.01
 
     @property
     def output(self):
@@ -110,6 +117,7 @@ class HP6652a(object):
     def output(self, boolean_value):
         if not isinstance(boolean_value, bool):
             raise Exception("Output state setting should be a bool.")
+        self._output = boolean_value
 
     def reset(self):
         self.voltage = 0
