@@ -9,8 +9,8 @@ logger = logging.getLogger('djff.telemeter')
 
 
 class Telemeter(object):
-    def __init__(self, imagery_server):
-        self.server = imagery_server
+    def __init__(self):
+        pass
 
     def post_to_raspi(self, payload, files=None):
         logger.debug('POSTing payload to remote host:\n{}'.format(payload))
