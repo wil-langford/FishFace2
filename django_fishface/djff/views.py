@@ -83,7 +83,43 @@ def index(request):
 @csrf_dec.csrf_exempt
 def receive_telemetry(request):
 
-    payload = request.POST
+    payload = json.loads(request.POST['payload'])
+    logger.info("Received telemetry from Raspi:\n{}".format(payload))
+
+    if payload['command'] == 'post_image':
+        xp = ds.get_object_or_404(Experiment, pk=payload['xp_id'])
+
+        logger.info("Receiving image for experiment: {} ({})".format(xp.name, xp.slug))
+
+        is_cal_image = (str(payload['is_cal_image']).lower()
+                        in ['true', 't', 'yes', 'y', '1'])
+        voltage = float(payload['voltage'])
+        current = float(payload['current'])
+
+        capture_timestamp = datetime.datetime.utcfromtimestamp(
+            float(payload['capture_time'])).replace(tzinfo=dut.utc)
+
+        try:
+            cjr = ds.get_object_or_404(CaptureJobRecord, pk=int(payload['cjr_id']))
+        except dh.Http404:
+            cjr = None
+
+        logger.info("storing image")
+
+        captured_image = Image(
+            xp=xp,
+            capture_timestamp=capture_timestamp,
+            voltage=voltage,
+            is_cal_image=is_cal_image,
+            cjr=cjr,
+            image_file=request.FILES[
+                payload['filename']
+            ],
+        )
+        captured_image.save()
+
+        logger.info("image stored with ID {}".format(captured_image.id))
+
 
     if payload['command'] == 'job_status_update':
         cjr = ds.get_object_or_404(CaptureJobRecord,
@@ -241,11 +277,13 @@ def xp_capturer(request):
     # checked the "ready to capture cal image" box...
     if (not request.POST['is_cal_image'] == 'True' or request.POST.get('cal_ready', '') == 'True'):
         telemeter = telemetry.Telemeter()
-        telemeter.post_to_raspi(payload)
+        response = telemeter.post_to_raspi(payload)
+
+        logger.debug("Post-request response: {}".format(response))
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:xp_capture',
-                    args=(payload['xp_id'],))
+                    args=(response['xp_id'],))
     )
 
 

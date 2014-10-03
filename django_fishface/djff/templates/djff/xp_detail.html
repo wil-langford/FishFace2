@@ -35,6 +35,7 @@
         <input type="checkbox" value="True" name="cal_ready">
         Ready to capture calibration image (no fish):
         <input type="hidden" value="{{ xp.id }}" name="xp_id">
+        <input type="hidden" value="post_image" name="command">
         <input type="submit" value="Capture a {% if cal_images %}new {% endif %}calibration image" />
     </form>
 

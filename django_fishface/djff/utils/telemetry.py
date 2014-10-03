@@ -13,21 +13,25 @@ class Telemeter(object):
         pass
 
     def post_to_raspi(self, payload, files=None):
-        logger.debug('POSTing payload to remote host:\n{}'.format(payload))
+        logger.debug('POSTing JSON payload to remote host:\n{}'.format(payload))
 
-        if not isinstance(payload, basestring):
-            payload = json.dumps(payload)
+        json_payload = json.dumps(payload)
 
         headers = {'content-type': 'application/json'}
 
         if files is None:
-            response = requests.post(settings.TELEMETRY_URL, data=payload, headers=headers)
+            response = requests.post(
+                settings.TELEMETRY_URL,
+                data=json_payload,
+                headers=headers,
+            )
         else:
             raise NotImplemented("Can't POST files to the Raspi.")
-            # response = requests.post(settings.TELEMETRY_URL, data=payload, files=files)
 
         if response.status_code in [500, 410]:
             with open('/tmp/latest_djff_{}.html'.format(response.status_code), 'w') as f:
                 f.write(response.text)
 
-        return response.json()
+        response_json = response.json()
+
+        return response_json

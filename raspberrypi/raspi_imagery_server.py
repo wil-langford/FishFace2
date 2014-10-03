@@ -81,6 +81,7 @@ class CaptureJob(threading.Thread):
     def __init__(self, controller, startup_delay, interval, duration, voltage, current, xp_id):
         super(CaptureJob, self).__init__(name='capturejob')
         self.logger = logging.getLogger('raspi.capturejob')
+        self.logger.setLevel(logging.DEBUG)
 
         self.controller = controller
 
@@ -195,6 +196,7 @@ class CaptureJobController(threading.Thread):
     def __init__(self, imagery_server):
         super(CaptureJobController, self).__init__(name='capturejob_controller')
         self.logger = logging.getLogger('raspi.capturejob_controller')
+        self.logger.setLevel(logging.DEBUG)
 
         self._queue = list()
         self._current_job = None
@@ -205,7 +207,7 @@ class CaptureJobController(threading.Thread):
         self.server = imagery_server
 
     def run(self):
-        wait_time = 3
+        wait_time = 1
         self.logger.debug('Waiting {} seconds for the rest of the threads to catch up.'.format(wait_time))
         delay_for_seconds(wait_time)
         self.logger.info('CaptureJob Controller starting up.')
@@ -284,7 +286,9 @@ class CaptureJobController(threading.Thread):
 
 class Telemeter(object):
     def __init__(self, imagery_server):
-        # self.logger = logging.getLogger('raspi.telemeter')
+        self.logger = logging.getLogger('raspi.telemeter')
+        self.logger.setLevel(logging.DEBUG)
+
         self.server = imagery_server
 
         logger.info("Telemeter instantiated.")
@@ -292,39 +296,28 @@ class Telemeter(object):
     def post_to_fishface(self, payload, files=None):
         logger.debug('POSTing payload to remote host:\n{}'.format(payload))
 
-        if not isinstance(payload, basestring):
-            payload = json.dumps(payload)
-
-        headers = {'content-type': 'text/json'}
+        payload = {'payload': json.dumps(payload)}
 
         if files is None:
-            response = requests.post(TELEMETRY_URL, headers=headers, data=payload)
+            response = requests.post(TELEMETRY_URL, data=payload)
         else:
-            response = requests.post(TELEMETRY_URL, headers=headers, data=payload, files=files)
+            response = requests.post(TELEMETRY_URL, data=payload, files=files)
 
         if response.status_code in [500, 410, 501]:
             logger.warning("Got {} status from server.".format(response.status_code))
-            with open('/tmp/latest_djff_{}.html'.format(response.status_code), 'w') as f:
+            with open('/tmp/latest_raspi_{}.html'.format(response.status_code), 'w') as f:
                 f.write(response.text)
         else:
             return response.json()
 
-    def handle_received_post(self, preprocessed_payload):
-        logger.debug("type: {}\nvalue: {}".format(type(preprocessed_payload), preprocessed_payload))
+    def handle_received_post(self, request):
+        logger.debug('telemeter received POST payload from remote host:\n{}'.format(request))
 
-        payload = dict()
-        for k in preprocessed_payload.keys():
-            payload[k] = preprocessed_payload[k]
+        method = self.server.command_dispatch.get(request['command'], self.unrecognized_command)
+        result = method(request)
+        logger.debug("result of method was: {}".format(result))
 
-        logger.debug('received POST payload from remote host:\n{}'.format(payload))
-
-        method = self.server.command_dispatch.get(payload['command'], self.unrecognized_command)
-        result = method(payload)
-
-        if not result.get('no_reply', False):
-            return json.dumps(result)
-        else:
-            return ''
+        return result
 
     def unrecognized_command(self, payload):
         logger.info("Unrecognized command received from server:\n{}".format(payload))
@@ -423,15 +416,15 @@ class ImageryServer(object):
             def async_image_post(url, files_unshadow, payload_unshadow):
                 async_logger = logging.getLogger('raspi.async_image_post')
                 self.telemeter.post_to_fishface(payload_unshadow, files=files_unshadow)
-                async_logger.debug("image posted in {} seconds".format(time.time() - image_start_post_time))
+                async_logger.debug("image posted async in {} seconds".format(time.time() - image_start_post_time))
 
             async_thread = threading.Thread(
                 target=async_image_post,
-                args=(IMAGE_POST_URL, files, payload)
+                args=(TELEMETRY_URL, files, payload)
             )
             async_thread.start()
 
-        return False
+        return payload
 
     def get_current_frame(self):
         return self._current_frame
@@ -517,12 +510,6 @@ class ImageryServer(object):
 
 class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     # noinspection PyPep8Naming
-    def do_HEAD(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
-
-    # noinspection PyPep8Naming
     def do_GET(self):
         logger.debug("Legacy GET request received.")
         self.send_response(410)
@@ -533,26 +520,27 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     # noinspection PyPep8Naming
     def do_POST(self):
         logger.debug("POST request received.")
-        field_storage = cgi.FieldStorage(
-            fp=self.rfile,
-            headers=self.headers,
-            environ={
-                'REQUEST_METHOD': 'POST',
-                'CONTENT_TYPE': self.headers['content-type']
-            }
-        )
 
-        post_vars = json.loads(field_storage.value)
+        ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+        if ctype == 'application/json':
+            length = int(self.headers.getheader('content-length'))
+            json_vars = json.loads(self.rfile.read(length))
+        else:
+            raise Exception("Can only accept 'application/json' POST requests.")
 
-        logger.debug('post_vars:\n{}'.format(post_vars.keys()))
+        logger.debug('json_vars:\n{}'.format(json_vars.keys()))
 
-        result = self.server.parent.telemeter.handle_received_post(post_vars)
+        result = self.server.parent.telemeter.handle_received_post(json_vars)
 
-        if result:
+        logger.debug("Telemeter returned: '{}'".format(result))
+
+        if result.get('command', False):
+            payload = json.dumps(result)
             self.send_response(200)
-            self.send_header("Content-type", "text/json")
+            self.send_header("content-type", "application/json")
+            # self.send_header("content-length", len(payload))
             self.end_headers()
-            self.wfile.write(str(result))
+            self.wfile.write(payload)
 
 
 def main():
