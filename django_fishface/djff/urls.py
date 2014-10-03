@@ -4,8 +4,8 @@ urlpatterns = dcu.patterns(
     '',
     dcu.url(
         r'^upload_imagery/$',
-        views.image_capturer,
-        name='image_capturer'
+        views.receive_image,
+        name='receive_image'
     ),
     dcu.url(
         r'^imagery_request/$',
@@ -83,15 +83,15 @@ urlpatterns = dcu.patterns(
         name='sp_delete'
     ),
 
+    # dcu.url(
+    #     r'^cj/(?P<xp_id>\d+)/(?P<cjt_id>\d+)/run/$',
+    #     views.run_capturejob,
+    #     name='run_capturejob'
+    # ),
     dcu.url(
-        r'^cj/(?P<xp_id>\d+)/(?P<cjt_id>\d+)/run/$',
-        views.run_capturejob,
-        name='run_capturejob'
-    ),
-    dcu.url(
-        r'^cj/abort/$',
-        views.abort_capturejob,
-        name='abort_capturejob'
+        r'^cj/abort_job/$',
+        views.abort_running_job,
+        name='abort_running_job'
     ),
 
     dcu.url(

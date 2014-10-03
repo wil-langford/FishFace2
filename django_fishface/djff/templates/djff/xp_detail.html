@@ -48,40 +48,40 @@
 
     <br>
 
-    {% if not running_jobs and cal_images and cjts %}
-        <div class="boxed">
-        <h3>Capture Jobs</h3>
-            <ol>
-    {% for cjt in cjts %}
-        <li>
-        <form method="post" action="{% url 'djff:run_capturejob' xp.id cjt.id %}">
-        {% csrf_token %}
-            Duration: {{ cjt.duration }},
-            Interval: {{ cjt.interval }},
-            Voltage: {{ cjt.voltage }} V,
-            Current: {{ cjt.current }} A
-        <input type="submit" value="Run this capture job" />
-        </form>
-        </li>
-    {% endfor %}
-    </ol>
-    </div>
-    {% elif running_jobs %}
-        <div class="boxed">
-        {% for cjr in running_jobs %}
-            <strong>Active capture job:</strong><br>
-            <em>Voltage</em>: {{ cjr.voltage }} V<br>
-            <em>Current</em>: {{ cjr.voltage }} A<br>
-            <em>Remaining</em>: {{ cjr.remaining }}/{{ cjr.total }}
-            <form method="post" action="{% url 'djff:abort_capturejob' %}">
-                {% csrf_token %}
-                <input type="hidden" name="xp_id" value="{{ xp.id }}" />
-                <input type="hidden" name="cjr_id" value="{{ cjr.id }}" />
-                <input type="submit" class="deleterbutton" value="Abort this capturejob" />
-            </form>
-        {% endfor %}
-        </div>
-    {% endif %}
+{#    {% if not running_jobs and cal_images and cjts %}#}
+{#        <div class="boxed">#}
+{#        <h3>Capture Jobs</h3>#}
+{#            <ol>#}
+{#    {% for cjt in cjts %}#}
+{#        <li>#}
+{#        <form method="post" action="{% url 'djff:run_capturejob' xp.id cjt.id %}">#}
+{#        {% csrf_token %}#}
+{#            Duration: {{ cjt.duration }},#}
+{#            Interval: {{ cjt.interval }},#}
+{#            Voltage: {{ cjt.voltage }} V,#}
+{#            Current: {{ cjt.current }} A#}
+{#        <input type="submit" value="Run this capture job" />#}
+{#        </form>#}
+{#        </li>#}
+{#    {% endfor %}#}
+{#    </ol>#}
+{#    </div>#}
+{#    {% elif running_jobs %}#}
+{#        <div class="boxed">#}
+{#        {% for cjr in running_jobs %}#}
+{#            <strong>Active capture job:</strong><br>#}
+{#            <em>Voltage</em>: {{ cjr.voltage }} V<br>#}
+{#            <em>Current</em>: {{ cjr.voltage }} A<br>#}
+{#            <em>Remaining</em>: {{ cjr.remaining }}/{{ cjr.total }}#}
+{#            <form method="post" action="{% url 'djff:abort_capturejob' %}">#}
+{#                {% csrf_token %}#}
+{#                <input type="hidden" name="xp_id" value="{{ xp.id }}" />#}
+{#                <input type="hidden" name="cjr_id" value="{{ cjr.id }}" />#}
+{#                <input type="submit" class="deleterbutton" value="Abort this capturejob" />#}
+{#            </form>#}
+{#        {% endfor %}#}
+{#        </div>#}
+{#    {% endif %}#}
 
     {% if images_by_cjr %}
         <div class="boxed">

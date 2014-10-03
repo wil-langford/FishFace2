@@ -18,8 +18,10 @@ class Telemeter(object):
         if not isinstance(payload, basestring):
             payload = json.dumps(payload)
 
+        headers = {'content-type': 'application/json'}
+
         if files is None:
-            response = requests.post(settings.TELEMETRY_URL, data=payload)
+            response = requests.post(settings.TELEMETRY_URL, data=payload, headers=headers)
         else:
             raise NotImplemented("Can't POST files to the Raspi.")
             # response = requests.post(settings.TELEMETRY_URL, data=payload, files=files)

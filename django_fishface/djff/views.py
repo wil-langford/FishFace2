@@ -1,13 +1,13 @@
 import logging
 import numpy as np
 import datetime
-import time
-import threading
+# import time
+# import threading
 import json
 
 import cv2
 import pytz
-import requests
+# import requests
 
 import django.shortcuts as ds
 import django.http as dh
@@ -123,7 +123,7 @@ def receive_telemetry(request):
         psl.save()
 
     response = dh.HttpResponse(json.dumps({'payload': ""}), content_type='text/json')
-    response.status_code=200
+    response.status_code = 200
 
     return response
 
@@ -221,7 +221,8 @@ def xp_capturer(request):
         'xp_id': xp.id,
         'current': request.POST['current'],
         'voltage': request.POST['voltage'],
-        'species': xp.species.shortname
+        'species': xp.species.shortname,
+        'no_reply': 1,
     }
 
     # default value for is_cal_image
@@ -238,9 +239,9 @@ def xp_capturer(request):
 
     # if it's not a cal image OR if it's a cal image and the user
     # checked the "ready to capture cal image" box...
-    if (not request.POST['is_cal_image'] == 'True' or
-            request.POST.get('cal_ready', '') == 'True'):
-        r = requests.get(IMAGERY_SERVER_URL, params=payload)
+    if (not request.POST['is_cal_image'] == 'True' or request.POST.get('cal_ready', '') == 'True'):
+        telemeter = telemetry.Telemeter()
+        telemeter.post_to_raspi(payload)
 
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:xp_capture',
@@ -388,68 +389,69 @@ def insert_capturejob_into_queue(request):
     response = telemeter.post_to_raspi(payload)
     return response
 
-def run_capturejob(request, xp_id, cjt_id):
-    cjt = ds.get_object_or_404(CaptureJobTemplate, pk=cjt_id)
-    xp = ds.get_object_or_404(Experiment, pk=xp_id)
-    cjr = CaptureJobRecord(
-        xp=xp,
-        voltage=cjt.voltage,
-        current=cjt.current,
-        running=True,
-    )
-    cjr.save()
+# def run_capturejob(request, xp_id, cjt_id):
+#     cjt = ds.get_object_or_404(CaptureJobTemplate, pk=cjt_id)
+#     xp = ds.get_object_or_404(Experiment, pk=xp_id)
+#     cjr = CaptureJobRecord(
+#         xp=xp,
+#         voltage=cjt.voltage,
+#         current=cjt.current,
+#         running=True,
+#     )
+#     cjr.save()
+#
+#     payload = {
+#         'command': 'set_psu',
+#         'xp_id': xp.id,
+#         'species': xp.species.shortname,
+#         'cjr_id': cjr.id,
+#         'voltage': cjr.voltage,
+#         'current': cjr.current,
+#         'duration': cjt.duration,
+#         'interval': cjt.interval,
+#         'startup_delay': cjt.startup_delay,
+#         'enable_output': int(True),
+#     }
+#
+#     logger.info(str(payload))
+#
+#     def job_thread(payload_unshadow):
+#         requests.get(IMAGERY_SERVER_URL, params=payload_unshadow)
+#
+#         time.sleep(cjt.startup_delay)
+#
+#         payload_unshadow['command'] = 'run_capturejob'
+#
+#         requests.get(IMAGERY_SERVER_URL, params=payload_unshadow)
+#
+#         payload_unshadow['command'] = 'set_psu'
+#         payload_unshadow['enable_output'] = int(False)
+#
+#         while CaptureJobRecord.objects.filter(running=True):
+#             time.sleep(1)
+#
+#         requests.get(IMAGERY_SERVER_URL, params=payload_unshadow)
+#
+#     thread = threading.Thread(target=job_thread, args=(payload,))
+#     thread.start()
+#
+#     return dh.HttpResponseRedirect(
+#         dcu.reverse('djff:xp_capture',
+#                     args=(payload['xp_id'],))
+#     )
 
-    payload = {
-        'command': 'set_psu',
-        'xp_id': xp.id,
-        'species': xp.species.shortname,
-        'cjr_id': cjr.id,
-        'voltage': cjr.voltage,
-        'current': cjr.current,
-        'duration': cjt.duration,
-        'interval': cjt.interval,
-        'startup_delay': cjt.startup_delay,
-        'enable_output': int(True),
-    }
 
-    logger.info(str(payload))
-
-    def job_thread(inner_payload):
-        requests.get(IMAGERY_SERVER_URL, params=inner_payload)
-
-        time.sleep(cjt.startup_delay)
-
-        inner_payload['command'] = 'run_capturejob'
-
-        requests.get(IMAGERY_SERVER_URL, params=inner_payload)
-
-        inner_payload['command'] = 'set_psu'
-        inner_payload['enable_output'] = int(False)
-
-        while CaptureJobRecord.objects.filter(running=True):
-            time.sleep(1)
-
-        requests.get(IMAGERY_SERVER_URL, params=inner_payload)
-
-    thread = threading.Thread(target=job_thread, args=(payload,))
-    thread.start()
-
-    return dh.HttpResponseRedirect(
-        dcu.reverse('djff:xp_capture',
-                    args=(payload['xp_id'],))
-    )
-
-
-def abort_capturejob(request):
-    requests.get(IMAGERY_SERVER_URL, params={'command': 'abort_capturejob'})
+def abort_running_job(request):
+    telemeter = telemetry.Telemeter()
+    response = telemeter.post_to_raspi({'command': 'abort_running_job'})
 
     running_jobs = CaptureJobRecord.objects.filter(running=True)
     for cjr in running_jobs:
         cjr.running = False
         cjr.save()
 
-    xp_id = request.POST.get('xp_id', False)
-    cjr_id = request.POST.get('cjr_id', False)
+    xp_id = response.get('xp_id', False)
+    cjr_id = response.get('cjr_id', False)
 
     if cjr_id and not xp_id:
         cjr = ds.get_object_or_404(CaptureJobRecord, pk=int(cjr_id))
@@ -470,7 +472,7 @@ def abort_capturejob(request):
 
 
 @csrf_dec.csrf_exempt
-def image_capturer(request):
+def receive_image(request):
     logger.info("processing request")
     if request.method == 'POST':
         logger.debug(request.POST)

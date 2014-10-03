@@ -15,6 +15,7 @@ import datetime
 import logging
 import logging.handlers
 import json
+import cgi
 
 logger = logging.getLogger('raspi')
 logger.setLevel(logging.DEBUG)
@@ -41,7 +42,7 @@ try:
     import picamera
     import instruments.hp as ik
     REAL_HARDWARE = True
-    BASE_URL = "http://fishfacehost:8000/fishface/"
+    BASE_URL = "http://fishfacehost/fishface/"
     logger.info("Running server on real Raspi hardware with an HP power supply.")
 except ImportError:
     # noinspection PyPep8Naming
@@ -283,33 +284,39 @@ class CaptureJobController(threading.Thread):
 
 class Telemeter(object):
     def __init__(self, imagery_server):
-        self.logger = logging.getLogger('raspi.Telemeter')
+        # self.logger = logging.getLogger('raspi.telemeter')
         self.server = imagery_server
 
+        logger.info("Telemeter instantiated.")
+
     def post_to_fishface(self, payload, files=None):
-        self.logger.debug('POSTing payload to remote host:\n{}'.format(payload))
+        logger.debug('POSTing payload to remote host:\n{}'.format(payload))
 
         if not isinstance(payload, basestring):
             payload = json.dumps(payload)
 
+        headers = {'content-type': 'text/json'}
+
         if files is None:
-            response = requests.post(TELEMETRY_URL, data=payload)
+            response = requests.post(TELEMETRY_URL, headers=headers, data=payload)
         else:
-            response = requests.post(TELEMETRY_URL, data=payload, files=files)
+            response = requests.post(TELEMETRY_URL, headers=headers, data=payload, files=files)
 
         if response.status_code in [500, 410, 501]:
+            logger.warning("Got {} status from server.".format(response.status_code))
             with open('/tmp/latest_djff_{}.html'.format(response.status_code), 'w') as f:
                 f.write(response.text)
         else:
             return response.json()
 
-    def handle_received_post(self, post_vars):
-        payload = post_vars.get('payload', False)
+    def handle_received_post(self, preprocessed_payload):
+        logger.debug("type: {}\nvalue: {}".format(type(preprocessed_payload), preprocessed_payload))
 
-        if not payload:
-            return False
+        payload = dict()
+        for k in preprocessed_payload.keys():
+            payload[k] = preprocessed_payload[k]
 
-        self.logger.debug('received POST payload from remote host:\n{}'.format(payload))
+        logger.debug('received POST payload from remote host:\n{}'.format(payload))
 
         method = self.server.command_dispatch.get(payload['command'], self.unrecognized_command)
         result = method(payload)
@@ -320,7 +327,7 @@ class Telemeter(object):
             return ''
 
     def unrecognized_command(self, payload):
-        self.logger.info("Unrecognized command received from server:\n{}".format(payload))
+        logger.info("Unrecognized command received from server:\n{}".format(payload))
 
 
 class ImageryServer(object):
@@ -435,7 +442,7 @@ class ImageryServer(object):
                 self._capture_new_current_frame()
             self.camera.close()
 
-        thread = threading.Thread(name='capture' ,target=image_capture_loop)
+        thread = threading.Thread(name='capture', target=image_capture_loop)
         logger.info("starting capture thread loop")
         thread.start()
 
@@ -509,7 +516,6 @@ class ImageryServer(object):
 
 
 class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-
     # noinspection PyPep8Naming
     def do_HEAD(self):
         self.send_response(200)
@@ -518,23 +524,29 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     # noinspection PyPep8Naming
     def do_GET(self):
+        logger.debug("Legacy GET request received.")
         self.send_response(410)
         self.send_header("Content-type", "text/html")
         self.end_headers()
-        self.wfile.write(str('GET REQUESTS NO LONGER SUPPORTED'))
+        self.wfile.write('<html><body>GET REQUESTS NO LONGER SUPPORTED</body></html>')
 
     # noinspection PyPep8Naming
     def do_POST(self):
-        ctype, pdict = urlparse.parse_header(self.headers['content-type'])
-        if ctype == 'multipart/form-data':
-            post_vars = urlparse.parse_multipart(self.rfile, pdict)
-        elif ctype == 'application/x-www-form-urlencoded':
-            length = int(self.headers['content-length'])
-            post_vars = urlparse.parse_qs(
-                self.rfile.read(length),
-                keep_blank_values=1)
-        else:
-            post_vars = {}
+        logger.debug("POST request received.")
+        field_storage = cgi.FieldStorage(
+            fp=self.rfile,
+            headers=self.headers,
+            environ={
+                'REQUEST_METHOD': 'POST',
+                'CONTENT_TYPE': self.headers['content-type']
+            }
+        )
+
+        post_vars = {}
+        for k in field_storage.keys():
+            post_vars[k] = field_storage[k].value
+
+        logger.debug('post_vars:\n{}'.format(post_vars.keys()))
 
         result = self.server.parent.telemeter.handle_received_post(post_vars)
 
