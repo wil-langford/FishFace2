@@ -207,7 +207,10 @@ class CaptureJobController(threading.Thread):
         self.server = imagery_server
 
     def run(self):
-        wait_time = 1
+        if REAL_HARDWARE:
+            wait_time = 3
+        else:
+            wait_time = 1
         self.logger.debug('Waiting {} seconds for the rest of the threads to catch up.'.format(wait_time))
         delay_for_seconds(wait_time)
         self.logger.info('CaptureJob Controller starting up.')
