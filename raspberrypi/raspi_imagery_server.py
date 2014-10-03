@@ -542,9 +542,7 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             }
         )
 
-        post_vars = {}
-        for k in field_storage.keys():
-            post_vars[k] = field_storage[k].value
+        post_vars = json.loads(field_storage.value)
 
         logger.debug('post_vars:\n{}'.format(post_vars.keys()))
 
