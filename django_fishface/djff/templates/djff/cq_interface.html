@@ -9,7 +9,7 @@
             }
 
             {% for cjt in cjts %}
-            $('#CJT_' + {{ cjt.id }}).data('cjt_id', {{ cjt.id }});
+                $('#CJT_' + {{ cjt.id }}).data('cjt_id', {{ cjt.id }});
             {% endfor %}
 
             $('#b-ton').click( function() {
@@ -40,7 +40,7 @@
             });
 
             $(".fresh_cjt").draggable({
-                connectToSortable: "#sortable_list",
+                connectToSortable: "#capturejob_queue",
                 helper: "clone",
                 revert: "invalid"
             });
@@ -48,18 +48,14 @@
         });
     </script>
 
-    <style type="text/css">
-	</style>
-
-
 {% endblock %}
 
 {% block subtitle %}Capture Queue{% endblock %}
 
 {% block content %}
     <ul class="queue_block" id="capturejob_queue">
-        <li class="ui-state-default">one</li>
-        <li class="ui-state-default">two</li>
+        <li class="job_queue_item" data-cjt="p1" id="ONE">one</li>
+        <li class="job_queue_item" data-cjt="p2" id="TWO">two</li>
     </ul>
 
     <form action="{% url 'djff:cq_interface' %}" method="post">
