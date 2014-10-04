@@ -173,3 +173,13 @@ div.bad
 {
     background-color: lightcoral;
 }
+
+.queue_block li {
+    list-style: none;
+    padding: 10px;
+    margin-bottom: 5px;
+    min-height: 1em;
+    border: 1px solid #000;
+    background-color: #C0C0C0;
+    width: 150px;
+}

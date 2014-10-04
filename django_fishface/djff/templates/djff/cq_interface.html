@@ -3,20 +3,25 @@
 {% block localscript %}
     <script type="text/javascript">
         $(document).ready(function(){
+
+            function debug_print(print_this) {
+                $('#debug_print_area').append(print_this);
+            }
+
             {% for cjt in cjts %}
             $('#CJT_' + {{ cjt.id }}).data('cjt_id', {{ cjt.id }});
             {% endfor %}
 
             $('#b-ton').click( function() {
-                $('#blah').append('<br />');
+                debug_print('<br />');
                 $('.job_queue_item').each( function () {
-                    $('#blah').append(' ' + $(this).attr('data-cjt'));
+                    debug_print(' ' + $(this).attr('data-cjt'));
                 });
             });
 
-            $('#sortable_list').sortable({
+            $('#capturejob_queue').sortable({
                 update: function(event, ui) {
-                $('#blah').append('<br />' + $('#sortable_list').sortable('toArray').toString());
+                debug_print('<br />' + $('#capturejob_queue').sortable('toArray').toString());
                 },
                 revert: true,
                 stop: function(event, ui) {
@@ -33,23 +38,17 @@
                     $(newItem).attr('id', 'CJT_' + helperId)
                 }
             });
+
             $(".fresh_cjt").draggable({
                 connectToSortable: "#sortable_list",
                 helper: "clone",
                 revert: "invalid"
             });
+
         });
     </script>
 
     <style type="text/css">
-		.blockyblock li {
-			list-style: none;
-			padding: 10px;
-			margin-bottom: 5px;
-			border: 1px solid #000;
-			background-color: #C0C0C0;
-			width: 150px;
-		}
 	</style>
 
 
@@ -58,10 +57,9 @@
 {% block subtitle %}Capture Queue{% endblock %}
 
 {% block content %}
-    <ul class="blockyblock" id="sortable_list">
-    {% for ci in cq_list %}
-        <li id="null_{{ forloop.counter }}" class="job_queue_item" data-cjt="00"> {{ ci }} </li>
-    {% endfor %}
+    <ul class="queue_block" id="capturejob_queue">
+        <li class="ui-state-default">one</li>
+        <li class="ui-state-default">two</li>
     </ul>
 
     <form action="{% url 'djff:cq_interface' %}" method="post">
@@ -70,11 +68,11 @@
         <input type="submit" value="Save">
     </form>
 
-    <div id="blah">STUFF</div>
+    <div id="debug_print_area">STUFF</div>
 {% endblock %}
 
 {% block preview_area %}
-    <ul class="blockyblock" id="cjt_list">
+    <ul class="queue_block" id="cjt_list">
     {% for cjt in cjts %}
         <li class="fresh_cjt" id="CJT_{{ cjt.id }}" data-cjt="{{ cjt.id }}">{{ cjt.startup_delay }}s, then
             every {{ cjt.interval }}s for {{ cjt.duration }}s
