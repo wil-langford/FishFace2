@@ -5,18 +5,38 @@
         $(document).ready(function(){
 
             function debug_print(print_this) {
-                $('#debug_print_area').append(print_this);
+                $('#debug_print_area').append('<br />### ' + print_this);
             }
 
-            {% for cjt in cjts %}
+            function repopulate_fields() {
+                $.ajax({
+                    type: 'POST',
+                    contentType: 'application/json',
+                    url: '{{ raspi_telemetry_url }}',
+                    data: JSON.stringify({ command: 'job_status' }),
+                    dataType: 'json'
+                }).fail(function (jqXHR, textStatus, errorThrown) {
+                    debug_print("ERROR")
+                    debug_print("textStatus: " + textStatus)
+                    debug_print("errorThrown: '" + errorThrown + "'")
+                }).done(function (data, textStatus, jqXHR) {
+                    debug_print('responseJSON: ' + jqXHR.responseJSON)
+                })
+            }
+
+
+                {% for cjt in cjts %}
                 $('#CJT_' + {{ cjt.id }}).data('cjt_id', {{ cjt.id }});
             {% endfor %}
 
             $('#b-ton').click( function() {
-                debug_print('<br />');
                 $('.job_queue_item').each( function () {
                     debug_print(' ' + $(this).attr('data-cjt'));
                 });
+            });
+
+            $('#a-ton').click( function() {
+                repopulate_fields();
             });
 
             $('#capturejob_queue').sortable({
@@ -27,16 +47,17 @@
                 stop: function(event, ui) {
                     if (ui.item.hasClass("fresh_cjt")) {
                         ui.item.removeClass("fresh_cjt");
-                        ui.item.addClass("job_queue_item")
+                        ui.item.addClass("job_queue_item");
                     }
                 },
                 beforeStop: function(event, ui) {
-                    newItem = ui.item
-                    helperId = ui.helper.attr('data-cjt')
+                    newItem = ui.item;
+                    helperId = ui.helper.attr('data-cjt');
                 },
                 receive: function(event, ui) {
-                    $(newItem).attr('id', 'CJT_' + helperId)
-                }
+                    $(newItem).attr('id', 'CJT_' + helperId);
+                },
+                placeholder: "ui-sortable-placeholder"
             });
 
             $(".fresh_cjt").draggable({
@@ -45,26 +66,43 @@
                 revert: "invalid"
             });
 
+
+
         });
     </script>
 
 {% endblock %}
 
-{% block subtitle %}Capture Queue{% endblock %}
+{% block subtitle %}Capture Queue Editor{% endblock %}
 
 {% block content %}
-    <ul class="queue_block" id="capturejob_queue">
-        <li class="job_queue_item" data-cjt="p1" id="ONE">one</li>
-        <li class="job_queue_item" data-cjt="p2" id="TWO">two</li>
-    </ul>
+    <div id="current_job_wrapper" class="job_wrapper">
+        <h2>Currently Running Job</h2>
+        <div id="current_job"></div>
+    </div>
+
+    <div id="staged_job_wrapper" class="job_wrapper">
+        <h2>Staged Job</h2>
+        <div id="staged_job"></div>
+    </div>
+
+    <div id="capture_queue_wrapper" class="job_wrapper">
+        <h2>Queue</h2>
+
+        <ul class="queue_block" id="capturejob_queue">
+            <li class="job_queue_item" data-cjt="p1" id="ONE">one</li>
+        </ul>
+    </div>
 
     <form action="{% url 'djff:cq_interface' %}" method="post">
         {% csrf_token %}
         <input type="button" value="b-ton" id="b-ton">
+        <input type="button" value="a-ton" id="a-ton">
         <input type="submit" value="Save">
     </form>
 
-    <div id="debug_print_area">STUFF</div>
+    <h3>DEBUGGING OUTPUT</h3>
+    <div id="debug_print_area"></div>
 {% endblock %}
 
 {% block preview_area %}

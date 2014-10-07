@@ -171,7 +171,8 @@ def receive_telemetry(request):
 def cq_interface(request):
     context = {
         'cq_list': 'one two three four five'.split(' '),
-        'cjts': CaptureJobTemplate.objects.all()
+        'cjts': CaptureJobTemplate.objects.all(),
+        'raspi_telemetry_url': settings.TELEMETRY_URL,
     }
     return ds.render(request, 'djff/cq_interface.html', context)
 

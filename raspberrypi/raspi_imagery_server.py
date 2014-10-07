@@ -275,12 +275,22 @@ class CaptureJobController(threading.Thread):
         self.logger.debug('Passing set_psu request up to the ImageryServer.')
         self.server.set_psu(*args, **kwargs)
 
-    def complete_status(self):
-        return {
-            'current': self._current_job.get_status_dict(),
-            'staged': self._staged_job.get_status_dict(),
-            'queue': self._queue,
-        }
+    def complete_status(self, payload):
+        response = {'command': 'job_status'}
+
+        if self._current_job is not None:
+            response['current'] = self._current_job.get_status_dict()
+
+        if self._staged_job is not None:
+            response['staged'] = self._staged_job.get_status_dict()
+
+        if self._queue:
+            response['current'] = self._queue
+        else:
+            response['queue'] = list()
+
+        return response
+
 
     def stop_controller(self):
         self.logger.info('Stopping capturejob controller.')
@@ -521,10 +531,22 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.wfile.write('<html><body>GET REQUESTS NO LONGER SUPPORTED</body></html>')
 
     # noinspection PyPep8Naming
+    def do_OPTIONS(self):
+        origin = self.headers.getheader('Origin')
+
+        logger.debug("OPTIONS request received.")
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Method", "POST")
+        self.send_header("Access-Control-Allow-Origin", origin)
+        self.end_headers()
+
+
+    # noinspection PyPep8Naming
     def do_POST(self):
         logger.debug("POST request received.")
 
-        ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
+        ctype, pdict = cgi.parse_header(self.headers.getheader('Content-Type'))
         if ctype == 'application/json':
             length = int(self.headers.getheader('content-length'))
             json_vars = json.loads(self.rfile.read(length))
@@ -537,8 +559,9 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         logger.debug("Telemeter returned: '{}'".format(result))
 
-        if result.get('command', False):
+        if result and result.get('command', False):
             payload = json.dumps(result)
+            logger.debug("Sending response: {}".format(payload))
             self.send_response(200)
             self.send_header("content-type", "application/json")
             # self.send_header("content-length", len(payload))
