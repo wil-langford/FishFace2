@@ -192,10 +192,12 @@ div.bad
 
 #current_job_wrapper {
     background-color: #31BD13;
+    display: none;
 }
 
 #staged_job_wrapper {
     background-color: #4CAB9E;
+    display: none;
 }
 
 #capture_queue_wrapper {
