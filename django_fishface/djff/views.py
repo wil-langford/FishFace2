@@ -40,6 +40,7 @@ IMAGERY_SERVER_URL = 'http://{}:{}/'.format(
 )
 
 logger = logging.getLogger('djff.views')
+logger.setLevel(logger.DEBUG)
 
 
 def _image_response_from_numpy_array(img, extension):
@@ -163,6 +164,19 @@ def receive_telemetry(request):
 
     return response
 
+
+@csrf_dec.csrf_exempt
+def telemetry_proxy(request):
+    payload = request.POST
+    logger.info('Telemetry proxy payload: {}'.format(payload))
+
+    telemeter = telemetry.Telemeter()
+    pi_reply = telemeter.post_to_raspi(payload)
+
+    return dh.HttpResponse(content=json.dumps(pi_reply), content_type='application/json')
+
+
+
 #############################
 ###  Capture Queue Views  ###
 #############################
@@ -196,6 +210,7 @@ def cjr_new_for_raspi(request):
     cjr.save()
 
     return dh.HttpResponse(data, mimetype='application/json')
+
 
 ##########################
 ###  Experiment views  ###
@@ -427,57 +442,6 @@ def insert_capturejob_into_queue(request):
     telemeter = telemetry.Telemeter()
     response = telemeter.post_to_raspi(payload)
     return response
-
-# def run_capturejob(request, xp_id, cjt_id):
-#     cjt = ds.get_object_or_404(CaptureJobTemplate, pk=cjt_id)
-#     xp = ds.get_object_or_404(Experiment, pk=xp_id)
-#     cjr = CaptureJobRecord(
-#         xp=xp,
-#         voltage=cjt.voltage,
-#         current=cjt.current,
-#         running=True,
-#     )
-#     cjr.save()
-#
-#     payload = {
-#         'command': 'set_psu',
-#         'xp_id': xp.id,
-#         'species': xp.species.shortname,
-#         'cjr_id': cjr.id,
-#         'voltage': cjr.voltage,
-#         'current': cjr.current,
-#         'duration': cjt.duration,
-#         'interval': cjt.interval,
-#         'startup_delay': cjt.startup_delay,
-#         'enable_output': int(True),
-#     }
-#
-#     logger.info(str(payload))
-#
-#     def job_thread(payload_unshadow):
-#         requests.get(IMAGERY_SERVER_URL, params=payload_unshadow)
-#
-#         time.sleep(cjt.startup_delay)
-#
-#         payload_unshadow['command'] = 'run_capturejob'
-#
-#         requests.get(IMAGERY_SERVER_URL, params=payload_unshadow)
-#
-#         payload_unshadow['command'] = 'set_psu'
-#         payload_unshadow['enable_output'] = int(False)
-#
-#         while CaptureJobRecord.objects.filter(running=True):
-#             time.sleep(1)
-#
-#         requests.get(IMAGERY_SERVER_URL, params=payload_unshadow)
-#
-#     thread = threading.Thread(target=job_thread, args=(payload,))
-#     thread.start()
-#
-#     return dh.HttpResponseRedirect(
-#         dcu.reverse('djff:xp_capture',
-#                     args=(payload['xp_id'],))
-#     )
 
 
 def abort_running_job(request):
