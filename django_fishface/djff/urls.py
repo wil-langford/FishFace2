@@ -101,6 +101,12 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
+      r'^telemetry_proxy/$',
+      views.telemetry_proxy,
+      name='telemetry_proxy'
+    ),
+
+    dcu.url(
         r'^cq/$',
         views.cq_interface,
         name='cq_interface'
