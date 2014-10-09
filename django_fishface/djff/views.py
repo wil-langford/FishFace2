@@ -40,7 +40,7 @@ IMAGERY_SERVER_URL = 'http://{}:{}/'.format(
 )
 
 logger = logging.getLogger('djff.views')
-logger.setLevel(logger.DEBUG)
+logger.setLevel(logging.DEBUG)
 
 
 def _image_response_from_numpy_array(img, extension):
