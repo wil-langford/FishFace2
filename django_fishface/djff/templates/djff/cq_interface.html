@@ -4,26 +4,45 @@
     <script type="text/javascript">
         $(document).ready(function(){
 
-            function debug_print(print_this) {
-                $('#debug_print_area').append('<br />### ' + print_this);
+            function send_to_raspi(obj_to_send, success_function) {
+                $.post(
+                    '{% url 'djff:telemetry_proxy' %}',
+                    obj_to_send,
+                    success_function,
+                    'json'
+                ).fail(function (jqXHR, textStatus, errorThrown) {
+                    console.log(
+                        "ERROR:\n  textStatus: " + textStatus +
+                        "\n  text: " + jqXHR.text +
+                        "\n  errorThrown: " + errorThrown
+                    );
+                    return false;
+                });
             }
 
-            function repopulate_fields() {
-                $.ajax({
-                    type: 'POST',
-                    contentType: 'application/json',
-                    url: '{{ raspi_telemetry_url }}',
-                    data: JSON.stringify({ command: 'job_status' }),
-                    dataType: 'json'
-                }).fail(function (jqXHR, textStatus, errorThrown) {
-                    debug_print("ERROR")
-                    debug_print("textStatus: " + textStatus)
-                    debug_print("errorThrown: '" + errorThrown + "'")
-                }).done(function (data, textStatus, jqXHR) {
-                    debug_print('responseJSON: ' + jqXHR.responseJSON)
-                })
-            }
+            function repopulate_fields(data, textStatus, jqXHR) {
+                if (data.current_job != null) {
+                    $('#current_job_wrapper').css('display', 'block');
+                } else {
+                    $('#current_job_wrapper').css('display', 'none');
+                }
 
+                if (data.staged_job != null) {
+                    $('#staged_job_wrapper').css('display', 'block');
+                } else {
+                    $('#staged_job_wrapper').css('display', 'none');
+                }
+
+                if (data.queue.length > 0) {
+                    $('#queue_placeholder').delete();
+                    // $('#capturejob_queue').css('display', 'block');
+                    console.log("TODO: fill queue")
+                } else {
+                    $('#capturejob_queue').html('<li id="queue_placeholder">No items in queue</li>');
+                }
+
+
+            }
 
                 {% for cjt in cjts %}
                 $('#CJT_' + {{ cjt.id }}).data('cjt_id', {{ cjt.id }});
@@ -31,17 +50,17 @@
 
             $('#b-ton').click( function() {
                 $('.job_queue_item').each( function () {
-                    debug_print(' ' + $(this).attr('data-cjt'));
+                    console.log(' ' + $(this).attr('data-cjt'));
                 });
             });
 
             $('#a-ton').click( function() {
-                repopulate_fields();
+                send_to_raspi({'command': 'job_status'}, repopulate_fields);
             });
 
             $('#capturejob_queue').sortable({
                 update: function(event, ui) {
-                debug_print('<br />' + $('#capturejob_queue').sortable('toArray').toString());
+                console.log($('#capturejob_queue').sortable('toArray').toString());
                 },
                 revert: true,
                 stop: function(event, ui) {
@@ -90,7 +109,6 @@
         <h2>Queue</h2>
 
         <ul class="queue_block" id="capturejob_queue">
-            <li class="job_queue_item" data-cjt="p1" id="ONE">one</li>
         </ul>
     </div>
 

@@ -13,9 +13,11 @@ class Telemeter(object):
         pass
 
     def post_to_raspi(self, payload, files=None):
-        logger.debug('POSTing JSON payload to remote host:\n{}'.format(payload))
+        logger.debug('POSTing payload to remote host:\n{}'.format(payload))
 
         json_payload = json.dumps(payload)
+
+        logger.debug('JSON-serialized payload:\n{}'.format(json_payload))
 
         headers = {'content-type': 'application/json'}
 
