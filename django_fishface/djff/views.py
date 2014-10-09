@@ -183,9 +183,20 @@ def telemetry_proxy(request):
 
 
 def cq_interface(request):
+
+    cjts = CaptureJobTemplate.objects.all()
+    job_specs = dict()
+    for cjt in cjts:
+        job_specs[cjt.id] = "{}_{}_{}_{}_{}".format(
+            cjt.voltage, cjt.current,
+            cjt.startup_delay,
+            cjt.interval, cjt.duration
+        )
+    job_specs = json.dumps(job_specs)
+
     context = {
-        'cq_list': 'one two three four five'.split(' '),
-        'cjts': CaptureJobTemplate.objects.all(),
+        'job_specs': job_specs,
+        'cjts': cjts,
         'raspi_telemetry_url': settings.TELEMETRY_URL,
     }
     return ds.render(request, 'djff/cq_interface.html', context)

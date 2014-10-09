@@ -34,18 +34,20 @@
                 }
 
                 if (data.queue.length > 0) {
-                    $('#queue_placeholder').delete();
+                    $('#queue_placeholder').remove();
                     // $('#capturejob_queue').css('display', 'block');
                     console.log("TODO: fill queue")
                 } else {
-                    $('#capturejob_queue').html('<li id="queue_placeholder">No items in queue</li>');
+                    $('#capturejob_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
                 }
 
 
             }
 
-                {% for cjt in cjts %}
-                $('#CJT_' + {{ cjt.id }}).data('cjt_id', {{ cjt.id }});
+            job_specs = {{ job_specs|safe }}
+
+            {% for cjt in cjts %}
+                $('#CJT_' + {{ cjt.id }}).attr('data-job_spec', job_specs[{{ cjt.id }}]);
             {% endfor %}
 
             $('#b-ton').click( function() {
@@ -58,9 +60,22 @@
                 send_to_raspi({'command': 'job_status'}, repopulate_fields);
             });
 
+            // TODO: FIGURE OUT HOW TO GET THESE THINGS TO WORK WITHOUT IDs.
+            // TODO: FIGURE OUT HOW TO GET THESE THINGS TO WORK WITHOUT IDs.
+            // TODO: FIGURE OUT HOW TO GET THESE THINGS TO WORK WITHOUT IDs.
+
             $('#capturejob_queue').sortable({
                 update: function(event, ui) {
-                console.log($('#capturejob_queue').sortable('toArray').toString());
+                    $('#queue_placeholder').remove();
+                    var queue_array = $('#capturejob_queue').sortable('toArray');
+                    var str_list = queue_array.length + ":";
+                    for (i=0; i++; i<queue_array.length) {
+                        str_list = str_list + " " + (
+                                queue_array[i].attr('data-job_spec')
+                        )
+                    };
+                    console.log(str_list)
+
                 },
                 revert: true,
                 stop: function(event, ui) {
@@ -71,10 +86,11 @@
                 },
                 beforeStop: function(event, ui) {
                     newItem = ui.item;
-                    helperId = ui.helper.attr('data-cjt');
+                    job_spec = ui.helper.attr('data-job_spec');
+                    console.log("old job spec: " + job_spec)
                 },
                 receive: function(event, ui) {
-                    $(newItem).attr('id', 'CJT_' + helperId);
+                    $(newItem).attr('data-job_spec', job_spec);
                 },
                 placeholder: "ui-sortable-placeholder"
             });
@@ -87,7 +103,7 @@
 
 
 
-        });
+        });  // End of document.ready()
     </script>
 
 {% endblock %}
@@ -109,6 +125,7 @@
         <h2>Queue</h2>
 
         <ul class="queue_block" id="capturejob_queue">
+            <li id="queue_placeholder">No queued jobs.</li>
         </ul>
     </div>
 
@@ -118,17 +135,14 @@
         <input type="button" value="a-ton" id="a-ton">
         <input type="submit" value="Save">
     </form>
-
-    <h3>DEBUGGING OUTPUT</h3>
-    <div id="debug_print_area"></div>
 {% endblock %}
 
 {% block preview_area %}
     <ul class="queue_block" id="cjt_list">
     {% for cjt in cjts %}
-        <li class="fresh_cjt" id="CJT_{{ cjt.id }}" data-cjt="{{ cjt.id }}">{{ cjt.startup_delay }}s, then
-            every {{ cjt.interval }}s for {{ cjt.duration }}s
-        ({{ cjt.voltage }}V, {{ cjt.current }}A)</li>
+        <li class="fresh_cjt" id="CJT_{{ cjt.id }}">
+            Set ({{ cjt.voltage }}V, {{ cjt.current }}A), wait {{ cjt.startup_delay }}s, then
+            capture every {{ cjt.interval }}s for {{ cjt.duration }}s</li>
     {% endfor %}
     </ul>
 
