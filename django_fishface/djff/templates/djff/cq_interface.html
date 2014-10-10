@@ -47,12 +47,12 @@
             job_specs = {{ job_specs|safe }}
 
             {% for cjt in cjts %}
-                $('#CJT_' + {{ cjt.id }}).attr('data-job_spec', job_specs[{{ cjt.id }}]);
+                $('#CJT_' + {{ cjt.id }}).attr('data-job_spec', JSON.stringify(job_specs[{{ cjt.id }}]));
             {% endfor %}
 
             $('#b-ton').click( function() {
                 $('.job_queue_item').each( function () {
-                    console.log(' ' + $(this).attr('data-cjt'));
+                    console.log(' ' + $(this).attr('data-job_spec'));
                 });
             });
 
@@ -67,14 +67,8 @@
             $('#capturejob_queue').sortable({
                 update: function(event, ui) {
                     $('#queue_placeholder').remove();
-                    var queue_array = $('#capturejob_queue').sortable('toArray');
-                    var str_list = queue_array.length + ":";
-                    for (i=0; i++; i<queue_array.length) {
-                        str_list = str_list + " " + (
-                                queue_array[i].attr('data-job_spec')
-                        )
-                    };
-                    console.log(str_list)
+                    var queue_array = $('#capturejob_queue').sortable('toArray', {'attribute': 'data-job_spec'});
+                    console.log("queue_array: " + queue_array.toString())
 
                 },
                 revert: true,

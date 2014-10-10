@@ -187,11 +187,13 @@ def cq_interface(request):
     cjts = CaptureJobTemplate.objects.all()
     job_specs = dict()
     for cjt in cjts:
-        job_specs[cjt.id] = "{}_{}_{}_{}_{}".format(
-            cjt.voltage, cjt.current,
-            cjt.startup_delay,
-            cjt.interval, cjt.duration
-        )
+        job_specs[cjt.id] = {
+            'voltage': cjt.voltage,
+            'current': cjt.current,
+            'startup_delay': cjt.startup_delay,
+            'interval': cjt.interval,
+            'duration': cjt.duration
+        }
     job_specs = json.dumps(job_specs)
 
     context = {
