@@ -132,15 +132,15 @@ def receive_telemetry(request):
             cjr.running = False
 
         cjr.job_start = du.timezone.datetime.utcfromtimestamp(
-            float(payload['job_start_timestamp'])
+            float(payload['start_timestamp'])
         ).replace(tzinfo=dut.utc)
 
         cjr.total = int(payload['total'])
         cjr.remaining = int(payload['remaining'])
 
-        if payload['job_end_timestamp']:
+        if payload['stop_timestamp']:
             cjr.job_stop = du.timezone.datetime.utcfromtimestamp(
-                float(payload['job_end_timestamp'])
+                float(payload['stop_timestamp'])
             ).replace(tzinfo=dut.utc)
 
         cjr.save()
@@ -181,7 +181,6 @@ def telemetry_proxy(request):
 ###  Capture Queue Views  ###
 #############################
 
-
 def cq_interface(request):
 
     cjts = CaptureJobTemplate.objects.all()
@@ -196,7 +195,17 @@ def cq_interface(request):
         }
     job_specs = json.dumps(job_specs)
 
+    xps = Experiment.objects.all()
+    xp_names = dict()
+    xp_species = dict()
+    for xp in xps:
+        xp_names[xp.id] = "{} ({})".format(xp.name, xp.slug)
+        xp_species[xp.id] = xp.species.shortname
+
     context = {
+        'xps': xps,
+        'xp_names_json': json.dumps(xp_names),
+        'xp_species_json': json.dumps(xp_species),
         'job_specs': job_specs,
         'cjts': cjts,
         'raspi_telemetry_url': settings.TELEMETRY_URL,
@@ -204,7 +213,9 @@ def cq_interface(request):
     return ds.render(request, 'djff/cq_interface.html', context)
 
 
+@csrf_dec.csrf_exempt
 def cjr_new_for_raspi(request):
+    logger.debug("making new CJR with: {}".format(request.POST))
     cjr = CaptureJobRecord()
 
     cjr.xp_id = int(request.POST['xp_id'])
@@ -213,14 +224,15 @@ def cjr_new_for_raspi(request):
 
     cjr.running = True
 
-    cjr.job_start = datetime.datetime.utcfromtimestamp(request.POST['start_timestamp']).replace(
+    cjr.job_start = datetime.datetime.utcfromtimestamp(float(request.POST['start_timestamp'])).replace(
         tzinfo=pytz.utc)
+
+    cjr.save()
 
     data = json.dumps({
         'cjr_id': cjr.id,
         'species': cjr.xp.species.shortname
     })
-    cjr.save()
 
     return dh.HttpResponse(data, mimetype='application/json')
 

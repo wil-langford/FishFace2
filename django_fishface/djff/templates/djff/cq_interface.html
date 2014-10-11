@@ -2,8 +2,8 @@
 
 {% block localscript %}
     <script type="text/javascript">
-        $(document).ready(function(){
 
+        $(document).ready(function(){
             function send_to_raspi(obj_to_send, success_function) {
                 $.post(
                     '{% url 'djff:telemetry_proxy' %}',
@@ -20,58 +20,188 @@
                 });
             }
 
-            function repopulate_fields(data, textStatus, jqXHR) {
-                if (data.current_job != null) {
-                    $('#current_job_wrapper').css('display', 'block');
-                } else {
-                    $('#current_job_wrapper').css('display', 'none');
-                }
-
-                if (data.staged_job != null) {
-                    $('#staged_job_wrapper').css('display', 'block');
-                } else {
-                    $('#staged_job_wrapper').css('display', 'none');
-                }
-
-                if (data.queue.length > 0) {
-                    $('#queue_placeholder').remove();
-                    // $('#capturejob_queue').css('display', 'block');
-                    console.log("TODO: fill queue")
-                } else {
-                    $('#capturejob_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
-                }
-
-
+            function li_from_job_spec(job_spec) {
+                return '<li class="job_queue_item" data-job_spec="' + JSON.stringify(job_spec) + '">' +
+                       inner_li_from_job_spec(job_spec) +
+                       '</li>';
             }
 
-            job_specs = {{ job_specs|safe }}
+            function inner_li_from_job_spec(job_spec) {
+                var inner_li;
+                if (job_spec.interval > 0) {
+                    inner_li =
+                        'Set (' + job_spec.voltage + 'V, ' + job_spec.current + 'A), ' +
+                        'wait ' + job_spec.startup_delay + 's, ' +
+                        'then capture every ' + job_spec.interval + 's for ' + job_spec.duration + 's';
+                } else {
+                    inner_li = 'Set (' + job_spec.voltage + 'V, ' + job_spec.current + 'A) ' + 'for ' + job_spec.duration + 's';
+                }
+                return inner_li;
+            }
 
-            {% for cjt in cjts %}
-                $('#CJT_' + {{ cjt.id }}).attr('data-job_spec', JSON.stringify(job_specs[{{ cjt.id }}]));
-            {% endfor %}
+            function repopulate_fields(data, textStatus, jqXHR) {
+                console.log(JSON.stringify(data))
+                var temp_xp_id = data.xp_id
+                console.log("temp_xp_id: " + temp_xp_id)
+                if (temp_xp_id != null) {
+                    console.log("setting xp_id " + temp_xp_id)
+                    $('#xp_display_wrapper').attr('data-xp_id', temp_xp_id);
+                    console.log("xp_id gotten from page: " + get_xp_id())
+                }
 
-            $('#b-ton').click( function() {
-                $('.job_queue_item').each( function () {
-                    console.log(' ' + $(this).attr('data-job_spec'));
-                });
-            });
+                xp_id = check_xp_id();
 
-            $('#a-ton').click( function() {
+                if (xp_id != false) {
+                    $('#capturejob_queue_wrapper').css('display', 'block')
+
+                    if (data.current_job != null) {
+                        cj = data.current_job
+                        console.log('data.current: ' + JSON.stringify(cj))
+                        $('#current_job_wrapper').css('display', 'block');
+                        $('#current_job_status').html(cj.status);
+                        $('#current_job_remaining_total').html(
+                                cj.remaining + "/" + cj.total
+                        );
+                        $('#current_job_psu_setting').html(
+                            cj.voltage + "V with a maximum of " + cj.current + "A"
+                        );
+                        start_periodic_monitor();
+                    } else {
+                        $('#current_job_wrapper').css('display', 'none');
+                        $('#go_button').css('background-color', '');
+                        stop_periodic_monitor();
+                    }
+
+                    if (data.staged_job != null) {
+                        $('#staged_job_wrapper').css('display', 'block');
+                        $('#staged_job').html(JSON.stringify(data.staged_job))
+                    } else {
+                        $('#staged_job_wrapper').css('display', 'none');
+                    }
+
+                    if (data.queue.length > 0 && xp_id) {
+                        $('.job_queue_item').remove()
+                        var cjq = $('#capturejob_queue');
+                        var dq = data.queue;
+                        for (i in data.queue) {
+                            var job = dq[i];
+                            if (job.interval > 0) {
+                                cjq.append(li_from_job_spec(job, "job_queue_item"))
+                            }
+                        }
+                        $('#queue_placeholder').remove();
+                    } else {
+                        $('#capturejob_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
+                    }
+
+                }
+            }
+
+            function get_xp_id() {
+                var xp_id = $('#xp_display_wrapper').attr('data-xp_id');
+                if (xp_id == "") { return false; } else { return xp_id; }
+            }
+
+            function check_xp_id() {
+                var xp_id = get_xp_id();
+                if (xp_id != "") {
+                    $('#capture_queue_wrapper').css('display', 'block');
+                    $('#xp_id_header').html(xp_names[xp_id]);
+                    $('#xp_display_wrapper').css('display', 'block');
+                    $('#xp_select_wrapper').css('display', 'none');
+                }
+                return xp_id;
+            }
+
+            function get_queue_array() {
+                var queue_array = $('#capturejob_queue').sortable('toArray', {'attribute': 'data-job_spec'});
+                console.log("queue_array: " + queue_array.toString())
+                console.log("queue_array.length: " + queue_array.length)
+                if (queue_array != "") {
+                    return queue_array
+                } else {
+                    return false
+                }
+            }
+
+            function start_queue() {
+                $('#go_button').css('background-color', 'green');
+
+                queue_array = get_queue_array()
+                if (queue_array != false) {
+                    console.log("setting queue to: " + queue_array.toString());
+                    xp_id = get_xp_id()
+                    send_to_raspi({
+                                'command': 'set_queue',
+                                'queue': JSON.stringify(queue_array),
+                                'xp_id': xp_id,
+                                'species': xp_species[xp_id]
+                            }, repop_in_milliseconds(1000))
+                }
+            }
+
+            function repop() {
                 send_to_raspi({'command': 'job_status'}, repopulate_fields);
+            }
+
+            function repop_in_milliseconds(msec) {
+                window.setTimeout(repop, msec);
+                return function() {};
+            }
+
+            function pause_queue() {
+                send_to_raspi({'command': 'pause_queue'}, repop_in_milliseconds(1000))
+            }
+
+            function abort_all() {
+                send_to_raspi({'command': 'abort_all'}, repop_in_milliseconds(2000))
+            }
+
+            function start_periodic_monitor() {
+                if (window.fishface_monitoring == false) {
+                    window.fishface_update_loop = window.setInterval(
+                            function () {  // executed once every 5 seconds to request fresh data
+                                repop();
+                            }, 500);
+                    window.fishface_monitoring = true;
+                }
+            }
+
+            function stop_periodic_monitor() {
+                clearInterval(window.fishface_update_loop);
+                window.fishface_monitoring = false;
+            }
+
+            // Bind functions to events
+
+            $('#go_button').click(start_queue);
+            $('#refresh_button').click(repop);
+            $('#monitor_button').click(start_periodic_monitor);
+            $('#monitor_stop_button').click(stop_periodic_monitor);
+            $('#abort_all_button').click(abort_all);
+
+            $('#xp_select_form').submit(function() {
+                var xp_id = $('input[name=xp]:checked').val();
+                if (xp_id>0) {
+                    $('#xp_display_wrapper').attr('data-xp_id', xp_id);
+                    check_xp_id();
+                    repop();
+                }
+                return false;
             });
 
-            // TODO: FIGURE OUT HOW TO GET THESE THINGS TO WORK WITHOUT IDs.
-            // TODO: FIGURE OUT HOW TO GET THESE THINGS TO WORK WITHOUT IDs.
-            // TODO: FIGURE OUT HOW TO GET THESE THINGS TO WORK WITHOUT IDs.
+            /*
+             * Add some jQuery UI magic
+             */
 
             $('#capturejob_queue').sortable({
+                tolerance: 'pointer',
+                cursor: 'pointer',
+                revert: true,
+                dropOnEmpty: true,
                 update: function(event, ui) {
                     $('#queue_placeholder').remove();
-                    var queue_array = $('#capturejob_queue').sortable('toArray', {'attribute': 'data-job_spec'});
-                    console.log("queue_array: " + queue_array.toString())
-
                 },
-                revert: true,
                 stop: function(event, ui) {
                     if (ui.item.hasClass("fresh_cjt")) {
                         ui.item.removeClass("fresh_cjt");
@@ -81,7 +211,6 @@
                 beforeStop: function(event, ui) {
                     newItem = ui.item;
                     job_spec = ui.helper.attr('data-job_spec');
-                    console.log("old job spec: " + job_spec)
                 },
                 receive: function(event, ui) {
                     $(newItem).attr('data-job_spec', job_spec);
@@ -95,7 +224,26 @@
                 revert: "invalid"
             });
 
+            // Executable stuff
 
+            xp_names = {{ xp_names_json|safe }};
+            xp_species = {{ xp_species_json|safe }};
+            job_specs = {{ job_specs|safe }};
+
+            window.fishface_monitoring = false;
+
+            {% for cjt in cjts %}
+                var cjt = $('#CJT_' + {{ cjt.id }})
+                cjt.attr('data-job_spec', JSON.stringify(job_specs[{{ cjt.id }}]));
+                cjt.html(inner_li_from_job_spec(job_specs[{{ cjt.id }}]));
+            {% endfor %}
+
+            repop();
+
+            var main_loop = window.setInterval(
+                function() {  // executed once per second to update displays with timers
+
+                }, 1000);
 
         });  // End of document.ready()
     </script>
@@ -105,9 +253,31 @@
 {% block subtitle %}Capture Queue Editor{% endblock %}
 
 {% block content %}
+    <div id="xp_display_wrapper" data-xp_id="">
+        <h4>Capturing imagery for experiment</h4>
+        <h2 id="xp_id_header"></h2>
+    </div>
+    <div id="xp_select_wrapper">
+        Please select an experiment to begin capturing:
+        <form id="xp_select_form">
+            {% for xp in xps %}
+                <label><input type="radio" name="xp" value="{{ xp.id }}" />{{ xp.name }} ({{ xp.slug }})</label><br />
+            {% empty %}
+                <div class="bad">There are no stored experiments.</div>
+            {% endfor %}
+            {% if xps %}
+                <label><input type="submit" />Confirm experiment selection</label>
+            {% endif %}
+        </form>
+    </div>
+
     <div id="current_job_wrapper" class="job_wrapper">
         <h2>Currently Running Job</h2>
-        <div id="current_job"></div>
+        <div id="current_job">
+            status: <span id="current_job_status">WAITING FOR UPDATE FROM RASPI</span><br>
+            (remaining/total) captures: <span id="current_job_remaining_total">WAITING FOR UPDATE FROM RASPI</span><br>
+            PSU setting: <span id="current_job_psu_setting">WAITING FOR UPDATE FROM RASPI</span><br>
+        </div>
     </div>
 
     <div id="staged_job_wrapper" class="job_wrapper">
@@ -115,28 +285,24 @@
         <div id="staged_job"></div>
     </div>
 
-    <div id="capture_queue_wrapper" class="job_wrapper">
+    <div id="capturejob_queue_wrapper" class="job_wrapper">
         <h2>Queue</h2>
-
+        <span id="go_button" class="boxed">RUN</span>
+        <span id="refresh_button" class="boxed">REFRESH</span>
+        <span id="monitor_button" class="boxed">MONITOR</span>
+        <span id="monitor_stop_button" class="boxed">STOP MONITOR</span>
+        <span id="abort_all_button" class="boxed">ABORT ALL</span>
         <ul class="queue_block" id="capturejob_queue">
-            <li id="queue_placeholder">No queued jobs.</li>
+
         </ul>
     </div>
 
-    <form action="{% url 'djff:cq_interface' %}" method="post">
-        {% csrf_token %}
-        <input type="button" value="b-ton" id="b-ton">
-        <input type="button" value="a-ton" id="a-ton">
-        <input type="submit" value="Save">
-    </form>
 {% endblock %}
 
 {% block preview_area %}
     <ul class="queue_block" id="cjt_list">
     {% for cjt in cjts %}
-        <li class="fresh_cjt" id="CJT_{{ cjt.id }}">
-            Set ({{ cjt.voltage }}V, {{ cjt.current }}A), wait {{ cjt.startup_delay }}s, then
-            capture every {{ cjt.interval }}s for {{ cjt.duration }}s</li>
+        <li class="fresh_cjt" id="CJT_{{ cjt.id }}"></li>
     {% endfor %}
     </ul>
 

@@ -83,11 +83,6 @@ urlpatterns = dcu.patterns(
         name='sp_delete'
     ),
 
-    # dcu.url(
-    #     r'^cj/(?P<xp_id>\d+)/(?P<cjt_id>\d+)/run/$',
-    #     views.run_capturejob,
-    #     name='run_capturejob'
-    # ),
     dcu.url(
         r'^cj/abort_job/$',
         views.abort_running_job,

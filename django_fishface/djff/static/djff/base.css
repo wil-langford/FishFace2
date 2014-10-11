@@ -92,14 +92,15 @@ header
     color: white;
 }
 
-div.boxed
+.boxed
 {
     border-style: solid;
     border-width: 1px;
     border-color: black;
+    margin: 5px;
 }
 
-div.bad
+.bad
 {
     background-color: lightpink;
 }
@@ -200,8 +201,13 @@ div.bad
     display: none;
 }
 
-#capture_queue_wrapper {
+#capturejob_queue_wrapper {
     background-color: #aaaaaa;
+    display: none;
+}
+
+#xp_display_wrapper {
+    display: none;
 }
 
 div.job_wrapper {
