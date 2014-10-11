@@ -195,7 +195,8 @@ def cq_interface(request):
         }
     job_specs = json.dumps(job_specs)
 
-    xps = Experiment.objects.all()
+    all_xps = Experiment.objects.filter()
+    xps = [xp for xp in all_xps if Image.objects.filter(xp_id=xp.id, is_cal_image=True)]
     xp_names = dict()
     xp_species = dict()
     for xp in xps:

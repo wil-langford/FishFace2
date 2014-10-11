@@ -23,7 +23,7 @@ logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
 LOG_TO_CONSOLE = True
-CONSOLE_LOG_LEVEL = logging.DEBUG
+CONSOLE_LOG_LEVEL = logging.INFO
 FILE_LOG_LEVEL = logging.DEBUG
 
 console_handler = logging.StreamHandler()
@@ -102,6 +102,7 @@ class CaptureJob(threading.Thread):
         self.remaining = None
 
         self.capture_times = None
+        self.job_ends_after = None
 
         self.start_timestamp = None
         self.stop_timestamp = None
@@ -144,10 +145,7 @@ class CaptureJob(threading.Thread):
         deathcry = self.get_status_dict()
         deathcry['command'] = 'job_status_update'
 
-        try:
-            self.controller.deathcry = deathcry
-        except AttributeError:
-            self.logger.error("Can't set attribute???\n{}".format(deathcry))
+        self.controller.deathcry = deathcry
 
     def job_without_capture(self):
         self.total = 0
@@ -159,10 +157,11 @@ class CaptureJob(threading.Thread):
             'voltage': self.voltage,
             'current': self.current,
         })
+        self.status = 'running'
 
-        stop_at = time.time() + self.duration
+        self.job_ends_after = time.time() + self.duration
 
-        while self._keep_looping and time.time() < stop_at:
+        while self._keep_looping and time.time() < self.job_ends_after:
             time.sleep(1)
 
     def job_with_capture(self):
@@ -174,6 +173,7 @@ class CaptureJob(threading.Thread):
         for j in range(1, int(self.duration / self.interval)):
             self.capture_times.append(first_capture_at + j*self.interval)
 
+        self.job_ends_after = self.capture_times[-1]
         self.total = len(self.capture_times)
         self.remaining = len(self.capture_times)
 
@@ -213,8 +213,16 @@ class CaptureJob(threading.Thread):
             'remaining': self.remaining,
             'start_timestamp': self.start_timestamp,
             'stop_timestamp': self.stop_timestamp,
+            'seconds_left': int(self.job_ends_in),
         }
 
+    @property
+    def job_ends_in(self):
+        if self.job_ends_after is not None:
+            ends_in = self.job_ends_after - time.time()
+            return ends_in
+        else:
+            return 1000000
 
 class CaptureJobController(threading.Thread):
     def __init__(self, imagery_server):
@@ -257,11 +265,8 @@ class CaptureJobController(threading.Thread):
                 self._current_job.start()
                 self.logger.debug('Started new current job.')
 
-                if self._queue:
-                    self._staged_job = CaptureJob(self, **self._queue.pop(0))
-                    self.logger.debug('Staged new job.')
-
-            if (self._current_job is None or not self._current_job.is_alive()) and self._staged_job is not None:
+            if (self._current_job is None or not self._current_job.is_alive() or
+                    self._current_job.job_ends_in < -1) and self._staged_job is not None:
                 self.logger.info('Current job is dead, promoting staged job.')
                 self._current_job = self._staged_job
                 self._current_job.start()
@@ -270,11 +275,12 @@ class CaptureJobController(threading.Thread):
             if (self._staged_job is None and
                     self._current_job is not None and
                     not self._queue and
-                    not self._current_job.is_alive()):
+                    not self._current_job.is_alive() and
+                    self._current_job.job_ends_in > -1):
                 self.logger.info('Current job is dead and there are no more pending.')
                 self._current_job = None
 
-            if self._staged_job is None and self._queue and self._current_job.remaining < 5:
+            if self._staged_job is None and self._queue and self._current_job.job_ends_in < 10:
                 self.logger.info("New staged job being promoted from queue.")
                 self._staged_job = CaptureJob(self, **self._queue.pop(0))
 
@@ -304,6 +310,7 @@ class CaptureJobController(threading.Thread):
         self._staged_job = None
         self._queue = list()
         self._current_job.abort_job()
+        return payload
 
     def insert_job(self, job_spec, position):
         self.logger.info('Inserting job at position {} in queue.'.format(position))

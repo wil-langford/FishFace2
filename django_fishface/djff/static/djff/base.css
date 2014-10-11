@@ -121,46 +121,13 @@ header
     min-height: 100%;
     background: peru;
     padding-top: 6em;
+    padding-left: 0em;
 }
 
 #content
 {
     padding-top: 6em;
     margin-left: 12em;
-}
-
-
-.hopper_line .insert
-{
-    color: green;
-}
-
-.hopper_line .delete
-{
-    color: red;
-}
-
-
-.hopper_line .updown
-{
-    color: blue;
-}
-
-.hopper_line .type
-{
-    color: black;
-    font-size: 2em;
-    font-weight: bold;
-}
-
-.hopper_line .parameters
-{
-    color: #555555;
-}
-
-.hopper_line .disabled
-{
-    color: gray;
 }
 
 .deleter .warning
@@ -173,15 +140,20 @@ header
     background-color: lightcoral;
 }
 
+ul {
+    margin: 10px;
+    padding: 10px;
+}
+
 .queue_block li {
     list-style: none;
     padding: 5px;
-    margin-bottom: 3px;
+    margin: 3px;
     min-height: 1em;
     border: 1px solid #000;
     background-color: #C0C0C0;
-    min-width: 20em;
-    width: 25em;
+    min-width: 10em;
+    width: 15em;
 }
 
 .ui-sortable-placeholder {
