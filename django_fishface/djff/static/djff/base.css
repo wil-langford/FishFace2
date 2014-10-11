@@ -117,7 +117,7 @@ header
 #preview_area
 {
     float: right;
-    width: 25%;
+    width: 18em;
     min-height: 100%;
     background: peru;
     padding-top: 6em;
