@@ -196,6 +196,17 @@ $(document).ready(function(){
         }
     }
 
+    function clear_queue() {
+        console.log('Clearing queue');
+        xp_id = get_xp_id();
+        send_to_raspi({
+            'command': 'set_queue',
+            'queue': JSON.stringify([]),
+            'xp_id': xp_id,
+            'species': xp_species[xp_id]
+        }, repop_in_milliseconds(1000))
+    }
+
     function repop() {
         send_to_raspi({'command': 'job_status'}, repopulate_fields);
     }
@@ -233,10 +244,13 @@ $(document).ready(function(){
     $('#change_xp_button').click(change_experiment);
 
     $('#go_button').click(start_queue);
+    $('#clear_queue_button').click(clear_queue);
+    $('#abort_all_button').click(abort_all);
+
     $('#refresh_button').click(repop);
     $('#monitor_button').click(start_periodic_monitor);
     $('#monitor_stop_button').click(stop_periodic_monitor);
-    $('#abort_all_button').click(abort_all);
+
 
     $('#xp_select_form').submit(function() {
         console.log("submitting xp_id!!!");
@@ -389,6 +403,7 @@ $(document).ready(function(){
     <div id="capturejob_queue_wrapper" class="job_wrapper">
         <h2>Queue</h2>
         <span id="go_button" class="boxed">RUN</span>
+        <span id="clear_queue_button" class="boxed deleterbutton">CLEAR QUEUE</span>
         <span id="abort_all_button" class="boxed deleterbutton">ABORT ALL</span>
         <p />
         <span id="refresh_button" class="boxed">REFRESH</span>
@@ -402,6 +417,7 @@ $(document).ready(function(){
 {% endblock %}
 
 {% block preview_area %}
+    <h3>Capturejob Template Palette</h3>
     <ul class="queue_block" id="cjt_list">
     {% for cjt in cjts %}
         <li class="fresh_cjt" id="CJT_{{ cjt.id }}"></li>
