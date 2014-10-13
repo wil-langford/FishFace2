@@ -288,6 +288,9 @@ $(document).ready(function(){
         beforeStop: function(event, ui) {
             if (keep_job_in_queue == 0) {
                 ui.item.remove();
+                if (get_queue_array() == []) {
+                    $('#capturejob_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
+                }
             } else {
                 newItem = ui.item;
                 attrib_job_spec = ui.helper.attr('data-attrib_job_spec');
@@ -321,6 +324,8 @@ $(document).ready(function(){
         cjt.attr('data-attrib_job_spec', data_attrib_from_job_spec(job_specs[{{ cjt.id }}]));
         cjt.html(inner_li_from_job_spec(job_specs[{{ cjt.id }}]));
     {% endfor %}
+
+    $("#xp_select_form input:radio:last").attr('checked', true);
 
     repop();
 
