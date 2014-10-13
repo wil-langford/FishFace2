@@ -5,9 +5,9 @@
 {% block content %}
     <ol>
     {% for xp in xp_list %}
-                <li>
+                <li class="boxed">
                     <a href="{% url 'djff:xp_capture' xp.id %}">
-                        {{ xp.name }}</a>
+                    {{ xp.name }}</a>
                     <br><em>Species</em>: {{ xp.species.shortname }}
                     <br><em>Started</em>: {{ xp.xp_start }}
                 </li>

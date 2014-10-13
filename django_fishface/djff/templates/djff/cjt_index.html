@@ -5,17 +5,25 @@
 {% block content %}
     <ol>
     {% for cjt in context %}
-                <li>
+                <li class="boxed">
                     <a href="{% url 'djff:cjt_detail' cjt.id %}">
                         Capture Job Template
                     </a>
+                    {% if cjt.description %}
+                        <p class="boxed">Description: {{ cjt.description }}</p>
+                    {% endif %}
                     <br><em>Voltage</em>: {{ cjt.voltage }} V
                     <br><em>Max current</em>: {{ cjt.current }} A
                     <br>
                     <br><em>Duration</em>: {{ cjt.duration }}
-                    <br><em>Interval</em>: {{ cjt.interval }}
-                    <br><em>Startup Delay</em>: {{ cjt.startup_delay }}
-                    <br>
+                    {% if cjt.interval > 0 %}
+                        <br><em>Interval</em>: {{ cjt.interval }}
+                        <br><em>Startup Delay</em>: {{ cjt.startup_delay }}
+                        <br>
+                    {% else %}
+                        <p>No images will be captured with this job.</p>
+                    {% endif %}
+
                     <form action="{% url 'djff:cjt_delete' cjt.id %}"
                             method="post">
                         {% csrf_token %}
