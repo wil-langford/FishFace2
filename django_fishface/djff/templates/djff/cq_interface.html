@@ -1,256 +1,336 @@
 {% extends "djff/base.html" %}
 
 {% block localscript %}
-    <script type="text/javascript">
+<script type="text/javascript">
+$(document).ready(function(){
+    function send_to_raspi(obj_to_send, success_function) {
+        $.post(
+            '{% url 'djff:telemetry_proxy' %}',
+            obj_to_send,
+            success_function,
+            'json'
+        ).fail(function (jqXHR, textStatus, errorThrown) {
+            console.log(
+                "ERROR:\n  textStatus: " + textStatus +
+                "\n  text: " + jqXHR.text +
+                "\n  errorThrown: " + errorThrown
+            );
+            return false;
+        });
+    }
 
-        $(document).ready(function(){
-            function send_to_raspi(obj_to_send, success_function) {
-                $.post(
-                    '{% url 'djff:telemetry_proxy' %}',
-                    obj_to_send,
-                    success_function,
-                    'json'
-                ).fail(function (jqXHR, textStatus, errorThrown) {
-                    console.log(
-                        "ERROR:\n  textStatus: " + textStatus +
-                        "\n  text: " + jqXHR.text +
-                        "\n  errorThrown: " + errorThrown
-                    );
-                    return false;
-                });
+    function data_attrib_from_job_spec(job_spec) {
+        return job_spec.voltage + "_" +
+               job_spec.current + "_" +
+               job_spec.startup_delay + "_" +
+               job_spec.interval + "_" +
+               job_spec.duration;
+    }
+
+    function job_spec_from_data_attrib(data_attrib) {
+        var job_spec_array = data_attrib.split("_");
+        var job_spec = {
+            voltage: job_spec_array[0],
+            current: job_spec_array[1],
+            startup_delay: job_spec_array[2],
+            interval: job_spec_array[3],
+            duration: job_spec_array[4]
+        };
+
+        return job_spec;
+    }
+
+
+    function li_from_job_spec(job_spec) {
+        return '<li class="job_queue_item" data-attrib_job_spec=' + data_attrib_from_job_spec(job_spec) + '>' +
+               inner_li_from_job_spec(job_spec) +
+               '</li>';
+    }
+
+    function inner_li_from_job_spec(job_spec) {
+        var inner_li;
+        if (job_spec.interval > 0) {
+            inner_li =
+                'Set (' + job_spec.voltage + 'V, ' + job_spec.current + 'A), ' +
+                'wait ' + job_spec.startup_delay + 's, ' +
+                'then <br /> capture every ' +
+                job_spec.interval + 's for ' + job_spec.duration + 's';
+        } else {
+            inner_li = 'Set (' + job_spec.voltage + 'V, ' + job_spec.current + 'A) ' + 'for ' + job_spec.duration + 's';
+        }
+        return inner_li;
+    }
+
+    function repopulate_fields(data, textStatus, jqXHR) {
+        console.log(JSON.stringify(data));
+        var temp_xp_id = data.xp_id;
+        if (temp_xp_id != undefined && data.current_job != undefined) {
+            console.log("setting xp_id " + temp_xp_id);
+            $('#xp_display_wrapper').attr('data-xp_id', temp_xp_id);
+        }
+
+        var repop_xp_id = check_xp_id();
+
+        if (repop_xp_id != false) {
+            $('#capturejob_queue_wrapper').css('display', 'block');
+
+            if (data.current_job != undefined) {
+                var cj = data.current_job;
+                console.log('data.current: ' + JSON.stringify(cj));
+                $('#current_job_wrapper').css('display', 'block');
+                $('#current_job_status').html(cj.status);
+                $('#current_job_remaining_total').html(cj.remaining + "/" + cj.total);
+                $('#current_job_psu_setting').html(cj.voltage + "V with a maximum of " + cj.current + "A");
+                $('#current_job_seconds_left').html("" + cj.seconds_left);
+
+                var slug = ''
+                if (cj.cjr_id != undefined) {slug = '(XP_' + cj.xp_id + "_CJR_" + cj.cjr_id + ')'}
+                $('#current_job_slug').html(slug)
+
+                window.fishface_push_queue_on_update = true;
+
+                start_periodic_monitor();
+            } else {
+                window.fishface_push_queue_on_update = false;
+                $('#current_job_wrapper').css('display', 'none');
+                $('#go_button').css('background-color', '');
+                stop_periodic_monitor();
             }
 
-            function li_from_job_spec(job_spec) {
-                return '<li class="job_queue_item" data-job_spec="' + JSON.stringify(job_spec) + '">' +
-                       inner_li_from_job_spec(job_spec) +
-                       '</li>';
+            if (data.staged_job != undefined) {
+                var sj = data.staged_job;
+                $('#staged_job_wrapper').css('display', 'block');
+                $('#staged_job_status').html(sj.status);
+                $('#staged_job_psu_setting').html(
+                    sj.voltage + "V with a maximum of " + sj.current + "A"
+                );
+            } else {
+                $('#staged_job_wrapper').css('display', 'none');
             }
 
-            function inner_li_from_job_spec(job_spec) {
-                var inner_li;
-                if (job_spec.interval > 0) {
-                    inner_li =
-                        'Set (' + job_spec.voltage + 'V, ' + job_spec.current + 'A), ' +
-                        'wait ' + job_spec.startup_delay + 's, ' +
-                        'then <br /> capture every ' +
-                        job_spec.interval + 's for ' + job_spec.duration + 's';
-                } else {
-                    inner_li = 'Set (' + job_spec.voltage + 'V, ' + job_spec.current + 'A) ' + 'for ' + job_spec.duration + 's';
+            if (data.queue.length > 0 && repop_xp_id) {
+                $('.job_queue_item').remove();
+                var cjq = $('#capturejob_queue');
+                var dq = data.queue;
+                for (i in data.queue) {
+                    var job = dq[i];
+                    cjq.append(li_from_job_spec(job, "job_queue_item"))
                 }
-                return inner_li;
+                $('#queue_placeholder').remove();
+            } else {
+                $('#capturejob_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
             }
 
-            function repopulate_fields(data, textStatus, jqXHR) {
-                console.log(JSON.stringify(data));
-                var temp_xp_id = data.xp_id;
-                if (temp_xp_id != undefined && data.current_job != undefined) {
-                    console.log("setting xp_id " + temp_xp_id);
-                    $('#xp_display_wrapper').attr('data-xp_id', temp_xp_id);
-                }
+        }
+    }
 
-                var repop_xp_id = check_xp_id();
+    function change_experiment() {
+        if ($('#current_job_wrapper').css('display') == 'none') {
+            $('#xp_display_wrapper').attr('data-xp_id', '');
+            check_xp_id();
+            console.log('Changing experiment.');
+        } else {
+            $('#xp_display_wrapper').append(
+                '<div id="no_change_during_run" class="bad boxed">Can\'t' +
+                ' change experiments while job is running.</div>');
 
-                if (repop_xp_id != false) {
-                    $('#capturejob_queue_wrapper').css('display', 'block');
+                window.setTimeout(
+                    function() {$('#no_change_during_run').remove();},
+                    3000
+            );
+        }
+    }
 
-                    if (data.current_job != null) {
-                        var cj = data.current_job;
-                        console.log('data.current: ' + JSON.stringify(cj));
-                        $('#current_job_wrapper').css('display', 'block');
-                        $('#current_job_status').html(cj.status);
-                        $('#current_job_remaining_total').html(
-                                cj.remaining + "/" + cj.total
-                        );
-                        $('#current_job_psu_setting').html(
-                            cj.voltage + "V with a maximum of " + cj.current + "A"
-                        );
-                        $('#current_job_seconds_left').html("" + cj.seconds_left);
-                        start_periodic_monitor();
-                    } else {
-                        $('#current_job_wrapper').css('display', 'none');
-                        $('#go_button').css('background-color', '');
-                        stop_periodic_monitor();
-                    }
+    function get_xp_id() {
+        var get_xp_id = $('#xp_display_wrapper').attr('data-xp_id');
+        if (get_xp_id == "") { return false; } else { return get_xp_id; }
+    }
 
-                    if (data.staged_job != null) {
-                        var sj = data.staged_job;
-                        $('#staged_job_wrapper').css('display', 'block');
-                        $('#staged_job_status').html(sj.status);
-                        $('#staged_job_psu_setting').html(
-                            sj.voltage + "V with a maximum of " + sj.current + "A"
-                        );
-                    } else {
-                        $('#staged_job_wrapper').css('display', 'none');
-                    }
+    function check_xp_id() {
+        var check_xp_id = get_xp_id();
+        if (check_xp_id != "" && check_xp_id != 'false') {
+            $('#capturejob_queue_wrapper').css('display', 'block');
+            $('#xp_id_header').html(xp_names[check_xp_id]);
+            $('#xp_display_wrapper').css('display', 'block');
+            $('#xp_select_wrapper').css('display', 'none');
+        } else {
+            $('#capturejob_queue_wrapper').css('display', 'none');
+            $('#xp_display_wrapper').css('display', 'none');
+            $('#xp_select_wrapper').css('display', 'block');
+            check_xp_id = false;
+        }
+        console.log("checked xp_id: " + check_xp_id)
+        return check_xp_id;
+    }
 
-                    if (data.queue.length > 0 && repop_xp_id) {
-                        $('.job_queue_item').remove();
-                        var cjq = $('#capturejob_queue');
-                        var dq = data.queue;
-                        for (i in data.queue) {
-                            var job = dq[i];
-                            cjq.append(li_from_job_spec(job, "job_queue_item"))
-                        }
-                        $('#queue_placeholder').remove();
-                    } else {
-                        $('#capturejob_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
-                    }
+    function get_queue_array() {
+        var queue_attrib_array = $('#capturejob_queue').sortable('toArray', {'attribute': 'data-attrib_job_spec'});
+        var queue_array = [];
+        for (i in queue_attrib_array) {
+            queue_array.push(job_spec_from_data_attrib(queue_attrib_array[i]));
+        }
+        if (queue_array.length > 0) {
+            return queue_array
+        } else {
+            return false
+        }
+    }
 
-                }
-            }
+    function start_queue() {
+        $('#go_button').css('background-color', 'green');
 
-            function get_xp_id() {
-                var get_xp_id = $('#xp_display_wrapper').attr('data-xp_id');
-                if (get_xp_id == "") { return false; } else { return get_xp_id; }
-            }
+        push_entire_queue_to_raspi();
+    }
 
-            function check_xp_id() {
-                var check_xp_id = get_xp_id();
-                if (check_xp_id != "" && check_xp_id != 'false') {
-                    $('#capture_queue_wrapper').css('display', 'block');
-                    $('#xp_id_header').html(xp_names[check_xp_id]);
-                    $('#xp_display_wrapper').css('display', 'block');
-                    $('#xp_select_wrapper').css('display', 'none');
-                } else {
-                    check_xp_id = false;
-                }
-                console.log("checked xp_id: " + check_xp_id)
-                return check_xp_id;
-            }
+    function push_entire_queue_to_raspi() {
+        queue_array = get_queue_array();
+        if (queue_array != false) {
+            console.log("setting queue to: " + queue_array.toString());
+            xp_id = get_xp_id();
+            send_to_raspi({
+                'command': 'set_queue',
+                'queue': JSON.stringify(queue_array),
+                'xp_id': xp_id,
+                'species': xp_species[xp_id]
+            }, repop_in_milliseconds(1000))
+        }
+    }
 
-            function get_queue_array() {
-                var queue_array = $('#capturejob_queue').sortable('toArray', {'attribute': 'data-job_spec'});
-                console.log("queue_array: " + queue_array.toString())
-                console.log("queue_array.length: " + queue_array.length)
-                if (queue_array != "") {
-                    return queue_array
-                } else {
-                    return false
-                }
-            }
+    function repop() {
+        send_to_raspi({'command': 'job_status'}, repopulate_fields);
+    }
 
-            function start_queue() {
-                $('#go_button').css('background-color', 'green');
+    function repop_in_milliseconds(msec) {
+        window.setTimeout(repop, msec);
+        return function() {};
+    }
 
-                queue_array = get_queue_array();
-                if (queue_array != false) {
-                    console.log("setting queue to: " + queue_array.toString());
-                    xp_id = get_xp_id();
-                    send_to_raspi({
-                                'command': 'set_queue',
-                                'queue': JSON.stringify(queue_array),
-                                'xp_id': xp_id,
-                                'species': xp_species[xp_id]
-                            }, repop_in_milliseconds(1000))
-                }
-            }
+    function pause_queue() {
+        send_to_raspi({'command': 'pause_queue'}, repop_in_milliseconds(1000))
+    }
 
-            function repop() {
-                send_to_raspi({'command': 'job_status'}, repopulate_fields);
-            }
+    function abort_all() {
+        send_to_raspi({'command': 'abort_all'}, repop_in_milliseconds(2000))
+    }
 
-            function repop_in_milliseconds(msec) {
-                window.setTimeout(repop, msec);
-                return function() {};
-            }
+    function start_periodic_monitor() {
+        if (window.fishface_monitoring == false) {
+            window.fishface_update_loop = window.setInterval(
+                    function () {  // executed once every 5 seconds to request fresh data
+                        repop();
+                    }, 500);
+            window.fishface_monitoring = true;
+        }
+    }
 
-            function pause_queue() {
-                send_to_raspi({'command': 'pause_queue'}, repop_in_milliseconds(1000))
-            }
+    function stop_periodic_monitor() {
+        clearInterval(window.fishface_update_loop);
+        window.fishface_monitoring = false;
+    }
 
-            function abort_all() {
-                send_to_raspi({'command': 'abort_all'}, repop_in_milliseconds(2000))
-            }
+    // Bind functions to events
 
-            function start_periodic_monitor() {
-                if (window.fishface_monitoring == false) {
-                    window.fishface_update_loop = window.setInterval(
-                            function () {  // executed once every 5 seconds to request fresh data
-                                repop();
-                            }, 500);
-                    window.fishface_monitoring = true;
-                }
-            }
+    $('#change_xp_button').click(change_experiment);
 
-            function stop_periodic_monitor() {
-                clearInterval(window.fishface_update_loop);
-                window.fishface_monitoring = false;
-            }
+    $('#go_button').click(start_queue);
+    $('#refresh_button').click(repop);
+    $('#monitor_button').click(start_periodic_monitor);
+    $('#monitor_stop_button').click(stop_periodic_monitor);
+    $('#abort_all_button').click(abort_all);
 
-            // Bind functions to events
+    $('#xp_select_form').submit(function() {
+        console.log("submitting xp_id!!!");
+        var xp_id = +$('input[name=xp]:checked').val();
+        $('#xp_display_wrapper').attr('data-xp_id', xp_id);
+        console.log("xp_id from page: " + get_xp_id());
+        check_xp_id();
+        repop();
+        return false;
+    });
 
-            $('#go_button').click(start_queue);
-            $('#refresh_button').click(repop);
-            $('#monitor_button').click(start_periodic_monitor);
-            $('#monitor_stop_button').click(stop_periodic_monitor);
-            $('#abort_all_button').click(abort_all);
+    /*
+     * Add some jQuery UI magic
+     */
 
-            $('#xp_select_form').submit(function() {
-                console.log("submitting xp_id!!!");
-                var xp_id = +$('input[name=xp]:checked').val();
-                $('#xp_display_wrapper').attr('data-xp_id', xp_id);
-                console.log("xp_id from page: " + get_xp_id());
-                check_xp_id();
+    $('#capturejob_queue').sortable({
+        tolerance: 'pointer',
+        cursor: 'pointer',
+        revert: true,
+        dropOnEmpty: true,
+
+        start: function(event, ui) {
+            stop_periodic_monitor()
+        },
+
+        over: function(event, ui) {
+            sortableIn = 1;
+        },
+
+        out: function(event, ui) {
+            sortableIn = 0;
+        },
+
+        update: function(event, ui) {
+            $('#queue_placeholder').remove();
+
+            if (window.fishface_push_queue_on_update == true) {
+                push_entire_queue_to_raspi();
                 repop();
-                return false;
-            });
+                start_periodic_monitor();
+            }
 
-            /*
-             * Add some jQuery UI magic
-             */
+        },
+        stop: function(event, ui) {
+            if (ui.item.hasClass("fresh_cjt")) {
+                ui.item.removeClass("fresh_cjt");
+                ui.item.addClass("job_queue_item");
+            }
+        },
+        beforeStop: function(event, ui) {
+            if (sortableIn = 0) {
+                ui.item.remove();
+            } else {
+                newItem = ui.item;
+                attrib_job_spec = ui.helper.attr('data-attrib_job_spec');
+            }
+        },
+        receive: function(event, ui) {
+            $(newItem).attr('data-attrib_job_spec', attrib_job_spec);
+            sortableIn = 1;
+        },
+        placeholder: "ui-sortable-placeholder"
+    });
 
-            $('#capturejob_queue').sortable({
-                tolerance: 'pointer',
-                cursor: 'pointer',
-                revert: true,
-                dropOnEmpty: true,
-                update: function(event, ui) {
-                    $('#queue_placeholder').remove();
-                },
-                stop: function(event, ui) {
-                    if (ui.item.hasClass("fresh_cjt")) {
-                        ui.item.removeClass("fresh_cjt");
-                        ui.item.addClass("job_queue_item");
-                    }
-                },
-                beforeStop: function(event, ui) {
-                    newItem = ui.item;
-                    job_spec = ui.helper.attr('data-job_spec');
-                },
-                receive: function(event, ui) {
-                    $(newItem).attr('data-job_spec', job_spec);
-                },
-                placeholder: "ui-sortable-placeholder"
-            });
+    $(".fresh_cjt").draggable({
+        connectToSortable: "#capturejob_queue",
+        helper: "clone",
+        revert: "invalid"
+    });
 
-            $(".fresh_cjt").draggable({
-                connectToSortable: "#capturejob_queue",
-                helper: "clone",
-                revert: "invalid"
-            });
+    // Executable stuff
 
-            // Executable stuff
+    date_format = 'YYYY-MM-DD HH:mm:ss.SSZZ'
 
-            xp_names = {{ xp_names_json|safe }};
-            xp_species = {{ xp_species_json|safe }};
-            job_specs = {{ job_specs|safe }};
+    xp_names = {{ xp_names_json|safe }};
+    xp_species = {{ xp_species_json|safe }};
+    job_specs = {{ job_specs|safe }};
 
-            window.fishface_monitoring = false;
+    window.fishface_monitoring = false;
 
-            {% for cjt in cjts %}
-                var cjt = $('#CJT_' + {{ cjt.id }})
-                cjt.attr('data-job_spec', JSON.stringify(job_specs[{{ cjt.id }}]));
-                cjt.html(inner_li_from_job_spec(job_specs[{{ cjt.id }}]));
-            {% endfor %}
+    {% for cjt in cjts %}
+        var cjt = $('#CJT_' + {{ cjt.id }});
+        cjt.attr('data-attrib_job_spec', data_attrib_from_job_spec(job_specs[{{ cjt.id }}]));
+        cjt.html(inner_li_from_job_spec(job_specs[{{ cjt.id }}]));
+    {% endfor %}
 
-            repop();
+    repop();
 
-            var main_loop = window.setInterval(
-                function() {  // executed once per second to update displays with timers
+    var main_loop = window.setInterval(
+        function() {  // executed once per second to update displays with timers
 
-                }, 1000);
+        }, 1000);
 
-        });  // End of document.ready()
+});  // End of document.ready()
     </script>
 
 {% endblock %}
@@ -261,6 +341,7 @@
     <div id="xp_display_wrapper" data-xp_id="">
         <h4>Capturing imagery for experiment</h4>
         <h2 id="xp_id_header"></h2>
+        <p id="change_xp_button" class="boxed">Change Experiment</p>
     </div>
     <div id="xp_select_wrapper">
         To begin, please select an experiment that has at least one calibration image to
@@ -272,13 +353,13 @@
                 <div class="bad">There are no stored experiments.</div>
             {% endfor %}
             {% if xps %}
-                <label><input type="submit" />Confirm experiment selection</label>
+                <input type="submit" value="Confirm experiment selection" />
             {% endif %}
         </form>
     </div>
 
     <div id="current_job_wrapper" class="job_wrapper">
-        <h2>Current Job</h2>
+        <h2>Current Job<span id="current_job_slug"></span></h2>
         <div id="current_job">
             status: <span id="current_job_status">WAITING FOR UPDATE FROM RASPI</span><br>
             (remaining/total) captures: <span id="current_job_remaining_total">WAITING FOR UPDATE FROM RASPI</span><br>
@@ -298,10 +379,12 @@
     <div id="capturejob_queue_wrapper" class="job_wrapper">
         <h2>Queue</h2>
         <span id="go_button" class="boxed">RUN</span>
+        <span id="abort_all_button" class="boxed">ABORT ALL</span>
+        <br />
+        <br />
         <span id="refresh_button" class="boxed">REFRESH</span>
         <span id="monitor_button" class="boxed">MONITOR</span>
         <span id="monitor_stop_button" class="boxed">STOP MONITOR</span>
-        <span id="abort_all_button" class="boxed">ABORT ALL</span>
         <ul class="queue_block" id="capturejob_queue">
 
         </ul>

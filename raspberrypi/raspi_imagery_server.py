@@ -78,7 +78,10 @@ def delay_for_seconds(seconds):
 
 
 class CaptureJob(threading.Thread):
-    def __init__(self, controller, startup_delay, interval, duration, voltage, current, xp_id, species):
+    def __init__(self, controller,
+                 startup_delay, interval, duration,
+                 voltage, current,
+                 xp_id, species):
         super(CaptureJob, self).__init__(name='capturejob')
         self.logger = logging.getLogger('raspi.capturejob')
         self.logger.setLevel(logging.DEBUG)
@@ -87,11 +90,11 @@ class CaptureJob(threading.Thread):
 
         self.status = 'staged'
 
-        self.startup_delay = startup_delay
-        self.interval = interval
-        self.duration = duration
-        self.voltage = voltage
-        self.current = current
+        self.startup_delay = float(startup_delay)
+        self.interval = float(interval)
+        self.duration = float(duration)
+        self.voltage = float(voltage)
+        self.current = float(current)
 
         self.xp_id = xp_id
         self.species = species
@@ -127,13 +130,12 @@ class CaptureJob(threading.Thread):
             'start_timestamp': self.start_timestamp
         }
 
-        logger.debug('payload: {}'.format(payload))
-        response = requests.post(CJR_NEW_URL, data=payload)
-        self.cjr_id = response.json()['cjr_id']
-
         self._keep_looping = True
 
         if self.interval > 0:
+            logger.debug('cjr creation payload: {}'.format(payload))
+            response = requests.post(CJR_NEW_URL, data=payload)
+            self.cjr_id = response.json()['cjr_id']
             self.job_with_capture()
         else:
             self.job_without_capture()
@@ -162,7 +164,7 @@ class CaptureJob(threading.Thread):
         self.job_ends_after = time.time() + self.duration
 
         while self._keep_looping and time.time() < self.job_ends_after:
-            time.sleep(1)
+            delay_for_seconds(1)
 
     def job_with_capture(self):
         self.logger.info('preparing to capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
@@ -249,7 +251,9 @@ class CaptureJobController(threading.Thread):
         delay_for_seconds(wait_time)
         self.logger.info('CaptureJob Controller starting up.')
         while self._keep_controller_running:
-            while self._deathcries:
+            while len(self._deathcries):
+                self.logger.info("Posting deathcries.  " +
+                                 "Cries remaining to post: {}".format(len(self._deathcries)))
                 self.server.telemeter.post_to_fishface(self.deathcry)
 
             if self._current_job is not None:
@@ -259,26 +263,23 @@ class CaptureJobController(threading.Thread):
                     current_status['command'] = 'job_status_update'
                     self.server.telemeter.post_to_fishface(current_status)
 
+            if (self._staged_job is None and self._current_job is not None and not self._queue and
+                (self._current_job.job_ends_after < time.time() or self._current_job.status == 'aborted')):
+                self.logger.info('Current job is dead and there are no more pending.')
+                self._current_job = None
+
             if self._current_job is None and self._staged_job is None and self._queue:
                 self.logger.info('No jobs active, but jobs in queue.')
                 self._current_job = CaptureJob(self, **self._queue.pop(0))
                 self._current_job.start()
                 self.logger.debug('Started new current job.')
 
-            if (self._current_job is None or not self._current_job.is_alive() or
-                    self._current_job.job_ends_in < -1) and self._staged_job is not None:
+            if ((self._current_job is None or self._current_job.job_ends_after < time.time()) and
+                            self._staged_job is not None):
                 self.logger.info('Current job is dead, promoting staged job.')
                 self._current_job = self._staged_job
                 self._current_job.start()
                 self._staged_job = None
-
-            if (self._staged_job is None and
-                    self._current_job is not None and
-                    not self._queue and
-                    not self._current_job.is_alive() and
-                    self._current_job.job_ends_in > -1):
-                self.logger.info('Current job is dead and there are no more pending.')
-                self._current_job = None
 
             if self._staged_job is None and self._queue and self._current_job.job_ends_in < 10:
                 self.logger.info("New staged job being promoted from queue.")
@@ -344,7 +345,7 @@ class CaptureJobController(threading.Thread):
         return response
 
     def set_queue(self, payload):
-        queue = [json.loads(x) for x in json.loads(payload['queue'])]
+        queue = json.loads(payload['queue'])
         for job in queue:
             job['xp_id'] = int(payload['xp_id'])
             job['species'] = payload['species']
