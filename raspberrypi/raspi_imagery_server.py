@@ -200,6 +200,7 @@ class CaptureJob(threading.Thread):
             self.remaining = self.total - i - 1
 
     def abort_job(self):
+        self.logger.info('Job aborted: {}'.format(self.get_status_dict()))
         self.status = 'aborted'
         self._keep_looping = False
 
@@ -308,8 +309,8 @@ class CaptureJobController(threading.Thread):
 
     def abort_all(self, payload):
         self.logger.info("Aborting all jobs!")
-        self._staged_job = None
         self._queue = list()
+        self._staged_job = None
         self._current_job.abort_job()
         return payload
 
