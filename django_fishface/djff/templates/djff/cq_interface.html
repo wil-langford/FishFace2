@@ -291,6 +291,11 @@ $(document).ready(function(){
                 if (get_queue_array() == []) {
                     $('#capturejob_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
                 }
+                if (window.fishface_push_queue_on_update == true) {
+                    push_entire_queue_to_raspi();
+                    repop();
+                    start_periodic_monitor();
+                }
             } else {
                 newItem = ui.item;
                 attrib_job_spec = ui.helper.attr('data-attrib_job_spec');
