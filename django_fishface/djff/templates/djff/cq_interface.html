@@ -255,7 +255,7 @@ $(document).ready(function(){
     $('#capturejob_queue').sortable({
         tolerance: 'pointer',
         cursor: 'pointer',
-        revert: true,
+        revert: false,
         dropOnEmpty: true,
 
         start: function(event, ui) {
@@ -263,11 +263,11 @@ $(document).ready(function(){
         },
 
         over: function(event, ui) {
-            sortableIn = 1;
+            keep_job_in_queue = 1;
         },
 
         out: function(event, ui) {
-            sortableIn = 0;
+            keep_job_in_queue = 0;
         },
 
         update: function(event, ui) {
@@ -278,7 +278,6 @@ $(document).ready(function(){
                 repop();
                 start_periodic_monitor();
             }
-
         },
         stop: function(event, ui) {
             if (ui.item.hasClass("fresh_cjt")) {
@@ -287,7 +286,7 @@ $(document).ready(function(){
             }
         },
         beforeStop: function(event, ui) {
-            if (sortableIn = 0) {
+            if (keep_job_in_queue == 0) {
                 ui.item.remove();
             } else {
                 newItem = ui.item;
@@ -296,7 +295,7 @@ $(document).ready(function(){
         },
         receive: function(event, ui) {
             $(newItem).attr('data-attrib_job_spec', attrib_job_spec);
-            sortableIn = 1;
+            keep_job_in_queue = 1;
         },
         placeholder: "ui-sortable-placeholder"
     });
@@ -341,11 +340,12 @@ $(document).ready(function(){
     <div id="xp_display_wrapper" data-xp_id="">
         <h4>Capturing imagery for experiment</h4>
         <h2 id="xp_id_header"></h2>
-        <p id="change_xp_button" class="boxed">Change Experiment</p>
+        <span id="change_xp_button" class="boxed">Change Experiment</span>
+        <p />
     </div>
     <div id="xp_select_wrapper">
-        To begin, please select an experiment that has at least one calibration image to
-        begin capturing:
+        <p>To begin, please select an experiment that has at least one calibration image to
+        begin capturing:</p>
         <form id="xp_select_form">
             {% for xp in xps %}
                 <label><input type="radio" name="xp" value="{{ xp.id }}" />{{ xp.name }} ({{ xp.slug }})</label><br />
@@ -379,9 +379,8 @@ $(document).ready(function(){
     <div id="capturejob_queue_wrapper" class="job_wrapper">
         <h2>Queue</h2>
         <span id="go_button" class="boxed">RUN</span>
-        <span id="abort_all_button" class="boxed">ABORT ALL</span>
-        <br />
-        <br />
+        <span id="abort_all_button" class="boxed deleterbutton">ABORT ALL</span>
+        <p />
         <span id="refresh_button" class="boxed">REFRESH</span>
         <span id="monitor_button" class="boxed">MONITOR</span>
         <span id="monitor_stop_button" class="boxed">STOP MONITOR</span>
