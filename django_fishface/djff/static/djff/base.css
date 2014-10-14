@@ -92,14 +92,16 @@ header
     color: white;
 }
 
-div.boxed
+.boxed
 {
     border-style: solid;
     border-width: 1px;
     border-color: black;
+    margin: 2px;
+    padding: 2px;
 }
 
-div.bad
+.bad
 {
     background-color: lightpink;
 }
@@ -107,61 +109,26 @@ div.bad
 #sidebar
 {
     float: left;
-    width: 10em;
+    width: 11em;
     min-height: 100%;
     background: #40C040;
     padding-top: 6em;
-    padding-left: 1em;
 }
 
 #preview_area
 {
     float: right;
-    width: 25%;
+    width: 18em;
     min-height: 100%;
     background: peru;
     padding-top: 6em;
-    padding-left: 1em;
+    padding-left: 0em;
 }
 
 #content
 {
     padding-top: 6em;
     margin-left: 12em;
-}
-
-
-.hopper_line .insert
-{
-    color: green;
-}
-
-.hopper_line .delete
-{
-    color: red;
-}
-
-
-.hopper_line .updown
-{
-    color: blue;
-}
-
-.hopper_line .type
-{
-    color: black;
-    font-size: 2em;
-    font-weight: bold;
-}
-
-.hopper_line .parameters
-{
-    color: #555555;
-}
-
-.hopper_line .disabled
-{
-    color: gray;
 }
 
 .deleter .warning
@@ -172,4 +139,60 @@ div.bad
 .deleterbutton
 {
     background-color: lightcoral;
+}
+
+.no_bullets
+{
+    list-style: none;
+}
+
+ul {
+    margin: 10px;
+    padding: 10px;
+}
+
+.queue_block li {
+    list-style: none;
+    padding: 5px;
+    margin: 3px;
+    min-height: 1em;
+    border: 1px solid #000;
+    background-color: #C0C0C0;
+    min-width: 10em;
+    width: 15em;
+}
+
+.ui-sortable-placeholder {
+    border: 2px dashed #AAAAFF !important;
+    height: 10px;
+    width: 5em;
+    background: #DDDDDD !important;
+}
+
+#current_job_wrapper {
+    background-color: #31BD13;
+    display: none;
+}
+
+#staged_job_wrapper {
+    background-color: #4CAB9E;
+    display: none;
+}
+
+#capturejob_queue_wrapper {
+    background-color: #aaaaaa;
+    display: none;
+}
+
+#xp_display_wrapper {
+    display: none;
+}
+
+div.job_wrapper {
+    border: 1px solid #000000;
+    width: 30em;
+}
+
+.job_wrapper h2 {
+    text-align: center;
 }

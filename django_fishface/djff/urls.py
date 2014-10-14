@@ -4,8 +4,8 @@ urlpatterns = dcu.patterns(
     '',
     dcu.url(
         r'^upload_imagery/$',
-        views.image_capturer,
-        name='image_capturer'
+        views.receive_image,
+        name='receive_image'
     ),
     dcu.url(
         r'^imagery_request/$',
@@ -84,21 +84,34 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
-        r'^cj/(?P<xp_id>\d+)/(?P<cjt_id>\d+)/run/$',
-        views.run_capturejob,
-        name='run_capturejob'
-    ),
-    dcu.url(
-        r'^cj/abort/$',
-        views.abort_capturejob,
-        name='abort_capturejob'
+        r'^cj/abort_job/$',
+        views.abort_running_job,
+        name='abort_running_job'
     ),
 
     dcu.url(
         r'^telemetry/$',
         views.receive_telemetry,
         name='receive_telemetry'
-    )
+    ),
+
+    dcu.url(
+      r'^telemetry_proxy/$',
+      views.telemetry_proxy,
+      name='telemetry_proxy'
+    ),
+
+    dcu.url(
+        r'^cq/$',
+        views.cq_interface,
+        name='cq_interface'
+    ),
+
+    dcu.url(
+        r'^cjr/new_for_raspi/$',
+        views.cjr_new_for_raspi,
+        name='cjr_new_for_raspi'
+    ),
 )
 
 

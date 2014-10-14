@@ -13,26 +13,46 @@ import urlparse
 import requests
 import datetime
 import logging
+import logging.handlers
+import json
+import cgi
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s %(message)s',
-    filename='imagery_server.log',
-)
+import fishface_server_auth
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('raspi')
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+
+LOG_TO_CONSOLE = True
+CONSOLE_LOG_LEVEL = logging.DEBUG
+FILE_LOG_LEVEL = logging.DEBUG
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(CONSOLE_LOG_LEVEL)
+console_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler('imagery_server.log')
+file_handler.setLevel(FILE_LOG_LEVEL)
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+if LOG_TO_CONSOLE:
+    logger.addHandler(console_handler)
 
 try:
-    REAL_HARDWARE = True
-    BASE_URL = "http://fishfacehost:8000/fishface/"
     import picamera
     import instruments.hp as ik
-    logger.info("Running server on real Raspi hardware.")
+    REAL_HARDWARE = True
+    BASE_URL = "http://fishface/fishface/"
+    logger.info("Running server on real Raspi hardware with an HP power supply.")
 except ImportError:
+    # noinspection PyPep8Naming
+    import FakeHardware as picamera
+    # noinspection PyPep8Naming
+    import FakeHardware as ik
     REAL_HARDWARE = False
     BASE_URL = "http://localhost:8000/fishface/"
-    import FakeHardware as picamera
-    import FakeHardware as ik
     logger.warning("Emulating raspi hardware.")
     logger.warning("Real data collection is disabled.")
 
@@ -41,6 +61,8 @@ PORT = 18765
 
 IMAGE_POST_URL = "{}upload_imagery/".format(BASE_URL)
 TELEMETRY_URL = "{}telemetry/".format(BASE_URL)
+CJR_URL = "{}cjr/".format(BASE_URL)
+CJR_NEW_URL = "{}cjr/new_for_raspi/".format(BASE_URL)
 
 DATE_FORMAT = "%Y-%m-%d-%H:%M:%S"
 
@@ -52,11 +74,350 @@ def delay_until(unix_timestamp):
         now = time.time()
 
 
+def delay_for_seconds(seconds):
+    later = time.time() + seconds
+    delay_until(later)
+
+
+class CaptureJob(threading.Thread):
+    def __init__(self, controller,
+                 startup_delay, interval, duration,
+                 voltage, current,
+                 xp_id, species):
+        super(CaptureJob, self).__init__(name='capturejob')
+        self.logger = logging.getLogger('raspi.capturejob')
+        self.logger.setLevel(logging.DEBUG)
+
+        self.controller = controller
+
+        self.status = 'staged'
+
+        self.startup_delay = float(startup_delay)
+        self.interval = float(interval)
+        self.duration = float(duration)
+        self.voltage = float(voltage)
+        self.current = float(current)
+
+        self.xp_id = xp_id
+        self.species = species
+
+        self.cjr_id = None
+
+        self.total = None
+        self.remaining = None
+
+        self.capture_times = None
+        self.job_ends_after = None
+
+        self.start_timestamp = None
+        self.stop_timestamp = None
+
+        self._keep_looping = None
+
+    def run(self):
+        self.start_timestamp = time.time()
+
+        self.logger.info("starting up job for experiment {}".format(self.xp_id))
+        self.status = 'startup_delay'
+        self.controller.set_psu({
+            'enable_output': True,
+            'voltage': self.voltage,
+            'current': self.current,
+        })
+
+        payload = {
+            'xp_id': self.xp_id,
+            'voltage': self.voltage,
+            'current': self.current,
+            'start_timestamp': self.start_timestamp
+        }
+
+        self._keep_looping = True
+
+        if self.interval > 0:
+            logger.debug('cjr creation payload: {}'.format(payload))
+            response = requests.post(CJR_NEW_URL, auth=(fishface_server_auth.USERNAME, fishface_server_auth.PASSWORD), data=payload)
+            self.cjr_id = response.json()['cjr_id']
+            self.job_with_capture()
+        else:
+            self.job_without_capture()
+
+        self.stop_timestamp = time.time()
+        if self.status == 'running':
+            self.status = 'completed'
+
+        deathcry = self.get_status_dict()
+        deathcry['command'] = 'job_status_update'
+
+        self.controller.deathcry = deathcry
+
+    def job_without_capture(self):
+        self.total = 0
+        self.remaining = 0
+
+        self.logger.info('starting captureless wait period')
+        self.controller.set_psu({
+            'enable_output': True,
+            'voltage': self.voltage,
+            'current': self.current,
+        })
+        self.status = 'running'
+
+        self.job_ends_after = time.time() + self.duration
+
+        while self._keep_looping and time.time() < self.job_ends_after:
+            delay_for_seconds(1)
+
+    def job_with_capture(self):
+        self.logger.info('preparing to capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
+        first_capture_at = self.start_timestamp + self.startup_delay
+
+        self.logger.debug('first capture in {} seconds'.format(first_capture_at - time.time()))
+        self.capture_times = [first_capture_at]
+        for j in range(1, int(self.duration / self.interval)):
+            self.capture_times.append(first_capture_at + j*self.interval)
+
+        self.job_ends_after = self.capture_times[-1]
+        self.total = len(self.capture_times)
+        self.remaining = len(self.capture_times)
+
+        for i, next_capture_time in enumerate(self.capture_times):
+            delay_until(next_capture_time)
+            self.status = 'running'
+            if not self._keep_looping:
+                break
+
+            self.logger.debug('POSTing image to server')
+            self.controller.server.post_current_image_to_server({
+                'command': 'post_image',
+                'xp_id': self.xp_id,
+                'is_cal_image': 0,
+                'cjr_id': self.cjr_id,
+                'voltage': self.voltage,
+                'current': self.current,
+                'species': self.species,
+            }, sync=False)
+            self.logger.debug('POSTed image to server')
+
+            self.remaining = self.total - i - 1
+
+    def abort_job(self):
+        self.logger.info('Job aborted: {}'.format(self.get_status_dict()))
+        self.status = 'aborted'
+        self._keep_looping = False
+
+    def get_status_dict(self):
+        return {
+            'status': self.status,
+            'xp_id': self.xp_id,
+            'cjr_id': self.cjr_id,
+            'species': self.species,
+            'total': self.total,
+            'voltage': self.voltage,
+            'current': self.current,
+            'remaining': self.remaining,
+            'start_timestamp': self.start_timestamp,
+            'stop_timestamp': self.stop_timestamp,
+            'seconds_left': int(self.job_ends_in),
+        }
+
+    @property
+    def job_ends_in(self):
+        if self.job_ends_after is not None:
+            ends_in = self.job_ends_after - time.time()
+            return ends_in
+        else:
+            return 1000000
+
+class CaptureJobController(threading.Thread):
+    def __init__(self, imagery_server):
+        super(CaptureJobController, self).__init__(name='capturejob_controller')
+        self.logger = logging.getLogger('raspi.capturejob_controller')
+        self.logger.setLevel(logging.DEBUG)
+
+        self._queue = list()
+        self._current_job = None
+        self._staged_job = None
+
+        self._deathcries = list()
+
+        self._keep_controller_running = True
+
+        self.server = imagery_server
+
+    def run(self):
+        if REAL_HARDWARE:
+            wait_time = 3
+        else:
+            wait_time = 1
+        self.logger.debug('Waiting {} seconds for the rest of the threads to catch up.'.format(wait_time))
+        delay_for_seconds(wait_time)
+        self.logger.info('CaptureJob Controller starting up.')
+        while self._keep_controller_running:
+            while len(self._deathcries):
+                self.logger.info("Posting deathcries.  " +
+                                 "Cries remaining to post: {}".format(len(self._deathcries)))
+                self.server.telemeter.post_to_fishface(self.deathcry)
+
+            if self._current_job is not None:
+                self.logger.debug('Reporting on current job.')
+                current_status = self.get_current_job_status()
+                if current_status['cjr_id'] is not None:
+                    current_status['command'] = 'job_status_update'
+                    self.server.telemeter.post_to_fishface(current_status)
+
+            if (self._staged_job is None and self._current_job is not None and not self._queue and
+                (self._current_job.job_ends_after < time.time() or self._current_job.status == 'aborted')):
+                self.logger.info('Current job is dead and there are no more pending.')
+                self._current_job = None
+
+            if self._current_job is None and self._staged_job is None and self._queue:
+                self.logger.info('No jobs active, but jobs in queue.')
+                self._current_job = CaptureJob(self, **self._queue.pop(0))
+                self._current_job.start()
+                self.logger.debug('Started new current job.')
+
+            if ((self._current_job is None or self._current_job.job_ends_after < time.time()) and
+                            self._staged_job is not None):
+                self.logger.info('Current job is dead, promoting staged job.')
+                self._current_job = self._staged_job
+                self._current_job.start()
+                self._staged_job = None
+
+            if self._staged_job is None and self._queue and self._current_job.job_ends_in < 10:
+                self.logger.info("New staged job being promoted from queue.")
+                self._staged_job = CaptureJob(self, **self._queue.pop(0))
+
+            if self._current_job is None and self._staged_job is None and not self._queue:
+                if self.server.power_supply.voltage_sense > 0.1:
+                    self.logger.info('Shutting down power supply until the next job arrives.')
+                    self.set_psu({
+                        'voltage': 0,
+                        'current': 0,
+                        'enable_output': 0,
+                    })
+
+            time.sleep(1)
+
+    def get_current_job_status(self):
+        return self._current_job.get_status_dict()
+
+    def get_staged_job_status(self):
+        return self._staged_job.get_status_dict()
+
+    def abort_running_job(self):
+        self.logger.info("Aborting current job.")
+        self._current_job.abort_job()
+
+    def abort_all(self, payload):
+        self.logger.info("Aborting all jobs!")
+        self._queue = list()
+        self._staged_job = None
+        self._current_job.abort_job()
+        return payload
+
+    def insert_job(self, job_spec, position):
+        self.logger.info('Inserting job at position {} in queue.'.format(position))
+        self._queue.insert(position, job_spec)
+
+    def append_job(self, job_spec):
+        self.logger.info('Appending job to queue.')
+        self.insert_job(len(self._queue), job_spec)
+
+    def set_psu(self, *args, **kwargs):
+        self.logger.debug('Passing set_psu request up to the ImageryServer.')
+        self.server.set_psu(*args, **kwargs)
+
+    def complete_status(self, payload):
+        response = {'command': 'job_status'}
+
+        if self._current_job is not None:
+            response['current_job'] = self.get_current_job_status()
+            response['xp_id'] = response['current_job']['xp_id']
+        else:
+            response['xp_id'] = False
+
+        if self._staged_job is not None:
+            response['staged_job'] = self.get_staged_job_status()
+
+        if self._queue:
+            response['queue'] = self._queue
+        else:
+            response['queue'] = list()
+
+        return response
+
+    def set_queue(self, payload):
+        queue = json.loads(payload['queue'])
+        for job in queue:
+            job['xp_id'] = int(payload['xp_id'])
+            job['species'] = payload['species']
+        self._queue = queue
+        return payload
+
+    def stop_controller(self):
+        self.logger.info('Stopping capturejob controller.')
+        self._keep_controller_running = False
+
+    @property
+    def deathcry(self):
+        if self._deathcries:
+            return self._deathcries.pop(0)
+        return False
+
+    @deathcry.setter
+    def deathcry(self, deathcry):
+        self._deathcries.append(deathcry)
+
+class Telemeter(object):
+    def __init__(self, imagery_server):
+        self.logger = logging.getLogger('raspi.telemeter')
+        self.logger.setLevel(logging.DEBUG)
+
+        self.server = imagery_server
+
+        logger.info("Telemeter instantiated.")
+
+    def post_to_fishface(self, payload, files=None):
+        logger.debug('POSTing payload to remote host:\n{}'.format(payload))
+
+        payload = {'payload': json.dumps(payload)}
+
+        if files is None:
+            response = requests.post(TELEMETRY_URL, auth=(fishface_server_auth.USERNAME, fishface_server_auth.PASSWORD), data=payload)
+        else:
+            response = requests.post(TELEMETRY_URL, auth=(fishface_server_auth.USERNAME, fishface_server_auth.PASSWORD), data=payload, files=files)
+
+        self.logger.info('POST response code: {}'.format(response.status_code))
+
+        if response.status_code in [500, 410, 501]:
+            logger.warning("Got {} status from server.".format(response.status_code))
+            with open('/tmp/latest_raspi_{}.html'.format(response.status_code), 'w') as f:
+                f.write(response.text)
+        else:
+            return response.json()
+
+    def handle_received_post(self, request):
+        logger.debug('telemeter received POST payload from remote host:\n{}'.format(request))
+
+        method = self.server.command_dispatch.get(request['command'], self.unrecognized_command)
+        result = method(request)
+        logger.debug("result of method was: {}".format(result))
+
+        return result
+
+    def unrecognized_command(self, payload):
+        logger.info("Unrecognized command received from server:\n{}".format(payload))
+
+
 class ImageryServer(object):
     """
     """
 
     def __init__(self):
+        self.capturejob_controller = CaptureJobController(self)
+        self.capturejob_controller.start()
+
         self._keep_capturing = True
         self._keep_capturejob_looping = True
 
@@ -74,6 +435,21 @@ class ImageryServer(object):
         self._current_frame = None
         self._current_frame_capture_time = None
 
+        self.telemeter = Telemeter(self)
+
+        self.command_dispatch = {
+            'set_psu': self.set_psu,
+            'post_image': self.post_current_image_to_server,
+
+            'insert_job': self.capturejob_controller.insert_job,
+            'job_status': self.capturejob_controller.complete_status,
+
+            'set_queue': self.capturejob_controller.set_queue,
+
+            'abort_running_job': self.capturejob_controller.abort_running_job,
+            'abort_all': self.capturejob_controller.abort_all,
+        }
+
     def _capture_new_current_frame(self):
         stream = io.BytesIO()
         new_frame_capture_time = time.time()
@@ -87,59 +463,7 @@ class ImageryServer(object):
         self._current_frame = image
         self._current_frame_capture_time = new_frame_capture_time
 
-
-    def get_current_frame(self):
-        return self._current_frame
-
-    def awb_mode(self, mode=None):
-        if mode is None:
-            return self.camera.awb_mode
-
-        if mode in ['off', 'auto']:
-            self.camera.awb_mode = mode
-        else:
-            raise Exception("Invalid AWB mode for raspi camera: " +
-                            "{}".format(mode))
-
-    def brightness(self, br=None):
-        if br is None:
-            return self.camera.brightness
-
-        if 0 <= br <= 100:
-            self.camera.brightness = br
-        else:
-            raise Exception("Invalid brightness setting for raspi " +
-                            "camera: {}".format(br))
-
-    def run(self):
-        def image_capture_loop():
-            while self._keep_capturing:
-                self._capture_new_current_frame()
-            self.camera.close()
-
-        thread = threading.Thread(target=image_capture_loop)
-        logger.info("starting capture thread loop")
-        thread.start()
-
-        logger.info("capture thread loop started")
-
-        server_address = (HOST, PORT)
-        httpd = BaseHTTPServer.HTTPServer(
-            server_address,
-            CommandHandler
-        )
-        httpd.parent = self
-
-
-        logger.info("starting http server")
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            self._keep_capturing = False
-            self._keep_capturejob_looping = False
-            httpd.server_close()
-
-    def post_current_image_to_server(self, metadata, sync=True):
+    def post_current_image_to_server(self, payload, sync=True):
         current_frame = self._current_frame
         current_frame_capture_time = self._current_frame_capture_time
 
@@ -154,110 +478,73 @@ class ImageryServer(object):
         since_epoch = time.time()
 
         image_filename = 'XP-{}_CJR-{}_{}_{}_{}.jpg'.format(
-            metadata['xp_id'],
-            metadata['cjr_id'],
-            metadata['species'],
+            payload['xp_id'],
+            payload['cjr_id'],
+            payload['species'],
             image_dtg,
             since_epoch,
         )
 
         logger.debug('posting image {}'.format(image_filename))
 
-        is_cal_image = (str(metadata['is_cal_image']).lower()
+        is_cal_image = (str(payload['is_cal_image']).lower()
                         in ['true', 't', 'yes', 'y', '1'])
 
-        metadata['filename'] = image_filename
-        metadata['capture_time'] = current_frame_capture_time
-        metadata['is_cal_image'] = str(is_cal_image)
+        payload['filename'] = image_filename
+        payload['capture_time'] = current_frame_capture_time
+        payload['is_cal_image'] = str(is_cal_image)
 
         files = {image_filename: stream}
 
-        t = time.time()
+        image_start_post_time = time.time()
 
         if sync:
-            r = requests.post(
-                IMAGE_POST_URL,
-                files=files,
-                data=metadata
-            )
-            logger.debug("image posted in {} seconds".format(
-                time.time() - t
-            ))
-            if r.status_code == 500:
-                with open('/tmp/latest_500.html', 'w') as f:
-                    f.write(r.text)
-
-            return r
+            self.telemeter.post_to_fishface(payload, files=files)
+            logger.debug("image posted in {} seconds".format(time.time() - image_start_post_time))
         else:
-            def async_image_post(url, files_to_post, metadata_to_post):
-                r = requests.post(
-                    url,
-                    files=files_to_post,
-                    data=metadata_to_post
-                )
-                if r.status_code == 500:
-                    with open('/tmp/latest_500.html', 'w') as f:
-                        f.write(r.text)
-                return r
+            def async_image_post(url, files_unshadow, payload_unshadow):
+                async_logger = logging.getLogger('raspi.async_image_post')
+                self.telemeter.post_to_fishface(payload_unshadow, files=files_unshadow)
+                async_logger.debug("image posted async in {} seconds".format(time.time() - image_start_post_time))
 
             async_thread = threading.Thread(
                 target=async_image_post,
-                args=(IMAGE_POST_URL, files, metadata)
+                args=(TELEMETRY_URL, files, payload)
             )
             async_thread.start()
-            return
 
-    def receive_telemetry(self, raw_payload):
-        payload = dict([field.split('=')
-                        for field in raw_payload.split('&')])
+        return payload
 
-        logger.debug("received telemetry command: {}\n{}".format(
-            payload['command'],
-            payload
-        ))
+    def get_current_frame(self):
+        return self._current_frame
 
-        result = "no result"
+    def run(self):
+        def image_capture_loop():
+            while self._keep_capturing:
+                self._capture_new_current_frame()
+            self.camera.close()
 
-        if payload['command'] == 'post_image':
-            result = self.post_current_image_to_server(payload)
+        thread = threading.Thread(name='capture', target=image_capture_loop)
+        logger.info("starting capture thread loop")
+        thread.start()
 
-        if payload['command'] == 'run_capturejob':
-            result = self.run_capturejob(payload)
+        logger.info("capture thread loop started")
 
-        if payload['command'] == 'job_status':
-            result = self.post_job_status_update()
+        server_address = (HOST, PORT)
+        httpd = BaseHTTPServer.HTTPServer(
+            server_address,
+            CommandHandler
+        )
+        httpd.parent = self
 
-        if payload['command'] == 'set_psu':
-            result = self.set_psu(payload)
-
-        if payload['command'] == 'abort_capturejob':
-            result = self.abort_capturejob(payload)
-
-        if result and result == "no result":
-            logger.warning("I don't know what to do with this " +
-                           "telemetry payload:\n{}".format(payload))
-
-        if result and result.status_code == 500:
-            result = result.text
-
-        return result
-
-    def send_telemetry(self, payload, files=None):
-        if files is None:
-            result = requests.post(TELEMETRY_URL, data=payload)
-        else:
-            result = requests.post(TELEMETRY_URL, data=payload, files=files)
-
-        if result.status_code == 500:
-            with open('/tmp/latest_500.html', 'w') as f:
-                f.write(result.text)
-
-        return result
-
-
-    def abort_capturejob(self, payload):
-        self._keep_capturejob_looping = False
-        self.set_psu({'reset': True})
+        logger.info("starting http server")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            self._keep_capturing = False
+            self._keep_capturejob_looping = False
+            self.capturejob_controller.stop_controller()
+            httpd.server_close()
 
     def set_psu(self, payload):
         if bool(int(payload.get('reset', False))):
@@ -267,7 +554,7 @@ class ImageryServer(object):
         voltage = float(payload.get('voltage', False))
         current = float(payload.get('current', False))
         enable_output = bool(int(payload.get('enable_output', False)))
-        
+
         if voltage:
             logger.debug("setting psu voltage to {} V".format(
                 voltage
@@ -288,6 +575,7 @@ class ImageryServer(object):
         self.power_supply.output = enable_output
 
         thread = threading.Thread(
+            name='psu_sensed_data',
             target=self.post_power_supply_sensed_data,
             args=(payload, 1,)
         )
@@ -306,136 +594,65 @@ class ImageryServer(object):
 
         logger.debug('Posting psu sensed data:\n{}'.format(payload))
 
-        self.send_telemetry(payload)
-
-
-    def post_job_status_update(self):
-        if self._job_status is None:
-            result = self.send_telemetry(
-                {
-                    'command': 'job_status_update',
-                    'status': 'no_job_running',
-                }
-            )
-        else:
-            payload = self._job_status.copy()
-            payload['command'] = 'job_status_update'
-
-            result = self.send_telemetry(payload)
-
-        return result
-
-    def run_capturejob(self, payload):
-        self._job_status = {
-            'cjr_id': payload['cjr_id'],
-            'status': 'running',
-            'job_start_timestamp': time.time(),
-            'job_end_timestamp': ''
-        }
-
-        duration = float(payload['duration'])
-        interval = float(payload['interval'])
-        startup_delay = float(payload['startup_delay'])
-
-        first_capture_at = time.time() + startup_delay
-
-        capture_times = [first_capture_at]
-        for j in range(1, int(duration / interval) + 1):
-            capture_times.append(first_capture_at + j*interval)
-
-        self._keep_capturejob_looping = True
-
-        metadata = {
-            'command': 'post_image',
-            'is_cal_image': False,
-            'voltage': payload['voltage'],
-            'current': payload['current'],
-            'xp_id': payload['xp_id'],
-            'cjr_id': payload['cjr_id'],
-            'species': payload['species']
-        }
-
-        def capturejob_loop(
-                metadata_dict,
-                capture_times_list):
-            self._job_status['total'] = len(capture_times_list) + 1
-            self._job_status['remaining'] = len(capture_times_list) + 1
-
-            total = self._job_status['total']
-
-            for i, next_capture_time in enumerate(capture_times_list):
-                if not self._keep_capturejob_looping:
-                    break
-
-
-                delay_until(next_capture_time)
-                self.post_current_image_to_server(
-                    metadata_dict,
-                    sync=False,
-                )
-
-                self._job_status['remaining'] = total - i
-
-                self.post_job_status_update()
-
-            self._job_status['job_end_timestamp'] = time.time()
-
-            self._job_status['command'] = 'job_status_update'
-            self._job_status['status'] = 'complete'
-
-            self.send_telemetry(
-                self._job_status
-            )
-
-            self._job_status = None
-
-        thread = threading.Thread(
-            target=capturejob_loop,
-            args=(metadata, capture_times)
-        )
-        logger.debug((
-            ("sending images for cjr {} for " +
-                "xp {}").format(
-                    payload['cjr_id'],
-                    payload['xp_id'],
-                )
-        ))
-        thread.start()
-        logger.info("cjr thread started")
-
-        # TODO: this could make more sense, but I'm not sure how.  yet.
-
-        return False
+        self.telemeter.post_to_fishface(payload)
 
 
 class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
-
-    def do_HEAD(self):
-        self.send_response(200)
+    # noinspection PyPep8Naming
+    def do_GET(self):
+        logger.debug("Legacy GET request received.")
+        self.send_response(410)
         self.send_header("Content-type", "text/html")
         self.end_headers()
+        self.wfile.write('<html><body>GET REQUESTS NO LONGER SUPPORTED</body></html>')
 
-    def do_GET(self):
-        parsed_path = urlparse.urlparse(self.path)
+    # noinspection PyPep8Naming
+    def do_OPTIONS(self):
+        origin = self.headers.getheader('Origin')
 
-        # self.send_response(200)
-        # self.send_header("Contest-type", "type/html")
-        # self.end_headers()
+        logger.debug("OPTIONS request received.")
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Method", "POST")
+        self.send_header("Access-Control-Allow-Origin", origin)
+        self.end_headers()
 
-        result = self.server.parent.receive_telemetry(
-            parsed_path.query
-        )
-        self.wfile.write(str(result))
+
+    # noinspection PyPep8Naming
+    def do_POST(self):
+        logger.debug("POST request received.")
+
+        ctype, pdict = cgi.parse_header(self.headers.getheader('Content-Type'))
+        if ctype == 'application/json':
+            length = int(self.headers.getheader('content-length'))
+            json_vars = json.loads(self.rfile.read(length))
+        else:
+            raise Exception("Can only accept 'application/json' POST requests.")
+
+        logger.debug('json_vars:\n{}'.format(json_vars.keys()))
+
+        result = self.server.parent.telemeter.handle_received_post(json_vars)
+
+        logger.debug("Telemeter returned: '{}'".format(result))
+
+        if result and result.get('command', False):
+            payload = json.dumps(result)
+            logger.debug("Sending response: {}".format(payload))
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            # self.send_header("content-length", len(payload))
+            self.end_headers()
+            self.wfile.write(payload)
 
 
 def main():
-    print "Starting Raspi unprivileged server."
+    logger.info("Starting Raspi unprivileged server.")
 
     imagery_server = ImageryServer()
 
     imagery_server.run()
 
-    print "\nExiting Raspi unprivileged server."
+    logger.info("Exiting Raspi unprivileged server.")
 
 
 if __name__ == '__main__':

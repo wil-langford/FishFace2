@@ -124,24 +124,26 @@ class CaptureJobRecordAdmin(admin.ModelAdmin):
         (
             'Parameters', {
                 'fields': [
-                    'xp',
+                    'full_slug'
                     'voltage',
                     'current',
                     'job_start',
                     'job_stop',
                     'running',
+                    'image_count',
                 ]
             }
         ),
     ]
 
     list_display = (
-        'xp',
+        'full_slug',
         'voltage',
         'current',
         'running',
         'job_start',
         'job_stop',
+        'image_count',
     )
 
 admin.site.register(models.CaptureJobRecord, CaptureJobRecordAdmin)

@@ -10,12 +10,14 @@ https://docs.djangoproject.com/en/1.6/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+import logging
+import logging.handlers
 from django.utils.crypto import get_random_string
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 # TODO: change for full production
-DB_PASSWD_FILE = os.path.expanduser('~fishface/fishface_db_password')
+DB_PASSWD_FILE = 'fishface_db_password'
 
 # These get imported/generated later.
 DB_PASSWD = None
@@ -121,3 +123,45 @@ STATIC_URL = '/static/'
 
 MEDIA_ROOT = '/mnt/server_storage/media/'
 MEDIA_URL = '/media/'
+
+# DJFF settings
+
+TELEMETRY_URL = "http://{}:{}/telemetry/".format(IMAGERY_SERVER_HOST, IMAGERY_SERVER_PORT)
+
+# Logging
+PRIMARY_LOGGER = logging.getLogger('djff')
+PRIMARY_LOGGER.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+
+LOG_TO_CONSOLE = True
+LOG_TO_FILE = True
+LOG_TO_SYSLOG = True
+
+SYSLOG_LOG_LEVEL = logging.INFO
+CONSOLE_LOG_LEVEL = logging.DEBUG
+FILE_LOG_LEVEL = logging.DEBUG
+
+if LOG_TO_SYSLOG:
+    syslog_handler = logging.handlers.SysLogHandler()
+    syslog_handler.setLevel(SYSLOG_LOG_LEVEL)
+    syslog_handler.setFormatter(formatter)
+
+    PRIMARY_LOGGER.addHandler(syslog_handler)
+
+if LOG_TO_CONSOLE:
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(CONSOLE_LOG_LEVEL)
+    console_handler.setFormatter(formatter)
+
+    PRIMARY_LOGGER.addHandler(console_handler)
+
+if LOG_TO_FILE:
+    file_handler = logging.FileHandler('django_fishface.log')
+    file_handler.setLevel(FILE_LOG_LEVEL)
+    file_handler.setFormatter(formatter)
+
+    PRIMARY_LOGGER.addHandler(file_handler)
+
+
+

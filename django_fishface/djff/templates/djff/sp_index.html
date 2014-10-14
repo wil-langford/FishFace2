@@ -6,7 +6,7 @@
 {% block content %}
     <ol>
     {% for sp in context %}
-                <li>
+                <li class="boxed">
                     <a href="{% url 'djff:sp_detail' sp.id %}">
                         {{ sp.name }}
                     </a>
@@ -24,7 +24,7 @@
     <div class="boxed">
         Please note that all species information must be unique or an error
     message will be raised.  That is, if you already see a plecostomus
-    species entry above, adding another one would be an error.
+    species entry above, please don't create another one.
     </div>
     <p>Add a <a href="{% url 'djff:sp_new' %}">new species</a>.</p>
 {% endblock %}

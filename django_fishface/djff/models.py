@@ -102,6 +102,14 @@ class CaptureJobRecord(models.Model):
     def slug(self):
         return u'CJR_{}'.format(self.id)
 
+    @property
+    def full_slug(self):
+        return self.xp.slug + "_" + self.slug
+
+    @property
+    def image_count(self):
+        return Image.objects.filter(cjr__pk=self.pk).count()
+
 
 class Image(models.Model):
     """
