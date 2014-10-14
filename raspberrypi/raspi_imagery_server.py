@@ -48,9 +48,9 @@ try:
     logger.info("Running server on real Raspi hardware with an HP power supply.")
 except ImportError:
     # noinspection PyPep8Naming
-    import FakeHardware as picamera
+    import hardware_abstraction as picamera
     # noinspection PyPep8Naming
-    import FakeHardware as ik
+    import hardware_abstraction as ik
     REAL_HARDWARE = False
     BASE_URL = "http://localhost:8000/fishface/"
     logger.warning("Emulating raspi hardware.")
