@@ -17,6 +17,8 @@ import logging.handlers
 import json
 import cgi
 
+import fishface_server_auth
+
 logger = logging.getLogger('raspi')
 logger.setLevel(logging.DEBUG)
 
@@ -42,7 +44,7 @@ try:
     import picamera
     import instruments.hp as ik
     REAL_HARDWARE = True
-    BASE_URL = "http://fishfacehost/fishface/"
+    BASE_URL = "http://fishface/fishface/"
     logger.info("Running server on real Raspi hardware with an HP power supply.")
 except ImportError:
     # noinspection PyPep8Naming
@@ -134,7 +136,7 @@ class CaptureJob(threading.Thread):
 
         if self.interval > 0:
             logger.debug('cjr creation payload: {}'.format(payload))
-            response = requests.post(CJR_NEW_URL, data=payload)
+            response = requests.post(CJR_NEW_URL, auth=(fishface_server_auth.USERNAME, fishface_server_auth.PASSWORD), data=payload)
             self.cjr_id = response.json()['cjr_id']
             self.job_with_capture()
         else:
@@ -382,9 +384,11 @@ class Telemeter(object):
         payload = {'payload': json.dumps(payload)}
 
         if files is None:
-            response = requests.post(TELEMETRY_URL, data=payload)
+            response = requests.post(TELEMETRY_URL, auth=(fishface_server_auth.USERNAME, fishface_server_auth.PASSWORD), data=payload)
         else:
-            response = requests.post(TELEMETRY_URL, data=payload, files=files)
+            response = requests.post(TELEMETRY_URL, auth=(fishface_server_auth.USERNAME, fishface_server_auth.PASSWORD), data=payload, files=files)
+
+        self.logger.info('POST response code: {}'.format(response.status_code))
 
         if response.status_code in [500, 410, 501]:
             logger.warning("Got {} status from server.".format(response.status_code))
