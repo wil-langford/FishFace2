@@ -17,6 +17,7 @@ import logging.handlers
 import json
 import cgi
 
+import hardware_abstraction as ha
 import fishface_server_auth
 
 logger = logging.getLogger('raspi')
@@ -40,21 +41,10 @@ logger.addHandler(file_handler)
 if LOG_TO_CONSOLE:
     logger.addHandler(console_handler)
 
-try:
-    import picamera
-    import instruments.hp as ik
-    REAL_HARDWARE = True
+if ha.REAL_HARDWARE:
     BASE_URL = "http://fishface/fishface/"
-    logger.info("Running server on real Raspi hardware with an HP power supply.")
-except ImportError:
-    # noinspection PyPep8Naming
-    import hardware_abstraction as picamera
-    # noinspection PyPep8Naming
-    import hardware_abstraction as ik
-    REAL_HARDWARE = False
+else:
     BASE_URL = "http://localhost:8000/fishface/"
-    logger.warning("Emulating raspi hardware.")
-    logger.warning("Real data collection is disabled.")
 
 HOST = ''
 PORT = 18765
@@ -246,7 +236,7 @@ class CaptureJobController(threading.Thread):
         self.server = imagery_server
 
     def run(self):
-        if REAL_HARDWARE:
+        if ha.REAL_HARDWARE:
             wait_time = 3
         else:
             wait_time = 1
@@ -421,12 +411,9 @@ class ImageryServer(object):
         self._keep_capturing = True
         self._keep_capturejob_looping = True
 
-        if REAL_HARDWARE:
-            self.power_supply = ik.HP6652a.open_serial('/dev/ttyUSB0', 57600)
-        else:
-            self.power_supply = ik.HP6652a()
+        self.power_supply = ha.get_power_supply()
 
-        self.camera = picamera.PiCamera()
+        self.camera = ha.get_camera()
         self.camera.resolution = (2048, 1536)
         self.camera.rotation = 180
 

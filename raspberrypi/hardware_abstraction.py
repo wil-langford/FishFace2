@@ -5,14 +5,43 @@ import random
 import io
 import time
 import os
+import logging
 
 import quantities as pq
 
+logger = logging.getLogger('hardware_abstraction')
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+
+LOG_TO_CONSOLE = True
+CONSOLE_LOG_LEVEL = logging.DEBUG
+FILE_LOG_LEVEL = logging.DEBUG
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(CONSOLE_LOG_LEVEL)
+console_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler('hardware_abstraction.log')
+file_handler.setLevel(FILE_LOG_LEVEL)
+file_handler.setFormatter(formatter)
+
+try:
+    import picamera
+    import instruments as ik
+    REAL_HARDWARE = True
+    logger.info("Running server on real Raspi hardware.")
+except ImportError:
+    REAL_HARDWARE = False
+    logger.warning('Emulating raspi hardware.')
+    logger.warning('Real data collection is not possible.')
+
 MAX_VARIANCE_FACTOR = 0.05
 HOME_DIR = os.getenv("HOME")
-PROJECT_DIR = 'FishFace2/raspberrypi' 
+PROJECT_DIR = 'FishFace2/raspberrypi'
 
-class PiCamera(object):
+
+class FakePiCamera(object):
     def __init__(self):
         self.resolution = (2048, 1536)
         self.rotation = 180
@@ -38,12 +67,12 @@ class PiCamera(object):
         pass
 
 
-class HP6652a(object):
+class FakeHP6652a(object):
     """
     Fakes an InstrumentKit power supply well enough to fool FishFace
     during testing.
 
-    >>> fpsu = HP6652a()
+    >>> fpsu = FakeHP6652a()
     >>> fpsu.voltage
     array(5.0) * V
     >>> abs(fpsu.voltage_sense - fpsu.voltage) < fpsu.voltage * MAX_VARIANCE_FACTOR
@@ -125,8 +154,8 @@ class HP6652a(object):
         self.output = False
 
 def main():
-    cam = PiCamera()
-    psu = HP6652a()
+    cam = FakePiCamera()
+    psu = FakeHP6652a()
 
 if __name__ == '__main__':
     main()
