@@ -3,18 +3,18 @@
 {% block subtitle %}Experiments{% endblock %}
 
 {% block content %}
-    <ol>
+    <ul>
     {% for xp in xp_list %}
-                <li class="boxed">
+                <li class="boxed inline_block">
                     <a href="{% url 'djff:xp_capture' xp.id %}">
                     {{ xp.name }}</a>
                     <br><em>Species</em>: {{ xp.species.shortname }}
-                    <br><em>Started</em>: {{ xp.xp_start }}
-                </li>
+                    <br><em>Started</em>: {{ xp.xp_start|date:"Y-M-d H:i:s"  }}
+                </li><br />
     {% empty %}
         <p>No experiments have been stored.</p>
     {% endfor %}
-    </ol>
+    </ul>
 
     <p>Add a <a href="{% url 'djff:xp_new' %}">new experiment</a>.</p>
 {% endblock %}
