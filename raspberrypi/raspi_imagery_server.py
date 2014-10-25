@@ -265,14 +265,16 @@ class CaptureJobController(threading.Thread):
         self.logger.info('CaptureJob Controller starting up.')
         while self._keep_controller_running:
             self._heartbeat += 1
-            if self._heartbeat % 5 == 0:
+            if self._heartbeat % 100 == 0:
                 logger.debug("CaptureJobController.run.heartbeat {}".format(self._heartbeat))
 
+            # logger.debug("CHECKING deathcries")
             while len(self._deathcries):
                 self.logger.info("Posting deathcries.  " +
                                  "Cries remaining to post: {}".format(len(self._deathcries)))
                 self.server.telemeter.post_to_fishface(self.deathcry)
 
+            # logger.debug("CHECKING current job not none")
             if self._current_job is not None:
                 self.logger.debug('Reporting on current job.')
                 current_status = self.get_current_job_status()
@@ -280,17 +282,20 @@ class CaptureJobController(threading.Thread):
                     current_status['command'] = 'job_status_update'
                     self.server.telemeter.post_to_fishface(current_status)
 
+            # logger.debug("CHECKING cj none and sj none and nonempty queue")
             if self._current_job is None and self._staged_job is None and self._queue:
                 self.logger.info('No jobs active, but jobs in queue.')
                 self._current_job = CaptureJob(self, **self._queue.pop(0))
                 self._current_job.start()
                 self.logger.debug('Started new current job.')
 
+            # logger.debug("CHECKING sj none and cj not none and queue empty and (cj expired or cj aborted)")
             if (self._staged_job is None and self._current_job is not None and not self._queue and
                 (self._current_job.job_ends_after < time.time() or self._current_job.status == 'aborted')):
                 self.logger.info('Current job is dead and there are no more pending.')
                 self._current_job = None
 
+            # logger.debug("CHECKING (cj none or cj expired) and sj not none")
             if ((self._current_job is None or self._current_job.job_ends_after < time.time()) and
                             self._staged_job is not None):
                 self.logger.info('Current job is dead, promoting staged job.')
@@ -298,11 +303,14 @@ class CaptureJobController(threading.Thread):
                 self._current_job.start()
                 self._staged_job = None
 
+            # logger.debug("CHECKING sj none and queue nonempty and cj almost expired")
             if self._staged_job is None and self._queue and self._current_job.job_ends_in < 10:
                 self.logger.info("New staged job being promoted from queue.")
                 self._staged_job = CaptureJob(self, **self._queue.pop(0))
 
+            # logger.debug("CHECKING cj none and sj none and queue empty")
             if self._current_job is None and self._staged_job is None and not self._queue:
+                logger.info("No jobs (current/staged/queues).  Checking power supply.")
                 if self.server.power_supply.voltage_sense > 0.1:
                     self.logger.info('Shutting down power supply until the next job arrives.')
                     self.set_psu({
@@ -311,6 +319,7 @@ class CaptureJobController(threading.Thread):
                         'enable_output': 0,
                     })
 
+            # logger.debug("keep controller running? {}".format(str(self._keep_controller_running)))
             time.sleep(1)
 
     def get_current_job_status(self):
