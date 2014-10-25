@@ -114,6 +114,8 @@ class CaptureJob(threading.Thread):
 
         self._keep_looping = None
 
+        self._heartbeat = 0
+
     def run(self):
         self.start_timestamp = time.time()
 
@@ -166,6 +168,9 @@ class CaptureJob(threading.Thread):
         self.job_ends_after = time.time() + self.duration
 
         while self._keep_looping and time.time() < self.job_ends_after:
+            self._heartbeat += 1
+            if self._heartbeat % 1 == 0:
+                logger.debug("CaptureJob.job_without_capture.heartbeat {}".format(self._heartbeat))
             delay_for_seconds(1)
 
     def job_with_capture(self):
@@ -182,6 +187,9 @@ class CaptureJob(threading.Thread):
         self.remaining = len(self.capture_times)
 
         for i, next_capture_time in enumerate(self.capture_times):
+            self._heartbeat += 1
+            if self._heartbeat % 1 == 0:
+                logger.debug("CaptureJob.job_without_capture.heartbeat {}".format(self._heartbeat))
             delay_until(next_capture_time)
             self.status = 'running'
             if not self._keep_looping:
@@ -245,6 +253,8 @@ class CaptureJobController(threading.Thread):
 
         self.server = imagery_server
 
+        self._heartbeat = 0
+
     def run(self):
         if REAL_HARDWARE:
             wait_time = 3
@@ -254,6 +264,10 @@ class CaptureJobController(threading.Thread):
         delay_for_seconds(wait_time)
         self.logger.info('CaptureJob Controller starting up.')
         while self._keep_controller_running:
+            self._heartbeat += 1
+            if self._heartbeat % 5 == 0:
+                logger.debug("CaptureJobController.run.heartbeat {}".format(self._heartbeat))
+
             while len(self._deathcries):
                 self.logger.info("Posting deathcries.  " +
                                  "Cries remaining to post: {}".format(len(self._deathcries)))
@@ -266,16 +280,16 @@ class CaptureJobController(threading.Thread):
                     current_status['command'] = 'job_status_update'
                     self.server.telemeter.post_to_fishface(current_status)
 
-            if (self._staged_job is None and self._current_job is not None and not self._queue and
-                (self._current_job.job_ends_after < time.time() or self._current_job.status == 'aborted')):
-                self.logger.info('Current job is dead and there are no more pending.')
-                self._current_job = None
-
             if self._current_job is None and self._staged_job is None and self._queue:
                 self.logger.info('No jobs active, but jobs in queue.')
                 self._current_job = CaptureJob(self, **self._queue.pop(0))
                 self._current_job.start()
                 self.logger.debug('Started new current job.')
+
+            if (self._staged_job is None and self._current_job is not None and not self._queue and
+                (self._current_job.job_ends_after < time.time() or self._current_job.status == 'aborted')):
+                self.logger.info('Current job is dead and there are no more pending.')
+                self._current_job = None
 
             if ((self._current_job is None or self._current_job.job_ends_after < time.time()) and
                             self._staged_job is not None):
@@ -451,6 +465,8 @@ class ImageryServer(object):
             'abort_all': self.capturejob_controller.abort_all,
         }
 
+        self._heartbeat_icl = 0
+
     def _capture_new_current_frame(self):
         stream = io.BytesIO()
         new_frame_capture_time = time.time()
@@ -522,6 +538,11 @@ class ImageryServer(object):
     def run(self):
         def image_capture_loop():
             while self._keep_capturing:
+                self._heartbeat_icl += 1
+                if self._heartbeat_icl % 20 == 0:
+                    logger.debug("ImageryServer.run.image_capture_loop thread heartbeat: {}".format(
+                        self._heartbeat_icl
+                    ))
                 self._capture_new_current_frame()
             self.camera.close()
 
