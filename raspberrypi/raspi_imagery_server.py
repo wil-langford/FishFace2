@@ -422,7 +422,8 @@ class ImageryServer(object):
         self._keep_capturejob_looping = True
 
         if REAL_HARDWARE:
-            self.power_supply = ik.HP6652a.open_serial('/dev/ttyUSB0', 57600)
+            # self.power_supply = ik.HP6652a.open_serial('/dev/ttyUSB0', 57600)
+            self.power_supply = ik.HP6652a.open_gpibusb('/dev/ttyUSB0', 1)
         else:
             self.power_supply = ik.HP6652a()
 
