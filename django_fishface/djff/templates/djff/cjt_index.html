@@ -5,32 +5,34 @@
 {% block content %}
     <ol>
     {% for cjt in context %}
-                <li class="boxed">
-                    <a href="{% url 'djff:cjt_detail' cjt.id %}">
-                        Capture Job Template
-                    </a>
-                    {% if cjt.description %}
-                        <p class="boxed">Description: {{ cjt.description }}</p>
-                    {% endif %}
-                    <br><em>Voltage</em>: {{ cjt.voltage }} V
-                    <br><em>Max current</em>: {{ cjt.current }} A
-                    <br>
-                    <br><em>Duration</em>: {{ cjt.duration }}
+        <a href="{% url 'djff:cjt_detail' cjt.id %}" class="black_link">
+            <li class="boxed inline_block">
+                {% if cjt.description %}
+                    <p class="description">Description: {{ cjt.description }}</p>
+                {% endif %}
+                <div class="boxed">
+                <em>Voltage</em>: {{ cjt.voltage }} V
+                <br><em>Max current</em>: {{ cjt.current }} A
+                </div>
+                <div class="boxed">
                     {% if cjt.interval > 0 %}
+                        <em>Duration</em>: {{ cjt.duration }}
                         <br><em>Interval</em>: {{ cjt.interval }}
                         <br><em>Startup Delay</em>: {{ cjt.startup_delay }}
-                        <br>
                     {% else %}
-                        <p>No images will be captured with this job.</p>
+                        <em>Duration</em>: {{ cjt.duration }}
+                        <p class="small_comment">No images will be captured with this job.</p>
                     {% endif %}
+                </div>
 
-                    <form action="{% url 'djff:cjt_delete' cjt.id %}"
-                            method="post">
-                        {% csrf_token %}
-                        <input type="submit"
-                               value="Delete this template" />
-                    </form>
-                </li>
+                <form action="{% url 'djff:cjt_delete' cjt.id %}"
+                        method="post">
+                    {% csrf_token %}
+                    <input type="submit"
+                           value="Delete this template" />
+                </form>
+                </li><br />
+        </a>
     {% empty %}
         <p>There are no stored capture job templates.</p>
     {% endfor %}

@@ -17,22 +17,30 @@
     {% block localscript %}{% endblock %}
 
     <title>FishFace{% block pagetitle %}{% endblock %}</title>
+
+    <script type="text/javascript">
+$(document).ready(function(){
+}
+    </script>
+
 </head>
 
 <body>
 
 <header>
-    <h2><a href="{% url 'djff:xp_index' %}">FishFace</a></h2>
+    <div id="header_title_block">
+    <h2><a href="{% url 'djff:xp_index' %}" id="header_title">FishFace</a></h2>
     <h4>{% block subtitle %}{% endblock %}</h4>
+    </div>
 </header>
 
 <div id="sidebar">
     {% block sidebar %}
-        <ul>
-        <li><a href="{% url 'djff:xp_index' %}">Experiments</a></li>
-        <li><a href="{% url 'djff:sp_index' %}">Species</a></li>
-        <li><a href="{% url 'djff:cjt_index' %}">CapJob Templates</a></li>
-        <li><a href="{% url 'djff:cq_interface' %}">CapJob Queue</a></li>
+        <ul id="main_menu">
+        <a href="{% url 'djff:xp_index' %}"><li id="menu_experiments">Experiments</li></a>
+        <a href="{% url 'djff:sp_index' %}"><li id="menu_species">Species</li></a>
+        <a href="{% url 'djff:cjt_index' %}"><li id="menu_templates">CapJob Templates</li></a>
+        <a href="{% url 'djff:cq_interface' %}"><li id="menu_job_queue">CapJob Queue</li></a>
         </ul>
     {% endblock %}
 </div>
