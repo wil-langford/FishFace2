@@ -265,7 +265,7 @@ class CaptureJobController(threading.Thread):
         self.logger.info('CaptureJob Controller starting up.')
         while self._keep_controller_running:
             self._heartbeat += 1
-            if self._heartbeat % 100 == 0:
+            if self._heartbeat % 1 == 0:
                 logger.debug("CaptureJobController.run.heartbeat {}".format(self._heartbeat))
 
             # logger.debug("CHECKING deathcries")
@@ -311,13 +311,13 @@ class CaptureJobController(threading.Thread):
             # logger.debug("CHECKING cj none and sj none and queue empty")
             if self._current_job is None and self._staged_job is None and not self._queue:
                 logger.info("No jobs (current/staged/queues).  Checking power supply.")
-                if self.server.power_supply.voltage_sense > 0.1:
-                    self.logger.info('Shutting down power supply until the next job arrives.')
-                    self.set_psu({
-                        'voltage': 0,
-                        'current': 0,
-                        'enable_output': 0,
-                    })
+                # if float(self.server.power_supply.voltage_sense) > 0.1:
+                self.logger.info('Shutting down power supply until the next job arrives.')
+                self.set_psu({
+                    'voltage': 0,
+                    'current': 0,
+                    'enable_output': 0,
+                })
 
             # logger.debug("keep controller running? {}".format(str(self._keep_controller_running)))
             time.sleep(1)
