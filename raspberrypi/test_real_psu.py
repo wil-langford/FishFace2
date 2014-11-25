@@ -36,6 +36,7 @@ class CommCheckTest(unittest.TestCase):
         self.psu = ik.HP6652a.open_gpibusb('/dev/ttyUSB0', 2)
         self.psu.voltage = 0
         self.psu.current = MAX_CURRENT
+        self.output = True
 
     def test_communication_with_power_supply(self):
         self.assertIsInstance(self.psu.name, basestring)
@@ -67,6 +68,7 @@ class CommCheckTest(unittest.TestCase):
     def tearDown(self):
         self.psu.current = 0
         self.psu.voltage = 0
+        self.output = False
         del self.psu
 
 if __name__ == '__main__':
