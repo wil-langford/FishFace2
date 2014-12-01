@@ -63,7 +63,11 @@ class HP6652a(object):
     array(10.2) * A
 
     >>> fpsu.output = True
+    >>> fpsu.output
+    True
     >>> fpsu.output = False
+    >>> fpsu.output
+    False
     """
     def __init__(self):
         self._output = False
@@ -111,7 +115,7 @@ class HP6652a(object):
 
     @property
     def output(self):
-        raise Exception("Cannot read output state of PSU; can only set it.")
+        return self._output
 
     @output.setter
     def output(self, boolean_value):
