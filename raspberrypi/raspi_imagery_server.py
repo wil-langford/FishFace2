@@ -153,10 +153,12 @@ class CaptureJob(threading.Thread):
         if self.status == 'running':
             self.status = 'completed'
 
-        deathcry = self.get_status_dict()
-        deathcry['command'] = 'job_status_update'
 
-        self.controller.deathcry = deathcry
+        if self.interval > 0:
+            deathcry = self.get_status_dict()
+            deathcry['command'] = 'job_status_update'
+
+            self.controller.deathcry = deathcry
 
     def job_without_capture(self):
         self.total = 0
