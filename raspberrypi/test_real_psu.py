@@ -4,7 +4,7 @@ import random
 import math
 
 try:
-    import instruments.hp as ik
+    import RobustPowerSupply
 except:
     import FakeHardware as ik
 
@@ -33,7 +33,7 @@ def delay_for_seconds(seconds):
 class CommCheckTest(unittest.TestCase):
 
     def setUp(self):
-        self.psu = ik.HP6652a.open_gpibusb('/dev/ttyUSB0', 2)
+        self.psu = RobustPowerSupply.RobustPowerSupply.open_gpibusb('/dev/ttyUSB0', 2)
         self.psu.voltage = 0
         self.psu.current = MAX_CURRENT
         self.output = True

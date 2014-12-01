@@ -6,7 +6,7 @@ export PYRO_SERIALIZERS_ACCEPTED=json
 PYRO_HOST_IP='127.0.0.1'
 
 # Session name argument
-SES_NAME='FishFaceStartup'
+SES_NAME='FishFaceServers'
 
 # start in detached mode
 /usr/bin/screen -dmS $SES_NAME /usr/bin/python -m Pyro4.naming --host=$PYRO_HOST_IP

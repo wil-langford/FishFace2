@@ -43,6 +43,7 @@ if LOG_TO_CONSOLE:
 try:
     import picamera
     import instruments.hp as ik
+    from serial.serialutil import SerialException
     REAL_HARDWARE = True
     BASE_URL = "http://fishface/fishface/"
     logger.info("Running server on real Raspi hardware with an HP power supply.")
@@ -51,6 +52,10 @@ except ImportError:
     import FakeHardware as picamera
     # noinspection PyPep8Naming
     import FakeHardware as ik
+
+    class SerialException(IOError):
+        pass
+
     REAL_HARDWARE = False
     BASE_URL = "http://localhost:8000/fishface/"
     logger.warning("Emulating raspi hardware.")
@@ -255,6 +260,29 @@ class CaptureJobController(threading.Thread):
 
         self._heartbeat = 0
 
+    def _up_to_ten_voltage_reading_attempts(self):
+        got_read_data = False
+        read_attempt_counter = 0
+
+        v_read = -1000
+
+        while not got_read_data:
+            read_attempt_counter += 1
+            try:
+                v_read = float(self.server.power_supply.voltage)
+                break
+            except ValueError, SerialException:
+                pass
+            if read_attempt_counter > 10:
+                raise Exception("I tried to get a set voltage reading ten times and failed.")
+
+        if read_attempt_counter > 1:
+            logger.warning("I had to try {} times before I got a good reading from the power supply.".format(
+                read_attempt_counter
+            ))
+
+        return v_read
+
     def run(self):
         if REAL_HARDWARE:
             wait_time = 3
@@ -311,7 +339,7 @@ class CaptureJobController(threading.Thread):
             # logger.debug("CHECKING cj none and sj none and queue empty")
             if self._current_job is None and self._staged_job is None and not self._queue:
                 logger.info("No jobs (current/staged/queues).  Checking power supply.")
-                if float(self.server.power_supply.voltage) > 0.1:
+                if float(self.server._up_to_ten_sense_attempts()[0]) > 0.2:
                     self.logger.info('Shutting down power supply until the next job arrives.')
                     self.set_psu({
                         'voltage': 0,
@@ -330,13 +358,14 @@ class CaptureJobController(threading.Thread):
 
     def abort_running_job(self):
         self.logger.info("Aborting current job.")
-        self._current_job.abort_job()
+        if self._current_job is not None:
+            self._current_job.abort_job()
 
     def abort_all(self, payload):
         self.logger.info("Aborting all jobs!")
         self._queue = list()
         self._staged_job = None
-        self._current_job.abort_job()
+        self.abort_running_job()
         return payload
 
     def insert_job(self, job_spec, position):
@@ -449,6 +478,10 @@ class ImageryServer(object):
             self.power_supply = ik.HP6652a.open_gpibusb('/dev/ttyUSB0', 2)
         else:
             self.power_supply = ik.HP6652a()
+
+        self.power_supply.output = False
+        self.power_supply.current = 0
+        self.power_supply.voltage = 0
 
         self.camera = picamera.PiCamera()
         self.camera.resolution = (2048, 1536)
@@ -614,14 +647,41 @@ class ImageryServer(object):
 
         return False
 
+    def _up_to_ten_sense_attempts(self):
+        got_sensed_data = False
+        sense_attempt_counter = 0
+
+        v_sensed = -1000
+        c_sensed = -1000
+
+        while not got_sensed_data:
+            sense_attempt_counter += 1
+            try:
+                v_sensed = float(self.power_supply.voltage_sense)
+                c_sensed = float(self.power_supply.current_sense)
+                break
+            except ValueError, SerialException:
+                pass
+            if sense_attempt_counter > 10:
+                raise Exception("I tried to get a voltage/current measurement ten times and failed.")
+
+        if sense_attempt_counter > 1:
+            logger.warning("I had to try {} times before I got a good reading from the power supply.".format(
+                sense_attempt_counter
+            ))
+
+        return v_sensed, c_sensed
+
+
     def post_power_supply_sensed_data(self, payload, delay=None):
         if delay is not None:
             time.sleep(delay)
         payload['command'] = 'power_supply_log'
-        payload['voltage_meas'] = float(
-            self.power_supply.voltage_sense)
-        payload['current_meas'] = float(
-            self.power_supply.current_sense)
+
+        v_sensed, c_sensed = self._up_to_ten_sense_attempts()
+        
+        payload['voltage_meas'] = v_sensed
+        payload['current_meas'] = c_sensed
 
         logger.debug('Posting psu sensed data:\n{}'.format(payload))
 

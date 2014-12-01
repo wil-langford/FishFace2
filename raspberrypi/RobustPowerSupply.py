@@ -16,29 +16,31 @@ import instruments as ik
 from serial.serialutil import SerialException
 import quantities as pq
 
-logger = logging.getLogger('raspi')
+logger = logging.getLogger('djff.raspi.power_supply')
 logger.setLevel(logging.DEBUG)
 
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+if not logger.handlers:
 
-LOG_TO_CONSOLE = True
-CONSOLE_LOG_LEVEL = logging.DEBUG
-FILE_LOG_LEVEL = logging.DEBUG
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
-console_handler = logging.StreamHandler()
-console_handler.setLevel(CONSOLE_LOG_LEVEL)
-console_handler.setFormatter(formatter)
+    LOG_TO_CONSOLE = True
+    CONSOLE_LOG_LEVEL = logging.DEBUG
+    FILE_LOG_LEVEL = logging.DEBUG
 
-file_handler = logging.FileHandler('imagery_server.log')
-file_handler.setLevel(FILE_LOG_LEVEL)
-file_handler.setFormatter(formatter)
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(CONSOLE_LOG_LEVEL)
+    console_handler.setFormatter(formatter)
 
-logger.addHandler(file_handler)
-if LOG_TO_CONSOLE:
-    logger.addHandler(console_handler)
+    file_handler = logging.FileHandler('robust_power_supply.log')
+    file_handler.setLevel(FILE_LOG_LEVEL)
+    file_handler.setFormatter(formatter)
 
-# Instrument parent class
-POWER_SUPPLY_PARENT_CLASS = ik.hp.HP6652a
+    logger.addHandler(file_handler)
+    if LOG_TO_CONSOLE:
+        logger.addHandler(console_handler)
+
+# Instrument class
+POWER_SUPPLY_CLASS = ik.hp.HP6652a
 
 # Allowable variation between volts commanded and volts that the setting that the instrument reports.
 VOLTAGE_TOLERANCE = 0.01
@@ -46,70 +48,122 @@ CURRENT_TOLERANCE = 0.01
 
 MAX_ATTEMPTS = 10
 
-# This next line is where you specify which InstrumentKit power supply we are wrapping.
-class RobustPowerSupply(POWER_SUPPLY_PARENT_CLASS):
-    def __init__(self, *args, **kwargs):
-        super(RobustPowerSupply, self).__init__(*args, **kwargs)
+
+class RobustPowerSupply(object):
+    def __init__(self):
+        self.psu = POWER_SUPPLY_CLASS.open_gpibusb('/dev/ttyUSB0', 2)
 
         self._last_commanded_output_state = None
 
     @property
     def output(self):
-        return self._last_commanded_output_state
+        # If we haven't commanded the power supply's output state yet this session, try to figure out if its
+        # output is enabled based on the sensed voltage and current, otherwise, return the last commanded
+        # state.
+        if self._last_commanded_output_state is None:
+            logger.debug("Determining output state based on sensed current/voltage.")
+            return bool(self.current_sense > 0.1 or self.voltage_sense > 0.1)
+        else:
+            return self._last_commanded_output_state
 
     @output.setter
     def output(self, enable_output):
         self._last_commanded_output_state = bool(enable_output)
-        POWER_SUPPLY_PARENT_CLASS.output(self, self._last_commanded_output_state)
+        self.psu.output = self._last_commanded_output_state
 
     @property
     def voltage(self):
-        attempts = 0
+        logger.info("Getting voltage setting from PSU.")
         read_voltage = None
-        while attempts < MAX_ATTEMPTS and read_voltage is None:
-            attempts += 1
+        for attempt in range(MAX_ATTEMPTS):
+            logger.debug("Attempt {} to read voltage setting from PSU.".format(attempt))
+
             try:
-                read_voltage = super(RobustPowerSupply, self).voltage
+                read_voltage = self.psu.voltage
+                break
             except SerialException, ValueError:
                 pass
-        else:
-            if attempts == MAX_ATTEMPTS:
-                logger.error("Maximum attempts to get voltage reached.")
+
+            if attempt == MAX_ATTEMPTS:
+                logger.error("Maximum attempts to read voltage setting reached.")
 
         return read_voltage
 
     @voltage.setter
     def voltage(self, value):
-        attempts = 0
-        while abs(float(self.voltage) - value) < VOLTAGE_TOLERANCE and attempts < MAX_ATTEMPTS:
-            attempts += 1
-            super(RobustPowerSupply, self).voltage = value
-        else:
-            if attempts == MAX_ATTEMPTS:
+        for attempt in range(MAX_ATTEMPTS):
+            logger.debug("Attempt {} to set voltage.".format(attempt))
+
+            self.psu.voltage = value
+
+            if abs(float(self.voltage) - value) < VOLTAGE_TOLERANCE:
+                break
+
+            if attempt == MAX_ATTEMPTS:
                 logger.error("Maximum attempts to set voltage reached.")
 
     @property
-    def current(self):
-        attempts = 0
-        read_current = None
-        while attempts < MAX_ATTEMPTS and read_current is None:
-            attempts += 1
+    def voltage_sense(self):
+        sensed_voltage = None
+        for attempt in range(MAX_ATTEMPTS):
+            logger.debug("Attempt {} to sense voltage from PSU.".format(attempt))
+
             try:
-                read_current = super(RobustPowerSupply, self).current
+                sensed_voltage = self.psu.voltage_sense
+                break
             except SerialException, ValueError:
                 pass
-        else:
-            if attempts == MAX_ATTEMPTS:
-                logger.error("Maximum attempts to get current reached.")
+
+            if attempt == MAX_ATTEMPTS:
+                logger.error("Maximum attempts to sense voltage reached.")
+
+        return sensed_voltage
+
+    @property
+    def current(self):
+        logger.info("Getting current setting from PSU.")
+        read_current = None
+        for attempt in range(MAX_ATTEMPTS):
+            logger.debug("Attempt {} to read current setting from PSU.".format(attempt))
+
+            try:
+                read_current = self.psu.current
+                break
+            except SerialException, ValueError:
+                pass
+
+            if attempt == MAX_ATTEMPTS:
+                logger.error("Maximum attempts to read current setting reached.")
 
         return read_current
 
     @current.setter
     def current(self, value):
-        attempts = 0
-        while float(self.current) < value + CURRENT_TOLERANCE and attempts < MAX_ATTEMPTS:
-            attempts += 1
-            super(RobustPowerSupply, self).current = value
-        else:
-            if attempts == MAX_ATTEMPTS:
+        for attempt in range(MAX_ATTEMPTS):
+            logger.debug("Attempt {} to set current.".format(attempt))
+
+            self.psu.current = value
+
+            if abs(float(self.current) - value) < CURRENT_TOLERANCE:
+                break
+
+            if attempt == MAX_ATTEMPTS:
                 logger.error("Maximum attempts to set current reached.")
+
+    @property
+    def current_sense(self):
+        sensed_current = None
+        for attempt in range(MAX_ATTEMPTS):
+            logger.debug("Attempt {} to sense current from PSU.".format(attempt))
+
+            try:
+                sensed_current = self.psu.current_sense
+                break
+            except SerialException, ValueError:
+                pass
+
+            if attempt == MAX_ATTEMPTS:
+                logger.error("Maximum attempts to sense current reached.")
+
+        return sensed_current
+
