@@ -42,7 +42,7 @@ if LOG_TO_CONSOLE:
 
 try:
     import picamera
-    import instruments.hp as ik
+    import RobustPowerSupply
     from serial.serialutil import SerialException
     REAL_HARDWARE = True
     BASE_URL = "http://fishface/fishface/"
@@ -119,7 +119,7 @@ class CaptureJob(threading.Thread):
 
         self._keep_looping = None
 
-        self._heartbeat = 0
+        self._heartbeat_cj = 0
 
     def run(self):
         self.start_timestamp = time.time()
@@ -173,9 +173,9 @@ class CaptureJob(threading.Thread):
         self.job_ends_after = time.time() + self.duration
 
         while self._keep_looping and time.time() < self.job_ends_after:
-            self._heartbeat += 1
-            if self._heartbeat % 1 == 0:
-                logger.debug("CaptureJob.job_without_capture.heartbeat {}".format(self._heartbeat))
+            self._heartbeat_cj += 1
+            if self._heartbeat_cj % 1 == 0:
+                logger.debug("CaptureJob.job_without_capture.heartbeat {}".format(self._heartbeat_cj))
             delay_for_seconds(1)
 
     def job_with_capture(self):
@@ -192,9 +192,9 @@ class CaptureJob(threading.Thread):
         self.remaining = len(self.capture_times)
 
         for i, next_capture_time in enumerate(self.capture_times):
-            self._heartbeat += 1
-            if self._heartbeat % 1 == 0:
-                logger.debug("CaptureJob.job_without_capture.heartbeat {}".format(self._heartbeat))
+            self._heartbeat_cj += 1
+            if self._heartbeat_cj % 1 == 0:
+                logger.debug("CaptureJob.job_without_capture.heartbeat {}".format(self._heartbeat_cj))
             delay_until(next_capture_time)
             self.status = 'running'
             if not self._keep_looping:
@@ -258,30 +258,7 @@ class CaptureJobController(threading.Thread):
 
         self.server = imagery_server
 
-        self._heartbeat = 0
-
-    def _up_to_ten_voltage_reading_attempts(self):
-        got_read_data = False
-        read_attempt_counter = 0
-
-        v_read = -1000
-
-        while not got_read_data:
-            read_attempt_counter += 1
-            try:
-                v_read = float(self.server.power_supply.voltage)
-                break
-            except ValueError, SerialException:
-                pass
-            if read_attempt_counter > 10:
-                raise Exception("I tried to get a set voltage reading ten times and failed.")
-
-        if read_attempt_counter > 1:
-            logger.warning("I had to try {} times before I got a good reading from the power supply.".format(
-                read_attempt_counter
-            ))
-
-        return v_read
+        self._heartbeat_cjc = 0
 
     def run(self):
         if REAL_HARDWARE:
@@ -292,9 +269,11 @@ class CaptureJobController(threading.Thread):
         delay_for_seconds(wait_time)
         self.logger.info('CaptureJob Controller starting up.')
         while self._keep_controller_running:
-            self._heartbeat += 1
-            if self._heartbeat % 20 == 0:
-                logger.debug("CaptureJobController.run.heartbeat {}".format(self._heartbeat))
+            self._heartbeat_cjc += 1
+            delay_until_next_loop = 1
+
+            if self._heartbeat_cjc % 50 == 0:
+                logger.debug("CaptureJobController.run thread heartbeat {}".format(self._heartbeat_cjc))
 
             # logger.debug("CHECKING deathcries")
             while len(self._deathcries):
@@ -302,7 +281,11 @@ class CaptureJobController(threading.Thread):
                                  "Cries remaining to post: {}".format(len(self._deathcries)))
                 self.server.telemeter.post_to_fishface(self.deathcry)
 
-            # logger.debug("CHECKING current job not none")
+
+            ###
+            ### Primary CJC loop handler.
+            ###
+
             if self._current_job is not None:
                 self.logger.debug('Reporting on current job.')
                 current_status = self.get_current_job_status()
@@ -310,45 +293,35 @@ class CaptureJobController(threading.Thread):
                     current_status['command'] = 'job_status_update'
                     self.server.telemeter.post_to_fishface(current_status)
 
-            # logger.debug("CHECKING cj none and sj none and nonempty queue")
-            if self._current_job is None and self._staged_job is None and self._queue:
-                self.logger.info('No jobs active, but jobs in queue.')
-                self._current_job = CaptureJob(self, **self._queue.pop(0))
-                self._current_job.start()
-                self.logger.debug('Started new current job.')
+                if self._current_job.job_ends_after < time.time() or self._current_job.status == 'aborted':
+                    self.logger.info("Current job is dead or expired; clearing it.")
+                    self._current_job = None
+                    delay_until_next_loop = 0.2
 
-            # logger.debug("CHECKING sj none and cj not none and queue empty and (cj expired or cj aborted)")
-            if (self._staged_job is None and self._current_job is not None and not self._queue and
-                (self._current_job.job_ends_after < time.time() or self._current_job.status == 'aborted')):
-                self.logger.info('Current job is dead and there are no more pending.')
-                self._current_job = None
+            else:  # there is no current job
+                if self._staged_job is not None: # there is a staged job
+                    self.logger.info('Promoting staged job.')
+                    self._current_job = self._staged_job
+                    self._current_job.start()
+                    self._staged_job = None
+                else: # there is no staged job
+                    if self._queue: # there are jobs in queue
+                        self.logger.info('No jobs active or staged, but jobs in queue.')
+                        self._current_job = CaptureJob(self, **self._queue.pop(0))
+                        self._current_job.start()
+                        self.logger.debug('Started new current job.')
 
-            # logger.debug("CHECKING (cj none or cj expired) and sj not none")
-            if ((self._current_job is None or self._current_job.job_ends_after < time.time()) and
-                            self._staged_job is not None):
-                self.logger.info('Current job is dead, promoting staged job.')
-                self._current_job = self._staged_job
-                self._current_job.start()
-                self._staged_job = None
+                    else:  # queue is empty
+                        if self.server.power_supply.output:
+                            self.logger.info('Shutting down power supply until the next job arrives.')
+                            self.set_psu({
+                                'voltage': 0,
+                                'current': 0,
+                                'enable_output': 0,
+                            })
 
-            # logger.debug("CHECKING sj none and queue nonempty and cj almost expired")
-            if self._staged_job is None and self._queue and self._current_job.job_ends_in < 10:
-                self.logger.info("New staged job being promoted from queue.")
-                self._staged_job = CaptureJob(self, **self._queue.pop(0))
 
-            # logger.debug("CHECKING cj none and sj none and queue empty")
-            if self._current_job is None and self._staged_job is None and not self._queue:
-                logger.info("No jobs (current/staged/queues).  Checking power supply.")
-                if float(self.server._up_to_ten_sense_attempts()[0]) > 0.2:
-                    self.logger.info('Shutting down power supply until the next job arrives.')
-                    self.set_psu({
-                        'voltage': 0,
-                        'current': 0,
-                        'enable_output': 0,
-                    })
-
-            # logger.debug("keep controller running? {}".format(str(self._keep_controller_running)))
-            time.sleep(1)
+            delay_for_seconds(delay_until_next_loop)
 
     def get_current_job_status(self):
         return self._current_job.get_status_dict()
@@ -474,8 +447,7 @@ class ImageryServer(object):
         self._keep_capturejob_looping = True
 
         if REAL_HARDWARE:
-            # self.power_supply = ik.HP6652a.open_serial('/dev/ttyUSB0', 57600)
-            self.power_supply = ik.HP6652a.open_gpibusb('/dev/ttyUSB0', 2)
+            self.power_supply = RobustPowerSupply.RobustPowerSupply()
         else:
             self.power_supply = ik.HP6652a()
 
@@ -581,7 +553,7 @@ class ImageryServer(object):
         def image_capture_loop():
             while self._keep_capturing:
                 self._heartbeat_icl += 1
-                if self._heartbeat_icl % 20 == 0:
+                if self._heartbeat_icl % 100 == 0:
                     logger.debug("ImageryServer.run.image_capture_loop thread heartbeat: {}".format(
                         self._heartbeat_icl
                     ))
@@ -647,41 +619,13 @@ class ImageryServer(object):
 
         return False
 
-    def _up_to_ten_sense_attempts(self):
-        got_sensed_data = False
-        sense_attempt_counter = 0
-
-        v_sensed = -1000
-        c_sensed = -1000
-
-        while not got_sensed_data:
-            sense_attempt_counter += 1
-            try:
-                v_sensed = float(self.power_supply.voltage_sense)
-                c_sensed = float(self.power_supply.current_sense)
-                break
-            except ValueError, SerialException:
-                pass
-            if sense_attempt_counter > 10:
-                raise Exception("I tried to get a voltage/current measurement ten times and failed.")
-
-        if sense_attempt_counter > 1:
-            logger.warning("I had to try {} times before I got a good reading from the power supply.".format(
-                sense_attempt_counter
-            ))
-
-        return v_sensed, c_sensed
-
-
     def post_power_supply_sensed_data(self, payload, delay=None):
         if delay is not None:
             time.sleep(delay)
         payload['command'] = 'power_supply_log'
 
-        v_sensed, c_sensed = self._up_to_ten_sense_attempts()
-        
-        payload['voltage_meas'] = v_sensed
-        payload['current_meas'] = c_sensed
+        payload['voltage_meas'] = float(self.power_supply.voltage_sense)
+        payload['current_meas'] = float(self.power_supply.current_sense)
 
         logger.debug('Posting psu sensed data:\n{}'.format(payload))
 
