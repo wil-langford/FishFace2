@@ -33,7 +33,7 @@ def delay_for_seconds(seconds):
 class CommCheckTest(unittest.TestCase):
 
     def setUp(self):
-        self.psu = RobustPowerSupply.RobustPowerSupply.open_gpibusb('/dev/ttyUSB0', 2)
+        self.psu = RobustPowerSupply.RobustPowerSupply()
         self.psu.voltage = 0
         self.psu.current = MAX_CURRENT
         self.output = True
@@ -63,7 +63,7 @@ class CommCheckTest(unittest.TestCase):
             current_sensed = float(self.psu.current)
             self.assertLessEqual(current_sensed, MAX_CURRENT  * (1 + CURRENT_ALLOWABLE_ERROR))
 
-            delay_for_seconds(2)
+            delay_for_seconds(0.5)
 
     def tearDown(self):
         self.psu.current = 0

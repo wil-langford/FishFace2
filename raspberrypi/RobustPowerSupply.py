@@ -14,10 +14,9 @@ import logging
 
 import instruments as ik
 from serial.serialutil import SerialException
-import quantities as pq
 
 logger = logging.getLogger('djff.raspi.power_supply')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 if not logger.handlers:
 
@@ -54,6 +53,10 @@ class RobustPowerSupply(object):
         self.psu = POWER_SUPPLY_CLASS.open_gpibusb('/dev/ttyUSB0', 2)
 
         self._last_commanded_output_state = None
+
+    @property
+    def name(self):
+        return self.psu.name
 
     @property
     def output(self):
