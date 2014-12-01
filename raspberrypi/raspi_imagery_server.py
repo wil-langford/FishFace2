@@ -25,7 +25,7 @@ logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
 LOG_TO_CONSOLE = True
-CONSOLE_LOG_LEVEL = logging.DEBUG
+CONSOLE_LOG_LEVEL = logging.INFO
 FILE_LOG_LEVEL = logging.DEBUG
 
 console_handler = logging.StreamHandler()
@@ -293,10 +293,13 @@ class CaptureJobController(threading.Thread):
                     current_status['command'] = 'job_status_update'
                     self.server.telemeter.post_to_fishface(current_status)
 
-                if self._current_job.job_ends_after < time.time() or self._current_job.status == 'aborted':
+                if self._current_job.status == 'aborted' or self._current_job.job_ends_after < time.time():
                     self.logger.info("Current job is dead or expired; clearing it.")
                     self._current_job = None
                     delay_until_next_loop = 0.2
+                elif self._queue and self._staged_job is None and self._current_job.job_ends_in < 10:
+                    self.logger.info("Current job ends soon; promoting queued job to staged job.")
+                    self._staged_job = CaptureJob(self, **self._queue.pop(0))
 
             else:  # there is no current job
                 if self._staged_job is not None: # there is a staged job
