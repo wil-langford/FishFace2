@@ -167,7 +167,9 @@ $(document).ready(function(){
         var queue_attrib_array = $('#capturejob_queue').sortable('toArray', {'attribute': 'data-attrib_job_spec'});
         var queue_array = [];
         for (var i in queue_attrib_array) {
-            queue_array.push(job_spec_from_data_attrib(queue_attrib_array[i]));
+            if (queue_attrib_array[i].length > 0) {
+                queue_array.push(job_spec_from_data_attrib(queue_attrib_array[i]));
+            }
         }
         if (queue_array.length > 0) {
             return queue_array;
@@ -287,6 +289,13 @@ $(document).ready(function(){
         update: function(event, ui) {
             $('#queue_placeholder').remove();
 
+            console.log("inside update")
+            console.log(get_queue_array());
+
+            if (get_queue_array().length == 0) {
+                $('#capturejob_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
+            }
+
             if (window.fishface_push_queue_on_update == true) {
                 push_entire_queue_to_raspi();
                 repop();
@@ -302,7 +311,11 @@ $(document).ready(function(){
         beforeStop: function(event, ui) {
             if (keep_job_in_queue == 0) {
                 ui.item.remove();
-                if (get_queue_array() == []) {
+                console.log("inside update")
+                console.log(get_queue_array());
+                console.log(get_queue_array().length)
+
+                if (get_queue_array().length == 0) {
                     $('#capturejob_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
                 }
                 if (window.fishface_push_queue_on_update == true) {
@@ -319,7 +332,7 @@ $(document).ready(function(){
             $(newItem).attr('data-attrib_job_spec', attrib_job_spec);
             keep_job_in_queue = 1;
         },
-        placeholder: "ui-sortable-placeholder"
+        placeholder: "ui_sortable_placeholder"
     });
 
     $(".fresh_cjt").draggable({
@@ -329,7 +342,6 @@ $(document).ready(function(){
     });
 
     // Executable stuff
-
     date_format = 'YYYY-MM-DD HH:mm:ss.SSZZ';
 
     xp_names = {{ xp_names_json|safe }};

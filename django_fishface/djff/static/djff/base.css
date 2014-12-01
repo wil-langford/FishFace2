@@ -175,7 +175,7 @@ li:hover {
     width: 15em;
 }
 
-.ui-sortable-placeholder {
+.ui_sortable_placeholder {
     border: 2px dashed #AAAAFF !important;
     height: 10px;
     width: 5em;
@@ -201,6 +201,10 @@ input[type="radio"] {
     background-color: #aaaaaa;
     display: none;
     text-align: center;
+}
+
+#capturejob_queue {
+    min-height: 2em;
 }
 
 .queue_block {
