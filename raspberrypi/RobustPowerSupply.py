@@ -52,10 +52,6 @@ class RobustPowerSupply(POWER_SUPPLY_PARENT_CLASS):
         super(RobustPowerSupply, self).__init__(*args, **kwargs)
 
         self._last_commanded_output_state = None
-        self._output = super(RobustPowerSupply, self).output
-
-        self._voltage = super(RobustPowerSupply, self).voltage
-        self._current = super(RobustPowerSupply, self).current
 
     @property
     def output(self):
@@ -64,7 +60,7 @@ class RobustPowerSupply(POWER_SUPPLY_PARENT_CLASS):
     @output.setter
     def output(self, enable_output):
         self._last_commanded_output_state = bool(enable_output)
-        self._output = self._last_commanded_output_state
+        POWER_SUPPLY_PARENT_CLASS.output(self, self._last_commanded_output_state)
 
     @property
     def voltage(self):
@@ -73,7 +69,7 @@ class RobustPowerSupply(POWER_SUPPLY_PARENT_CLASS):
         while attempts < MAX_ATTEMPTS and read_voltage is None:
             attempts += 1
             try:
-                read_voltage = self._voltage
+                read_voltage = super(RobustPowerSupply, self).voltage
             except SerialException, ValueError:
                 pass
         else:
@@ -85,9 +81,9 @@ class RobustPowerSupply(POWER_SUPPLY_PARENT_CLASS):
     @voltage.setter
     def voltage(self, value):
         attempts = 0
-        while abs(float(self._voltage) - value) < VOLTAGE_TOLERANCE and attempts < MAX_ATTEMPTS:
+        while abs(float(self.voltage) - value) < VOLTAGE_TOLERANCE and attempts < MAX_ATTEMPTS:
             attempts += 1
-            self._voltage = value
+            super(RobustPowerSupply, self).voltage = value
         else:
             if attempts == MAX_ATTEMPTS:
                 logger.error("Maximum attempts to set voltage reached.")
@@ -99,7 +95,7 @@ class RobustPowerSupply(POWER_SUPPLY_PARENT_CLASS):
         while attempts < MAX_ATTEMPTS and read_current is None:
             attempts += 1
             try:
-                read_current = self._current
+                read_current = super(RobustPowerSupply, self).current
             except SerialException, ValueError:
                 pass
         else:
@@ -110,11 +106,10 @@ class RobustPowerSupply(POWER_SUPPLY_PARENT_CLASS):
 
     @current.setter
     def current(self, value):
-        print "DEBUG {}".format(value)
         attempts = 0
-        while float(self._current) < value + CURRENT_TOLERANCE and attempts < MAX_ATTEMPTS:
+        while float(self.current) < value + CURRENT_TOLERANCE and attempts < MAX_ATTEMPTS:
             attempts += 1
-            self._current = value
+            super(RobustPowerSupply, self).current = value
         else:
             if attempts == MAX_ATTEMPTS:
                 logger.error("Maximum attempts to set current reached.")
