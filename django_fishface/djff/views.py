@@ -175,7 +175,29 @@ def telemetry_proxy(request):
 
     return dh.HttpResponse(content=json.dumps(pi_reply), content_type='application/json')
 
+#################################
+###  Tagging Interface Views  ###
+#################################
 
+def tagging_interface(request):
+
+    cjrs = CaptureJobRecord.objects.all()
+
+    all_xps = Experiment.objects.filter()
+    xps = [xp for xp in all_xps if CaptureJobRecord.objects.filter(xp_id=xp.id)]
+    xp_names = dict()
+    xp_species = dict()
+    for xp in xps:
+        xp_names[xp.id] = "{} ({})".format(xp.name, xp.slug)
+        xp_species[xp.id] = xp.species.shortname
+
+    context = {
+        'xps': xps,
+        'xp_names_json': json.dumps(xp_names),
+        'xp_species_json': json.dumps(xp_species),
+        'cjrs': cjrs,
+    }
+    return ds.render(request, 'djff/tagging_interface.html', context)
 
 #############################
 ###  Capture Queue Views  ###

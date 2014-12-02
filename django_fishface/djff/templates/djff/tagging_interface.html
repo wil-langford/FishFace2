@@ -1,28 +1,21 @@
 {% extends "djff/base.html" %}
+{% load staticfiles %}
 
 {% block localscript %}
-<script type="text/javascript">
-$(document).ready(function(){
-    date_format = 'YYYY-MM-DD HH:mm:ss.SSZZ'
-
-    xp_names = {{ xp_names_json|safe }};
-    xp_species = {{ xp_species_json|safe }};
-    job_specs = {{ job_specs|safe }};
-
-
-    var main_loop = window.setInterval(
-        function() {  // executed once per second to update displays with timers
-
-        }, 1000);
-
-});  // End of document.ready()
-    </script>
-
+    <script type="text/javascript" src="{% static 'djff/paper-full.js' %}"></script>
+    <script type="text/paperscript" src="{% static 'djff/tagging_interface.js' %}" canvas="tag_canvas"></script>
 {% endblock %}
 
 {% block subtitle %}Tagging Experimental Data{% endblock %}
 
 {% block content %}
+    <span>
+        <canvas id="tag_canvas" width="400" height="300"></canvas>
+    </span>
+
+    <p />
+
+    <img id="test_image" src="{% static 'djff/sample-DATA.jpg' %}" width="200"/>
 {% endblock %}
 
 {% block preview_area %}
