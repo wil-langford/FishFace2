@@ -225,7 +225,7 @@ div.job_wrapper {
 }
 
 .small_comment {
-    font-size: 8;
+    font-size: 8pt;
     font-style: italic;
 }
 
@@ -235,4 +235,9 @@ div.job_wrapper {
 
 .boxed[id$="button"][class~="deleterbutton"]:hover {
     background-color: red;
+}
+
+#canvas_wrapper {
+    margin: 10px;
+    padding: 10px;
 }

@@ -9,7 +9,7 @@
 {% block subtitle %}Tagging Experimental Data{% endblock %}
 
 {% block content %}
-    <span>
+    <span id="canvas_wrapper">
         <canvas id="paper_canvas" width="400" height="600"></canvas>
     </span>
 
@@ -19,4 +19,7 @@
 {% endblock %}
 
 {% block preview_area %}
+    <p><span class="boxed">start: <span id="output_start"></span></span></p>
+    <p><span class="boxed">end: <span id="output_end"></span></span></p>
+    <p><span class="boxed">angle: <span id="output_angle"></span></span></p>
 {% endblock %}

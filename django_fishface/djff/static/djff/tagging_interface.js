@@ -13,21 +13,23 @@ $(document).ready(function() {
     var ZOOM_FACTOR = 3;
     var CIRCLE_RADIUS = 4;
 
-    tag_bounds = {
+    var real_edp;
+
+    var tag_bounds = {
         height: view.bounds.height / 2,
         width: view.bounds.width,
         x:0,
         y:view.center.y
     };
 
-    over_bounds = {
+    var over_bounds = {
         height: view.bounds.height / 2,
         width: view.bounds.width,
         x:0,
         y:0
     };
 
-    tag_layer = project.activeLayer;
+    var tag_layer = project.activeLayer;
 
     var tag_raster = new paper.Raster('test_image');
     tag_raster.fitBounds(tag_bounds);
@@ -36,13 +38,13 @@ $(document).ready(function() {
         y: tag_bounds.y + tag_bounds.height / 2
     });
 
-    over_layer = new paper.Layer();
+    var over_layer = new paper.Layer();
 
     var over_raster = new paper.Raster('test_image');
     over_raster.position = over_bounds;
     over_raster.fitBounds(over_bounds);
 
-    interface_layer = new paper.Layer();
+    var interface_layer = new paper.Layer();
 
     var zoom_rectangle = new paper.Path.Rectangle({
         point: [0, 0],
@@ -66,7 +68,7 @@ $(document).ready(function() {
     var path = new paper.Path();
     path.strokeColor = bright_green;
 
-    var circle = new paper.Path.Circle(new paper.Point(15, 15), CIRCLE_RADIUS);
+    var circle = new paper.Path.Circle(new paper.Point(0, 0), CIRCLE_RADIUS);
     circle.strokeColor = bright_green;
 
     var arrow = new paper.Group();
@@ -77,7 +79,7 @@ $(document).ready(function() {
     var echo_path = new paper.Path();
     echo_path.strokeColor = bright_green;
 
-    var echo_circle = new paper.Path.Circle(new paper.Point(15, 15), CIRCLE_RADIUS / ZOOM_FACTOR);
+    var echo_circle = new paper.Path.Circle(new paper.Point(0, 0), CIRCLE_RADIUS / ZOOM_FACTOR);
     echo_circle.strokeColor = bright_green;
 
     var echo_arrow = new paper.Group();
@@ -97,7 +99,7 @@ $(document).ready(function() {
     update_tag_raster(zoom_rectangle.center);
 
     function start_arrows(event) {
-        var edp = event.downPoint
+        var edp = event.downPoint;
         circle.position = edp;
         if (path.segments.length > 0) {
             path.removeSegments(0,path.segments.length);
@@ -107,13 +109,19 @@ $(document).ready(function() {
         var echo_edp = new paper.Point(
             ((edp.x - tag_bord.bounds.x) / ZOOM_FACTOR) + zoom_rectangle.bounds.x,
             ((edp.y - tag_bord.bounds.y) / ZOOM_FACTOR) + zoom_rectangle.bounds.y
-        )
+        );
 
         echo_circle.position = echo_edp;
         if (echo_path.segments.length > 0) {
             echo_path.removeSegments(0, echo_path.segments.length);
         }
         echo_path.add(echo_edp, echo_edp);
+
+        real_edp = new paper.Point(
+            Math.round((echo_edp.x) * tag_raster.width / over_bounds.width),
+            Math.round((echo_edp.y) * tag_raster.height / over_bounds.height)
+        );
+        $('#output_start').html('(' + real_edp.x + ', ' + real_edp.y + ')')
     }
 
     function finish_arrows(event) {
@@ -123,9 +131,26 @@ $(document).ready(function() {
         var echo_ep = new paper.Point(
             ((ep.x - tag_bord.bounds.x) / ZOOM_FACTOR) + zoom_rectangle.bounds.x,
             ((ep.y - tag_bord.bounds.y) / ZOOM_FACTOR) + zoom_rectangle.bounds.y
-        )
+        );
         echo_path.lastSegment.point = echo_ep;
 
+        var real_ep = new paper.Point(
+            Math.round((echo_ep.x) * tag_raster.width / over_bounds.width),
+            Math.round((echo_ep.y) * tag_raster.height / over_bounds.height)
+        );
+
+        var delta = real_edp.subtract(real_ep);
+
+        $('#output_end').html('(' + real_ep.x + ', ' + real_ep.y + ')');
+        if (delta.x != 0) {
+            $('#output_angle').html(Math.atan2(delta.y, delta.x));
+        } else{
+            if (delta.y>0) {
+                $('#output_angle').html('up')
+            } else {
+                $('#output_angle').html('down')
+            }
+        };
     }
 
     tool.onMouseDown = function(event) {
