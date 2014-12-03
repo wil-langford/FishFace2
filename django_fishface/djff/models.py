@@ -174,6 +174,16 @@ class ManualMeasurement(models.Model):
     researcher = models.ForeignKey(Researcher)
 
 
+class ManualTag(models.Model):
+    image = models.ForeignKey(Image)
+    timestamp = models.DateTimeField('DTG of image capture', default=du.timezone.now())
+    start = models.CommaSeparatedIntegerField('the point in the image where the tag arrow starts',
+                                              max_length=20)
+    end = models.CommaSeparatedIntegerField('the point in the image where the tag arrow ends',
+                                            max_length=20)
+    researcher = models.ForeignKey(Researcher)
+
+
 class CaptureJobTemplate(models.Model):
     voltage = models.FloatField('the voltage that the power supply will be set to', default=0, )
     current = models.FloatField('maximum current in amps that the power supply will provide', default=15, )
