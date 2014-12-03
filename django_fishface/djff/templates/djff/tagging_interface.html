@@ -3,19 +3,19 @@
 
 {% block localscript %}
     <script type="text/javascript" src="{% static 'djff/paper-full.js' %}"></script>
-    <script type="text/paperscript" src="{% static 'djff/tagging_interface.js' %}" canvas="tag_canvas"></script>
+    <script type="text/javascript" src="{% static 'djff/tagging_interface.js' %}" canvas="tag_canvas"></script>
 {% endblock %}
 
 {% block subtitle %}Tagging Experimental Data{% endblock %}
 
 {% block content %}
     <span>
-        <canvas id="tag_canvas" width="400" height="300"></canvas>
+        <canvas id="paper_canvas" width="400" height="600"></canvas>
     </span>
 
     <p />
 
-    <img id="test_image" src="{% static 'djff/sample-DATA.jpg' %}" width="200"/>
+    <img id="test_image" src="{% static 'djff/sample-DATA.jpg' %}" width="40" height="30" />
 {% endblock %}
 
 {% block preview_area %}
