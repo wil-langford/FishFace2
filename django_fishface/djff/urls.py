@@ -114,6 +114,12 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
+        r'^tag_submit/$',
+        views.tag_submit,
+        name='tag_submit'
+    ),
+
+    dcu.url(
         r'^cjr/new_for_raspi/$',
         views.cjr_new_for_raspi,
         name='cjr_new_for_raspi'

@@ -3,6 +3,64 @@
  */
 
 $(document).ready(function() {
+
+    function get_new_image(do_post) {
+        if (do_post == false) {
+            $('input#image_id').attr('value', 'DO_NOT_POST');
+        }
+
+        var form = $('#tag_form');
+        var data = form.serialize();
+        $.ajax({
+            type: 'POST',
+            url: window.tag_submit_url,
+            data: data,
+            success: function (data, status, jqXHR) {
+                if (data != 0) {
+                    $('input#image_id').attr('value', data.id);
+                    window.current_image_url = data.url;
+                    replace_rasters(data.url);
+                    $('div#eph_output').html('' + data.id + '<br />' + data.url)
+                } else {
+                    $('div#eph_output').html('Got zero back.')
+                }
+            },
+            dataType: 'json'
+        });
+    }
+
+    $('form#tag_form').submit(function (event) {
+        event.preventDefault();
+        get_new_image(true);
+    });
+
+    $('#researcher_dropdown').change(function (event) {
+        var researcher_id = $(this).val();
+        if (researcher_id != 'NONE') {
+            var researcher_name = $('#researcher_dropdown option:selected').text();
+
+            $('input#researcher_id').attr('value', researcher_id);
+
+            $('#res_name').html(researcher_name);
+            $('#res_name2').html(researcher_name);
+
+            $('#researcher_selection_wrapper').css('display', 'none');
+            $('#select_researcher_text').css('display', 'none');
+            $('#greet_researcher').css('display', 'block');
+            $('#canvas_wrapper').css('display', 'block');
+            $('#tag_form_wrapper').css('display', 'block');
+        }
+    });
+
+    $('#change_res').click(function (event) {
+        window.location.reload();
+    });
+
+
+    /*
+     *  Paper.js code below
+     */
+
     var project = new paper.Project('paper_canvas');
     var view = project.view;
     var tool = new paper.Tool();
@@ -18,85 +76,104 @@ $(document).ready(function() {
     var tag_bounds = {
         height: view.bounds.height / 2,
         width: view.bounds.width,
-        x:0,
-        y:view.center.y
+        x: 0,
+        y: view.center.y
     };
 
     var over_bounds = {
         height: view.bounds.height / 2,
         width: view.bounds.width,
-        x:0,
-        y:0
+        x: 0,
+        y: 0
+    };
+
+    var over_mouse_bounds = {
+        height: over_bounds.height * ((ZOOM_FACTOR - 1) / ZOOM_FACTOR),
+        width: over_bounds.width * ((ZOOM_FACTOR - 1) / ZOOM_FACTOR),
+        x: over_bounds.x + over_bounds.width / ZOOM_FACTOR / 2,
+        y: over_bounds.y + over_bounds.height / ZOOM_FACTOR / 2
     };
 
     var tag_layer = project.activeLayer;
-
-    var tag_raster = new paper.Raster('test_image');
-    tag_raster.fitBounds(tag_bounds);
-    tag_layer.scale(ZOOM_FACTOR, ZOOM_FACTOR, {
-        x: tag_bounds.x + tag_bounds.width / 2,
-        y: tag_bounds.y + tag_bounds.height / 2
-    });
-
     var over_layer = new paper.Layer();
 
-    var over_raster = new paper.Raster('test_image');
-    over_raster.position = over_bounds;
-    over_raster.fitBounds(over_bounds);
+    var tag_raster;
+    var over_raster;
 
-    var interface_layer = new paper.Layer();
+    var zoom_rectangle;
+    var path;
+    var circle;
+    var arrow;
+    var echo_path;
+    var echo_circle;
+    var echo_arrow;
 
-    var zoom_rectangle = new paper.Path.Rectangle({
-        point: [0, 0],
-        size: [over_bounds.width / ZOOM_FACTOR, over_bounds.height / ZOOM_FACTOR],
-        strokeColor: bright_yellow
-    });
+    var tag_bord;
+    var over_bord;
 
-    var over_mouse_bounds = {
-        height: over_bounds.height - zoom_rectangle.bounds.height,
-        width: over_bounds.width - zoom_rectangle.bounds.width,
-        x: over_bounds.x + zoom_rectangle.bounds.width / 2,
-        y: over_bounds.y + zoom_rectangle.bounds.height / 2
-    };
+    function build_tag_layer() {
+        tag_layer.activate();
 
-    var over_bord = new paper.Path.Rectangle(over_bounds);
-    over_bord.strokeColor = 'black';
+        tag_raster = new paper.Raster('test_image');
+        tag_raster.fitBounds(tag_bounds);
+        tag_layer.scale(ZOOM_FACTOR, ZOOM_FACTOR, {
+            x: tag_bounds.x + tag_bounds.width / 2,
+            y: tag_bounds.y + tag_bounds.height / 2
+        });
 
-    var tag_bord = new paper.Path.Rectangle(tag_bounds);
-    tag_bord.strokeColor = bright_yellow;
+        path = new paper.Path();
+        path.strokeColor = bright_green;
 
-    var path = new paper.Path();
-    path.strokeColor = bright_green;
+        circle = new paper.Path.Circle(new paper.Point(0, 0), CIRCLE_RADIUS);
+        circle.strokeColor = bright_green;
 
-    var circle = new paper.Path.Circle(new paper.Point(0, 0), CIRCLE_RADIUS);
-    circle.strokeColor = bright_green;
+        arrow = new paper.Group();
+        arrow.addChildren([path, circle]);
+        arrow.visible = false;
 
-    var arrow = new paper.Group();
-    arrow.addChildren([path, circle]);
-    arrow.remove();
-    tag_layer.addChild(arrow);
+        tag_bord = new paper.Path.Rectangle(tag_bounds);
+        tag_bord.strokeColor = bright_yellow;
+    }
 
-    var echo_path = new paper.Path();
-    echo_path.strokeColor = bright_green;
+    function build_over_layer() {
+        over_layer.activate()
 
-    var echo_circle = new paper.Path.Circle(new paper.Point(0, 0), CIRCLE_RADIUS / ZOOM_FACTOR);
-    echo_circle.strokeColor = bright_green;
+        over_raster = new paper.Raster('test_image');
+        over_raster.fitBounds(over_bounds);
 
-    var echo_arrow = new paper.Group();
-    echo_arrow.addChildren([echo_path, echo_circle]);
-    echo_arrow.remove();
-    over_layer.addChild(echo_arrow);
+        over_bord = new paper.Path.Rectangle(over_bounds);
+        over_bord.strokeColor = 'black';
 
-    function update_tag_raster(point) {
+        // Draw the borders of where the mouse can point for zooming in the overview pane
+        // (for debugging)
+        //var over_mouse_bord = new paper.Path.Rectangle(over_mouse_bounds);
+        //over_mouse_bord.strokeColor = 'white';
+
+        zoom_rectangle = new paper.Path.Rectangle({
+            point: [0, 0],
+            size: [over_bounds.width / ZOOM_FACTOR, over_bounds.height / ZOOM_FACTOR],
+            strokeColor: bright_yellow
+        });
+
+        echo_path = new paper.Path();
+        echo_path.strokeColor = bright_green;
+
+        echo_circle = new paper.Path.Circle(new paper.Point(0, 0), CIRCLE_RADIUS / ZOOM_FACTOR);
+        echo_circle.strokeColor = bright_green;
+
+        echo_arrow = new paper.Group();
+        echo_arrow.addChildren([echo_path, echo_circle]);
+        echo_arrow.visible = false;
+    }
+
+    function update_tag_raster() {
         var zrp = zoom_rectangle.position;
 
         tag_layer.position = {
         x: - (zrp.x - over_bord.position.x) * ZOOM_FACTOR + over_bord.position.x,
         y: - (zrp.y - over_bord.position.y) * ZOOM_FACTOR + over_bord.position.y + tag_bord.bounds.y
         }
-    };
-
-    update_tag_raster(zoom_rectangle.center);
+    }
 
     function start_arrows(event) {
         var edp = event.downPoint;
@@ -121,7 +198,7 @@ $(document).ready(function() {
             Math.round((echo_edp.x) * tag_raster.width / over_bounds.width),
             Math.round((echo_edp.y) * tag_raster.height / over_bounds.height)
         );
-        $('#output_start').html('(' + real_edp.x + ', ' + real_edp.y + ')')
+        $('input#form_start').val('' + real_edp.x + ',' + real_edp.y)
     }
 
     function finish_arrows(event) {
@@ -141,7 +218,8 @@ $(document).ready(function() {
 
         var delta = real_edp.subtract(real_ep);
 
-        $('#output_end').html('(' + real_ep.x + ', ' + real_ep.y + ')');
+        $('input#form_end').val('' + real_ep.x + ',' + real_ep.y);
+
         if (delta.x != 0) {
             $('#output_angle').html(Math.atan2(delta.y, delta.x));
         } else{
@@ -150,7 +228,7 @@ $(document).ready(function() {
             } else {
                 $('#output_angle').html('down')
             }
-        };
+        }
     }
 
     tool.onMouseDown = function(event) {
@@ -167,7 +245,6 @@ $(document).ready(function() {
 
         }
     };
-
 
     tool.onMouseDrag = function(event) {
         if (event.downPoint.isInside(tag_bounds)) {
@@ -188,5 +265,13 @@ $(document).ready(function() {
         }
     };
 
+    function replace_rasters(url) {
+        arrow.visible = false;
+        echo_arrow.visible = false;
+    }
+
+    build_tag_layer();
+    build_over_layer();
+    update_tag_raster();
     view.draw();
 });
