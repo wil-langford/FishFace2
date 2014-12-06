@@ -3,10 +3,23 @@
 
 {% block localscript %}
     <script type="text/javascript">
-        window.tag_submit_url = "{% url 'djff:tag_submit' %}";
+        if (window.ff == undefined) { window.ff = {}; }
+        window.ff.tag_submit_url = "{% url 'djff:tag_submit' %}";
     </script>
     <script type="text/javascript" src="{% static 'djff/paper-full.js' %}"></script>
     <script type="text/javascript" src="{% static 'djff/tagging_interface.js' %}" canvas="tag_canvas"></script>
+{#    <script type="text/javascript">#}
+{#        window.onload = function() {#}
+{#            var canvas = document.getElementById('over_canvas');#}
+{#            paper.setup(canvas);#}
+{##}
+{#            var raster = new paper.Raster('http://localhost:8000/static/djff/sample-DATA.jpg');#}
+{#            raster.position = paper.view.center;#}
+{#            raster.scale(0.2);#}
+{#            raster.rotate(45);#}
+{#        }#}
+{#    </script>#}
+
 {% endblock %}
 
 {% block subtitle %}Tagging Experimental Data{% endblock %}
@@ -15,12 +28,14 @@
     <div id="select_researcher_text">Please select your name from the drop-down list to the right.</div>
 
     <span id="canvas_wrapper">
-        <canvas id="paper_canvas" width="400" height="600"></canvas>
+        <canvas id="over_canvas" width="400" height="300"></canvas>
+        <br />
+        <canvas id="tag_canvas" width="400" height="300"></canvas>
     </span>
 
     <p />
 
-    <img id="test_image" src="{% static 'djff/sample-DATA.jpg' %}" style="width: 40px; height: 30px; display: block;" />
+    <img id="current_image" src="/static/djff/sample-CAL.jpg" width="80" height="60">
 {% endblock %}
 
 {% block preview_area %}
@@ -60,5 +75,7 @@
             <input type="hidden" id="form_end" name="end">
         </form>
     </div>
+
+    <div class="debug_output"></div>
 
 {% endblock %}

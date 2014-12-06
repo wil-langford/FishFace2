@@ -203,7 +203,8 @@ def tag_submit(request):
     logger.debug("got tag_submit payload: {}".format(payload))
 
     if payload['researcher_id'] != 'NONE':
-        if payload['image_id'] != 'DO_NOT_POST':
+        if (payload['image_id'] != 'DO_NOT_POST' and
+                payload['start'] != 'NONE' and payload['end'] != 'NONE'):
             logger.info('making new ManualTag database entry')
             manual_tag = ManualTag()
 

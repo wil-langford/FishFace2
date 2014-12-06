@@ -240,7 +240,7 @@ div.job_wrapper {
 #canvas_wrapper {
     margin: 10px;
     padding: 10px;
-    display:none;
+    display: none;
 }
 
 #tag_form_wrapper {
@@ -256,5 +256,9 @@ div.job_wrapper {
 
     min-width: 12em;
     min-height: 6em;
+}
+
+div.debug_output {
+    display: block;
 }
 
