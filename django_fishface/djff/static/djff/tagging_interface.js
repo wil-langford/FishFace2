@@ -70,27 +70,12 @@ window.onload = function() {
         this.arrow.hide();
 
         this.add_raster = function(raster_source) {
-            this.raster_source = raster_source
+            this.raster_source = raster_source;
+            this.image_layer.activate();
             this.raster = new paper.Raster(this.raster_source);
-            this.raster.remove();
-            this.image_layer.addChild(this.raster);
             this.raster.sendToBack();
             this.raster.fitBounds(this.bounds);
             this.view.draw();
-            console.log(this.raster);
-
-            this.replace_raster = function() {
-                var matrix = this.raster.matrix;
-                this.raster.remove();
-                this.raster = new paper.Raster(this.raster_source);
-                this.raster.remove();
-                this.image_layer.addChild(this.raster);
-                this.raster.sendToBack();
-                this.raster.fitBounds(this.bounds);
-                this.raster.matrix = matrix;
-                this.view.draw();
-                console.log(this.raster);
-            };
         };
 
         this.add_zoom_border = function(zoom_factor, border_width, border_color, update_pane) {
@@ -123,10 +108,8 @@ window.onload = function() {
                         this.zoom_click_bounds.y + this.zoom_click_bounds.height)
                 };
 
-                this.update_pane.image_layer.position.x = 2 * update_pane.bounds.width -
-                    (this.zoom_border.position.x * window.ff.ZOOM_FACTOR);
-                this.update_pane.image_layer.position.y = 2 * update_pane.bounds.height -
-                    (this.zoom_border.position.y * window.ff.ZOOM_FACTOR);
+                this.update_pane.image_layer.position = this.zoom_border.bounds.topLeft.multiply(
+                    -window.ff.ZOOM_FACTOR).add(this.update_pane.bounds.center.multiply(window.ff.ZOOM_FACTOR));
                 this.update_pane.view.draw();
             };
 
@@ -237,31 +220,23 @@ window.onload = function() {
             url: window.ff.tag_submit_url,  // set by inline javascript on the main page
             data: data,
             success: function (data, status, jqXHR) {
-                //console.log('ajax success')
                 if (data != 0) {
                     $('input#image_id').attr('value', data.id);
                     $('img#current_image').attr('src', data.url);
-                    over_pane.replace_raster();
-                    over_pane.view.draw();
                     over_pane.arrow.hide();
 
-                    tag_pane.replace_raster();
-                    tag_pane.view.draw();
                     tag_pane.arrow.hide();
 
                     $('input#form_start').val('NONE');
                     $('input#form_end').val('NONE');
-                    //console.log('finished redoing image: ' + data.url)
                 }
             },
             dataType: 'json'
         });
 
-        tag_pane.replace_raster();
-        tag_pane.view.draw();
-        over_pane.replace_raster();
-        over_pane.view.draw();
-
+        tag_pane.project.draw();
+        over_pane.project.draw();
+        $('canvas#tag_canvas').focus();
     }
 
     $('form#tag_form').submit(function (event) {
@@ -290,9 +265,32 @@ window.onload = function() {
         }
     });
 
-    window.setInterval(function() { tag_pane.view.draw(); over_pane.view.draw(); }, 1000)
+    /* TODO: remove below debugging */
+
+    var eph_researcher_id = $('#researcher_dropdown').val();
+    if (eph_researcher_id != 'NONE') {
+        var eph_researcher_name = $('#researcher_dropdown option:selected').text();
+
+        $('input#researcher_id').attr('value', eph_researcher_id);
+
+        $('#res_name').html(eph_researcher_name);
+        $('#res_name2').html(eph_researcher_name);
+
+        $('#researcher_selection_wrapper').css('display', 'none');
+        $('#select_researcher_text').css('display', 'none');
+        $('#greet_researcher').css('display', 'block');
+        $('#canvas_wrapper').css('display', 'block');
+        $('#tag_form_wrapper').css('display', 'block');
+
+        get_new_image(false);
+        over_pane.zoom_reset();
+    }
+
+    /* TODO: remove above */
 
 };    // end window.onload()
+
+
 
 
 //$(document).oldReady(function() {

@@ -35,7 +35,7 @@
 
     <p />
 
-    <img id="current_image" src="/static/djff/sample-CAL.jpg" width="80" height="60">
+    <img id="current_image" src="/static/djff/sample-CAL.jpg" width="1" height="1">
 {% endblock %}
 
 {% block preview_area %}
@@ -44,7 +44,8 @@
     <div id="researcher_selection_wrapper">
         <form id="researcher_selection_form">
             <select id="researcher_dropdown">
-                <option value="NONE" selected="selected">Please select researcher</option>
+{#                <option value="NONE" selected="selected">Please select researcher</option>#}
+                <option value="1" selected="selected">Wil</option>
             {% for researcher in researchers %}
                 <option value="{{ researcher.id }}">{{ researcher.name }}</option>
             {% endfor %}

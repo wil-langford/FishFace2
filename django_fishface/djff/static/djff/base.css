@@ -240,7 +240,9 @@ div.job_wrapper {
 #canvas_wrapper {
     margin: 10px;
     padding: 10px;
-    display: none;
+    display: block;
+    /*TODO delete above, uncomment below*/
+    /*display: none;*/
 }
 
 #tag_form_wrapper {
