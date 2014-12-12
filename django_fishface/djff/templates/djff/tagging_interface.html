@@ -6,7 +6,7 @@
         if (window.ff == undefined) { window.ff = {}; }
         window.ff.tag_submit_url = "{% url 'djff:tag_submit' %}";
     </script>
-    <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.js' %}"></script>
+    <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'djff/tagging_interface.js' %}" canvas="tag_canvas"></script>
 
 {% endblock %}
