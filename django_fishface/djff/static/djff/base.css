@@ -245,6 +245,14 @@ div.job_wrapper {
     /*display: none;*/
 }
 
+canvas#tag_canvas {
+    cursor: crosshair;
+}
+
+canvas#over_canvas {
+    cursor: crosshair;
+}
+
 #tag_form_wrapper {
     display: none;
 }

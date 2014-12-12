@@ -2,211 +2,370 @@
  * Created by wil on 12/2/14.
  */
 
-window.onload = function() {
-
-    window.ff.ARROW_CIRCLE_RADIUS = 5;
-    window.ff.ZOOM_FACTOR = 3;
+$(document).ready(function() {
 
     if (window.ff == undefined) { window.ff = {}; }
+
+    window.ff.ARROW_CIRCLE_RADIUS = 9;
+    window.ff.SCALE_FACTOR = 3;
+    window.ff.ARROW_COLOR = 'lightgreen';
+    window.ff.ZOOM_BORDER_COLOR = 'yellow';
 
     $('#change_res').click(function (event) {
         window.location.reload();
     });
 
+    function canvas_to_real(o, t, point) {
+        var orig = o.image.getOriginalSize();
+        return new fabric.Point(
+
+            Math.round((point.x / (t.width / 2) * (o.zoom_border.width/2) +
+                o.zoom_border.left - o.zoom_border.width/2) *
+                orig.width / o.width),
+
+            Math.round((point.y / (t.height / 2) * (o.zoom_border.height/2) +
+            o.zoom_border.top - o.zoom_border.height/2) *
+                orig.height / o.height)
+        );
+    }
+
     /*
-     * Paper.js code below
+     * Fabric.js code below
      */
 
-    window.ff.Border = function(view, width, color) {
-        this.path = new paper.Path.Rectangle(view.bounds);
-        this.path.strokeWidth = width;
-        this.path.strokeColor = color;
-    };
+    fabric.FFArrow = fabric.util.createClass({
+        AAAffType: 'FFArrow',
+        initialize: function(canvas) {
+            var center = canvas.getCenter();
 
-    window.ff.Arrow = function(point, width, color, radius) {
-        this.path = new paper.Path();
-        this.circle = new paper.Path.Circle(point, window.ff.ARROW_CIRCLE_RADIUS);
-        this.path.strokeWidth = width;
-        this.path.strokeColor = color;
-        this.circle.strokeWidth = width;
-        this.circle.strokeColor = color;
-        this.group = new paper.Group([this.path, this.circle]);
+            this.line = new fabric.Line([0,0,0,0], {
+                originX: 'center',
+                originY: 'center',
+                stroke: window.ff.ARROW_COLOR,
+                strokeWidth: 1,
+                selectable: false,
+                visible: false
+            });
 
-        this.start = function(point) {
-            if (this.path.segments.length > 0) {
-                this.path.removeSegments(0, this.path.segments.length);
+            this.circle = new fabric.Circle({
+                left:0,
+                top:0,
+                originX: 'center',
+                originY: 'center',
+                fill: '',
+                stroke: window.ff.ARROW_COLOR,
+                radius: window.ff.ARROW_CIRCLE_RADIUS,
+                strokeWidth: 1,
+                selectable: false,
+                visible: false
+            });
+
+            canvas.add(this.circle);
+            canvas.add(this.line);
+
+            this.circle.setCoords();
+            this.line.setCoords();
+        },
+
+        start_arrow: function(pointer) {
+            this.line.set({
+                x1: pointer.x,
+                y1: pointer.y,
+                x2: pointer.x,
+                y2: pointer.y
+            });
+            this.line.setCoords();
+
+            this.circle.set({
+                left: pointer.x,
+                top: pointer.y
+            });
+            this.circle.setCoords();
+
+
+            this.vis(true);
+        },
+
+        end_arrow: function(pointer) {
+            this.line.set({x2: pointer.x, y2: pointer.y});
+
+            this.line.setCoords();
+
+            this.vis(true);
+        },
+
+        vis: function(true_false) {
+            this.line.set({visible: true_false});
+            this.circle.set({visible: true_false});
+        }
+    });
+
+    fabric.FFPane = fabric.util.createClass(fabric.Canvas, {
+        AAAffType: 'FFPane',
+        initialize: function(canvas_id) {
+            this.callSuper('initialize', canvas_id);
+
+            this.defaultCursor = 'crosshair';
+
+            this.arrow = new fabric.FFArrow(this);
+        },
+        add_image: function(url) {
+            fabric.Image.fromURL(url, this.image_added, {
+                pane: this,
+                selectable: false
+            });
+        },
+        image_added: function(img) {
+            img.pane.add(img);
+            img.scaleToWidth(img.pane.width);
+            img.sendToBack();
+            img.pane.image = img;
+            img.pane.image.setCoords();
+            img.pane.base_scale = img.scaleX;
+
+            console.log(img.pane.AAAffType);
+            console.log(img.pane.image.scaleX);
+        },
+        replace_image: function(url) {
+            fabric.Image.fromURL(url, this.image_replaced, {
+                pane: this,
+                selectable: false
+            });
+        },
+        image_replaced: function(img) {
+            img.scaleToWidth(img.pane.image.width);
+            img.set({
+                selectable: false,
+                x: img.pane.image.x,
+                y: img.pane.image.y
+            });
+            img.scale(img.pane.base_scale);
+
+            img.pane.image.remove();
+            img.pane.image = img;
+            img.pane.add(img.pane.image);
+            img.pane.image.sendToBack();
+            img.pane.image.setCoords();
+
+            console.log(img.pane.AAAffType);
+            console.log(img.pane.image.scaleX);
+        }
+    });
+
+    fabric.FFOverPane = fabric.util.createClass(fabric.FFPane, {
+        AAAffType: 'FFOverPane',
+        initialize: function(canvas_id, zoom_border_color) {
+            this.callSuper('initialize', canvas_id);
+
+            this.zoom_update_pane = undefined;
+
+            this.arrow.circle.radius = window.ff.ARROW_CIRCLE_RADIUS / window.ff.SCALE_FACTOR;
+
+            this.zoom_border = new fabric.Rect({
+                fill: '',
+                stroke: zoom_border_color,
+                strokeWidth: 1,
+                height: this.height / window.ff.SCALE_FACTOR,
+                width: this.width / window.ff.SCALE_FACTOR,
+                originX: 'center',
+                originY: 'center',
+                selectable: false
+            });
+            this.add(this.zoom_border);
+            this.zoom_border.center();
+            this.zoom_border.setCoords();
+
+            this.mouse_zone = new fabric.Rect({
+                fill: '',
+                //x: this.getCenter().x,
+                //y: this.getCenter().y,
+                height: this.height - this.zoom_border.height,
+                width: this.width - this.zoom_border.width,
+                selectable: false
+            });
+            this.add(this.mouse_zone);
+            this.mouse_zone.center();
+            this.mouse_zone.setCoords();
+            this.mouse_zone.bringToFront();
+
+        },
+        zoom_move: function(mouse_point) {
+
+            var point = new fabric.Point(
+                Math.min(Math.max(mouse_point.x, Math.round(over.mouse_zone.left)),
+                    Math.round(over.mouse_zone.left + over.mouse_zone.width)),
+                Math.min(Math.max(mouse_point.y, Math.round(over.mouse_zone.top)),
+                    Math.round(over.mouse_zone.top + over.mouse_zone.height))
+            );
+
+            this.zoom_border.set({
+                left: point.x,
+                top: point.y
+            });
+            this.zoom_border.setCoords();
+
+            if (this.zoom_update_pane) {
+                this.zoom_update_pane.echo_zoom_move(this);
             }
-
-            this.circle.position = point;
-            this.path.add(point, point);
-            this.group.visible = true;
-        };
-
-        this.end = function(point) {
-            this.path.lastSegment.point = point;
-            this.group.visible = true;
-        };
-
-        this.hide = function() {
-            this.group.visible = false;
-        };
-    };
-
-    window.ff.Pane = function(canvas, border_width, border_color) {
-        this.canvas = canvas;
-
-        this.project = new paper.Project(this.canvas);
-        this.view = this.project.view;
-        this.image_layer = this.project.activeLayer;
-        this.upper_layer = new paper.Layer();
-        this.bounds = this.view.bounds;
-
-        this.upper_layer.activate();
-        this.border = new window.ff.Border(this.view, border_width, border_color);
-
-        this.arrow = new window.ff.Arrow([0, 0], 1, 'lightgreen');
-        this.arrow.group.remove();
-        this.image_layer.addChild(this.arrow.group);
-        this.arrow.hide();
-
-        this.add_raster = function(raster_source) {
-            this.raster_source = raster_source;
-            this.image_layer.activate();
-            this.raster = new paper.Raster(this.raster_source);
-            this.raster.sendToBack();
-            this.raster.fitBounds(this.bounds);
-            this.view.draw();
-        };
-
-        this.add_zoom_border = function(zoom_factor, border_width, border_color, update_pane) {
-            this.update_pane = update_pane;
-
-            var bounds = {
-                x: 0, y: 0,
-                width: over_pane.bounds.width / window.ff.ZOOM_FACTOR,
-                height: over_pane.bounds.height / window.ff.ZOOM_FACTOR
+        },
+        zoom_reset: function() {
+            var reset = new fabric.Point(this.zoom_border.width/2 , this.zoom_border.height/2);
+            this.zoom_move(reset);
+        },
+        echo_point: function(canvas, pointer) {
+            return {
+                x: pointer.x / (canvas.width / 2) * (this.zoom_border.width/2) +
+                    this.zoom_border.left - this.zoom_border.width/2,
+                y: pointer.y / (canvas.height / 2) * (this.zoom_border.height/2) +
+                this.zoom_border.top - this.zoom_border.height/2
             };
+        },
+        echo_start_arrow: function(canvas, pointer) {
+            this.arrow.start_arrow(this.echo_point(canvas, pointer));
+            this.renderAll();
+        },
+        echo_end_arrow: function(canvas, pointer) {
+            this.arrow.end_arrow(this.echo_point(canvas, pointer));
+            this.renderAll();
+        }
+    });
 
-            this.zoom_border = new paper.Path.Rectangle(bounds);
-            this.zoom_border.remove();
-            this.upper_layer.addChild(this.zoom_border);
-            this.zoom_border.strokeWidth = border_width;
-            this.zoom_border.strokeColor = border_color;
+    fabric.FFTagPane = fabric.util.createClass(fabric.FFPane, {
+        AAAffType: 'FFTagPane',
+        initialize: function(canvas_id, image_scale_factor) {
+            this.callSuper('initialize', canvas_id);
+            this.image_scale_factor = image_scale_factor;
+            this.image = undefined;
+        },
+        image_added: function(img) {
+            img.pane.callSuper('image_added', img);
 
-            this.zoom_click_bounds = {
-                x: bounds.width / 2,
-                y: bounds.height / 2,
-                height: this.bounds.height - bounds.height,
-                width: this.bounds.width - bounds.width
-            };
+            img.pane.actual_scale_factor = img.pane.base_scale * img.pane.image_scale_factor;
 
-            this.zoom_move = function(point) {
-                this.zoom_border.position = {
-                    x: Math.min(Math.max(point.x, this.zoom_click_bounds.x),
-                        this.zoom_click_bounds.x + this.zoom_click_bounds.width),
-                    y: Math.min(Math.max(point.y, this.zoom_click_bounds.y),
-                        this.zoom_click_bounds.y + this.zoom_click_bounds.height)
-                };
+            img.scale(img.pane.actual_scale_factor);
+            img.setCoords();
 
-                this.update_pane.image_layer.position = this.zoom_border.bounds.topLeft.multiply(
-                    -window.ff.ZOOM_FACTOR).add(this.update_pane.bounds.center.multiply(window.ff.ZOOM_FACTOR));
-                this.update_pane.view.draw();
-            };
+            img.pane.renderAll();
 
-            this.zoom_reset = function() {
-                this.zoom_move({x: this.bounds.width/2, y: this.bounds.height/2});
-            };
+            console.log(img.pane.AAAffType);
+            console.log(img.pane.image.scaleX);
+        },
 
-            this.zoom_reset();
-        };
+        image_replaced: function(img) {
+            img.pane.callSuper('image_replaced', img);
 
-    };
+            img.scale(img.pane.actual_scale_factor);
 
-    var scope = paper.PaperScope();
-    var tool = new paper.Tool();
+            img.pane.renderAll();
+        },
 
-    var over_pane, tag_pane, tool, down_target;
 
-    over_pane = new window.ff.Pane('over_canvas', 3, 'black');
-    window.ff.over_pane = over_pane;
-    over_pane.add_raster('current_image');
+        echo_zoom_move: function(canvas) {
+            if (!this.image) { return; }
 
-    over_pane.view.draw();
+            var orig_left = this.image.left;
+            var orig_top = this.image.top;
 
-    tag_pane = new window.ff.Pane('tag_canvas', 3, 'yellow');
-    window.ff.tag_pane = tag_pane;
-    tag_pane.add_raster('current_image');
-    tag_pane.raster.scale(window.ff.ZOOM_FACTOR, tag_pane.border.center);
-    tag_pane.view.draw();
+            this.image.left = - (canvas.zoom_border.left - canvas.zoom_border.width/2) * window.ff.SCALE_FACTOR;
+            this.image.top = - (canvas.zoom_border.top - canvas.zoom_border.height/2) * window.ff.SCALE_FACTOR;
 
-    over_pane.add_zoom_border(window.ff.ZOOM_FACTOR, 1, 'yellow', tag_pane);
+            this.arrow.circle.left = this.arrow.circle.left + (this.image.left - orig_left);
+            this.arrow.circle.top = this.arrow.circle.top + (this.image.top - orig_top);
+            this.arrow.line.left = this.arrow.line.left + (this.image.left - orig_left);
+            this.arrow.line.top = this.arrow.line.top + (this.image.top - orig_top);
 
-    tool.onMouseDown = function(event) {
-        down_target = event.event.target.id;
-        var ep = event.point;
+            this.image.setCoords();
+            this.arrow.line.setCoords();
+            this.arrow.circle.setCoords();
 
-        if (down_target == 'over_canvas') {
-            over_pane.zoom_move(ep);
+            this.renderAll();
+        }
+    });
+
+    var over, tagger;
+
+    over = new fabric.FFOverPane('over_canvas', window.ff.ZOOM_BORDER_COLOR);
+    window.ff.over = over;
+    over.add_image("/static/djff/sample-CAL.jpg");
+
+    tagger = new fabric.FFTagPane('tag_canvas', window.ff.SCALE_FACTOR);
+    window.ff.tagger = tagger;
+    tagger.add_image("/static/djff/sample-CAL.jpg", window.ff.SCALE_FACTOR);
+
+    over.on('mouse:down', function(options) {
+        window.ff.OVER_MOUSE_IS_DOWN = true;
+        var pointer = over.getPointer(options.e);
+        var point = new fabric.Point(pointer.x, pointer.y);
+        over.zoom_move(point);
+        over.renderAll();
+    });
+
+    over.on('mouse:move', function(options) {
+        if (!window.ff.OVER_MOUSE_IS_DOWN) { return ; }
+        var pointer = over.getPointer(options.e);
+        var point = new fabric.Point(pointer.x, pointer.y);
+        over.zoom_move(point);
+        over.renderAll();
+    });
+
+    over.on('mouse:up', function(options) {
+        window.ff.OVER_MOUSE_IS_DOWN = false;
+    });
+
+    tagger.on('mouse:down', function(options) {
+        window.ff.TAGGER_MOUSE_IS_DOWN = true;
+        var pointer = tagger.getPointer(options.e);
+        window.ff.TAGGER_DOWN_POINT = pointer;
+        tagger.arrow.start_arrow(pointer);
+
+        echo_pointer = new fabric.Point(
+            pointer.x * over.zoom_border.width / tagger.width + over.zoom_border.left,
+            pointer.y * over.zoom_border.height / tagger.height + over.zoom_border.top
+        );
+        over.echo_start_arrow(tagger, pointer);
+
+        tagger.renderAll();
+    });
+
+    tagger.on('mouse:move', function(options) {
+        if (!window.ff.TAGGER_MOUSE_IS_DOWN) { return ; }
+        var pointer = tagger.getPointer(options.e);
+
+        if (pointer.x <= tagger.width && pointer.x >= 0 &&
+            pointer.y <= tagger.height && pointer.y >= 0) {
+            tagger.arrow.end_arrow(pointer);
+            over.echo_end_arrow(tagger, pointer);
+            tagger.arrow.vis(true);
+            over.arrow.vis(true);
         } else {
-            tag_pane.arrow.start(ep);
-            var echo_ep = new paper.Point(
-                ep.x * (over_pane.zoom_border.bounds.width / tag_pane.bounds.width) + over_pane.zoom_border.bounds.x,
-                ep.y * (over_pane.zoom_border.bounds.height / tag_pane.bounds.height) + over_pane.zoom_border.bounds.y
-            );
-            over_pane.arrow.start(echo_ep);
-            over_pane.view.draw();
+            tagger.arrow.vis(false);
+            over.arrow.vis(false);
         }
-    };
+        over.renderAll();
+        tagger.renderAll();
+    });
 
-    tool.onMouseDrag = function(event) {
-        var ep = event.point;
+    tagger.on('mouse:up', function(options) {
+        window.ff.TAGGER_MOUSE_IS_DOWN = false;
+        var pointer = tagger.getPointer(options.e);
+        if (pointer.x <= tagger.width && pointer.x >= 0 &&
+            pointer.y <= tagger.height && pointer.y >= 0) {
+            tagger.arrow.vis(true);
+            over.arrow.vis(true);
 
-        if (down_target == 'over_canvas' && event.event.target.id == 'over_canvas') {
-            over_pane.zoom_move(ep);
+
+            var real_start = canvas_to_real(over, tagger, window.ff.TAGGER_DOWN_POINT);
+            var real_end = canvas_to_real(over, tagger, pointer);
+
+            $('input#form_start').val(real_start.toString());
+            $('input#form_end').val(real_end.toString());
+
+        } else {
+            tagger.arrow.vis(false);
+            over.arrow.vis(false);
         }
 
-        if (down_target == 'tag_canvas') {
-            if (event.event.target.id == 'tag_canvas') {
-                tag_pane.arrow.end(ep);
-                var echo_ep = new paper.Point(
-                    ep.x * (over_pane.zoom_border.bounds.width / tag_pane.bounds.width) + over_pane.zoom_border.bounds.x,
-                    ep.y * (over_pane.zoom_border.bounds.height / tag_pane.bounds.height) + over_pane.zoom_border.bounds.y
-                );
-                over_pane.arrow.end(echo_ep);
-                over_pane.view.draw();
-            } else {
-                tag_pane.arrow.hide();
-                over_pane.arrow.hide();
-                over_pane.view.draw();
-            }
-        }
-    };
-
-    tool.onMouseUp = function(event) {
-        if (event.event.target.id == 'tag_canvas' && down_target == 'tag_canvas') {
-            var real_start = new paper.Point(
-                Math.round((event.downPoint.x / window.ff.ZOOM_FACTOR + over_pane.zoom_border.bounds.x) *
-                (over_pane.raster.width / over_pane.bounds.width)),
-                Math.round((event.downPoint.y / window.ff.ZOOM_FACTOR + over_pane.zoom_border.bounds.y) *
-                (over_pane.raster.height / over_pane.bounds.height))
-            );
-            var real_end = new paper.Point(
-                Math.round((event.point.x / window.ff.ZOOM_FACTOR + over_pane.zoom_border.bounds.x) *
-                (over_pane.raster.width / over_pane.bounds.width)),
-                Math.round((event.point.y / window.ff.ZOOM_FACTOR + over_pane.zoom_border.bounds.y) *
-                (over_pane.raster.height / over_pane.bounds.height))
-            );
-
-            $('input#form_start').val('' + real_start.x + ',' + real_start.y);
-            $('input#form_end').val('' + real_end.x + ',' + real_end.y);
-            //console.log('start: ' + $('input#form_start').val() + ' end: ' + $('input#form_end').val());
-        }
-    }
-
-    tool.onMouseOver = function(event) {
-        tag_pane.view.draw();
-        over_pane.view.draw();
-    }
+    });
 
     function get_new_image(do_post) {
         if (do_post == false) {
@@ -222,10 +381,11 @@ window.onload = function() {
             success: function (data, status, jqXHR) {
                 if (data != 0) {
                     $('input#image_id').attr('value', data.id);
-                    $('img#current_image').attr('src', data.url);
-                    over_pane.arrow.hide();
 
-                    tag_pane.arrow.hide();
+                    over.arrow.vis(false);
+                    over.replace_image(data.url);
+                    tagger.arrow.vis(false);
+                    tagger.replace_image(data.url);
 
                     $('input#form_start').val('NONE');
                     $('input#form_end').val('NONE');
@@ -234,9 +394,8 @@ window.onload = function() {
             dataType: 'json'
         });
 
-        tag_pane.project.draw();
-        over_pane.project.draw();
-        $('canvas#tag_canvas').focus();
+        tagger.renderAll();
+        over.renderAll();
     }
 
     $('form#tag_form').submit(function (event) {
@@ -261,258 +420,17 @@ window.onload = function() {
             $('#tag_form_wrapper').css('display', 'block');
 
             get_new_image(false);
-            over_pane.zoom_reset();
+            over.zoom_reset();
+
+            over.renderAll();
+            tagger.renderAll();
         }
     });
 
-    /* TODO: remove below debugging */
-
-    var eph_researcher_id = $('#researcher_dropdown').val();
-    if (eph_researcher_id != 'NONE') {
-        var eph_researcher_name = $('#researcher_dropdown option:selected').text();
-
-        $('input#researcher_id').attr('value', eph_researcher_id);
-
-        $('#res_name').html(eph_researcher_name);
-        $('#res_name2').html(eph_researcher_name);
-
-        $('#researcher_selection_wrapper').css('display', 'none');
-        $('#select_researcher_text').css('display', 'none');
-        $('#greet_researcher').css('display', 'block');
-        $('#canvas_wrapper').css('display', 'block');
-        $('#tag_form_wrapper').css('display', 'block');
-
-        get_new_image(false);
-        over_pane.zoom_reset();
-    }
-
-    /* TODO: remove above */
-
-};    // end window.onload()
+    over.zoom_update_pane = tagger;
+    over.zoom_reset();
+    over.renderAll();
+    tagger.renderAll();
 
 
-
-
-//$(document).oldReady(function() {
-//
-//
-//
-//
-//    /*
-//     *  Paper.js code below
-//     */
-//
-//    var project = new paper.Project('paper_canvas');
-//    var view = project.view;
-//    var tool = new paper.Tool();
-//
-//    var bright_green = "#66FF66";
-//    var bright_yellow = "#FFFF66";
-//
-//    var ZOOM_FACTOR = 3;
-//    var ARROW_CIRCLE_RADIUS = 4;
-//
-//    var real_edp;
-//
-//    var tag_bounds = {
-//        height: view.bounds.height / 2,
-//        width: view.bounds.width,
-//        x: 0,
-//        y: view.center.y
-//    };
-//
-//    var over_bounds = {
-//        height: view.bounds.height / 2,
-//        width: view.bounds.width,
-//        x: 0,
-//        y: 0
-//    };
-//
-//    var over_mouse_bounds = {
-//        height: over_bounds.height * ((ZOOM_FACTOR - 1) / ZOOM_FACTOR),
-//        width: over_bounds.width * ((ZOOM_FACTOR - 1) / ZOOM_FACTOR),
-//        x: over_bounds.x + over_bounds.width / ZOOM_FACTOR / 2,
-//        y: over_bounds.y + over_bounds.height / ZOOM_FACTOR / 2
-//    };
-//
-//    var tag_layer = project.activeLayer;
-//    var over_layer = new paper.Layer();
-//
-//    var tag_raster;
-//    var over_raster;
-//
-//    var zoom_rectangle;
-//    var path;
-//    var circle;
-//    var arrow;
-//    var echo_path;
-//    var echo_circle;
-//    var echo_arrow;
-//
-//    var tag_bord;
-//    var over_bord;
-//
-//    function build_tag_layer() {
-//        tag_layer.activate();
-//
-//        tag_raster = new paper.Raster('test_image');
-//        tag_raster.fitBounds(tag_bounds);
-//        tag_layer.scale(ZOOM_FACTOR, ZOOM_FACTOR, {
-//            x: tag_bounds.x + tag_bounds.width / 2,
-//            y: tag_bounds.y + tag_bounds.height / 2
-//        });
-//
-//        path = new paper.Path();
-//        path.strokeColor = bright_green;
-//
-//        circle = new paper.Path.Circle(new paper.Point(0, 0), ARROW_CIRCLE_RADIUS);
-//        circle.strokeColor = bright_green;
-//
-//        arrow = new paper.Group();
-//        arrow.addChildren([path, circle]);
-//        arrow.visible = false;
-//
-//        tag_bord = new paper.Path.Rectangle(tag_bounds);
-//        tag_bord.strokeColor = bright_yellow;
-//    }
-//
-//    function build_over_layer() {
-//        over_layer.activate()
-//
-//        over_raster = new paper.Raster('test_image');
-//        over_raster.fitBounds(over_bounds);
-//
-//        over_bord = new paper.Path.Rectangle(over_bounds);
-//        over_bord.strokeColor = 'black';
-//
-//        // Draw the borders of where the mouse can point for zooming in the overview pane
-//        // (for debugging)
-//        //var over_mouse_bord = new paper.Path.Rectangle(over_mouse_bounds);
-//        //over_mouse_bord.strokeColor = 'white';
-//
-//        zoom_rectangle = new paper.Path.Rectangle({
-//            point: [0, 0],
-//            size: [over_bounds.width / ZOOM_FACTOR, over_bounds.height / ZOOM_FACTOR],
-//            strokeColor: bright_yellow
-//        });
-//
-//        echo_path = new paper.Path();
-//        echo_path.strokeColor = bright_green;
-//
-//        echo_circle = new paper.Path.Circle(new paper.Point(0, 0), ARROW_CIRCLE_RADIUS / ZOOM_FACTOR);
-//        echo_circle.strokeColor = bright_green;
-//
-//        echo_arrow = new paper.Group();
-//        echo_arrow.addChildren([echo_path, echo_circle]);
-//        echo_arrow.visible = false;
-//    }
-//
-//    function update_tag_raster() {
-//        var zrp = zoom_rectangle.position;
-//
-//        tag_layer.position = {
-//        x: - (zrp.x - over_bord.position.x) * ZOOM_FACTOR + over_bord.position.x,
-//        y: - (zrp.y - over_bord.position.y) * ZOOM_FACTOR + over_bord.position.y + tag_bord.bounds.y
-//        }
-//    }
-//
-//    function start_arrows(event) {
-//        var edp = event.downPoint;
-//        circle.position = edp;
-//        if (path.segments.length > 0) {
-//            path.removeSegments(0,path.segments.length);
-//        }
-//        path.add(edp, edp);
-//
-//        var echo_edp = new paper.Point(
-//            ((edp.x - tag_bord.bounds.x) / ZOOM_FACTOR) + zoom_rectangle.bounds.x,
-//            ((edp.y - tag_bord.bounds.y) / ZOOM_FACTOR) + zoom_rectangle.bounds.y
-//        );
-//
-//        echo_circle.position = echo_edp;
-//        if (echo_path.segments.length > 0) {
-//            echo_path.removeSegments(0, echo_path.segments.length);
-//        }
-//        echo_path.add(echo_edp, echo_edp);
-//
-//        real_edp = new paper.Point(
-//            Math.round((echo_edp.x) * tag_raster.width / over_bounds.width),
-//            Math.round((echo_edp.y) * tag_raster.height / over_bounds.height)
-//        );
-//        $('input#form_start').val('' + real_edp.x + ',' + real_edp.y)
-//    }
-//
-//    function finish_arrows(event) {
-//        var ep = event.point;
-//        path.lastSegment.point = ep;
-//
-//        var echo_ep = new paper.Point(
-//            ((ep.x - tag_bord.bounds.x) / ZOOM_FACTOR) + zoom_rectangle.bounds.x,
-//            ((ep.y - tag_bord.bounds.y) / ZOOM_FACTOR) + zoom_rectangle.bounds.y
-//        );
-//        echo_path.lastSegment.point = echo_ep;
-//
-//        var real_ep = new paper.Point(
-//            Math.round((echo_ep.x) * tag_raster.width / over_bounds.width),
-//            Math.round((echo_ep.y) * tag_raster.height / over_bounds.height)
-//        );
-//
-//        var delta = real_edp.subtract(real_ep);
-//
-//        $('input#form_end').val('' + real_ep.x + ',' + real_ep.y);
-//
-//        if (delta.x != 0) {
-//            $('#output_angle').html(Math.atan2(delta.y, delta.x));
-//        } else{
-//            if (delta.y>0) {
-//                $('#output_angle').html('up')
-//            } else {
-//                $('#output_angle').html('down')
-//            }
-//        }
-//    }
-//
-//    tool.onMouseDown = function(event) {
-//        if (event.downPoint.isInside(tag_bounds)) {
-//            arrow.visible = true;
-//            echo_arrow.visible = true;
-//            start_arrows(event);
-//        } else {
-//            zoom_rectangle.visible = true;
-//            if (event.point.isInside(over_mouse_bounds)) {
-//                zoom_rectangle.position = event.point;
-//                update_tag_raster(event.point);
-//            }
-//
-//        }
-//    };
-//
-//    tool.onMouseDrag = function(event) {
-//        if (event.downPoint.isInside(tag_bounds)) {
-//            if (event.point.isInside(tag_bounds)) {
-//                finish_arrows(event);
-//                arrow.visible = true;
-//                echo_arrow.visible = true;
-//            } else {
-//                arrow.visible = false;
-//                echo_arrow.visible = false;
-//            }
-//        } else {
-//            zoom_rectangle.visible = true;
-//            if (event.point.isInside(over_mouse_bounds)) {
-//                zoom_rectangle.position = event.point;
-//                update_tag_raster(event.point);
-//            }
-//        }
-//    };
-//
-//    function replace_rasters(url) {
-//        arrow.visible = false;
-//        echo_arrow.visible = false;
-//    }
-//
-//    build_tag_layer();
-//    build_over_layer();
-//    update_tag_raster();
-//    view.draw();
-//});
+});  // end $(document).ready()
