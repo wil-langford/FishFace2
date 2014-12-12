@@ -229,7 +229,7 @@ $(document).ready(function(){
     function start_periodic_monitor() {
         if (window.fishface_monitoring == false) {
             window.fishface_update_loop = window.setInterval(
-                    function () {  // executed once every 5 seconds to request fresh data
+                    function () {  // executed once every 500 ms to request fresh data
                         repop();
                     }, 500);
             window.fishface_monitoring = true;

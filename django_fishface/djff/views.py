@@ -1,9 +1,11 @@
 import logging
 import numpy as np
 import datetime
+import json
+import random
+import math
 # import time
 # import threading
-import json
 
 import cv2
 import pytz
@@ -18,6 +20,7 @@ import django.views.decorators.csrf as csrf_dec
 import django.utils.timezone as dut
 import django.views.generic as dvg
 import django.views.generic.edit as dvge
+import django.db.models as ddm
 from django.conf import settings
 
 from djff.models import (
@@ -27,6 +30,8 @@ from djff.models import (
     CaptureJobTemplate,
     CaptureJobRecord,
     PowerSupplyLog,
+    Researcher,
+    ManualTag,
 )
 
 import djff.utils.telemetry as telemetry
@@ -175,6 +180,61 @@ def telemetry_proxy(request):
 
     return dh.HttpResponse(content=json.dumps(pi_reply), content_type='application/json')
 
+#################################
+###  Tagging Interface Views  ###
+#################################
+
+def tagging_interface(request):
+
+    all_researchers = Researcher.objects.all()
+    researchers = [{'id': researcher.id, 'name': researcher.name }
+                   for researcher in all_researchers ]
+
+
+    context = {
+        'researchers': researchers,
+    }
+    return ds.render(request, 'djff/tagging_interface.html', context)
+
+@csrf_dec.csrf_exempt
+def tag_submit(request):
+    payload = request.POST
+
+    logger.debug("got tag_submit payload: {}".format(payload))
+
+    if payload['researcher_id'] != 'NONE':
+        if (payload['image_id'] != 'DO_NOT_POST' and
+                payload['start'] != 'NONE' and payload['end'] != 'NONE'):
+            logger.info('making new ManualTag database entry')
+            manual_tag = ManualTag()
+
+            manual_tag.image = Image.objects.get(pk=payload['image_id'])
+            manual_tag.researcher = Researcher.objects.get(pk=payload['researcher_id'])
+            manual_tag.start = payload['start']
+            manual_tag.end = payload['end']
+
+            manual_tag.save()
+
+        untagged_images = Image.objects.filter(is_cal_image=False).exclude(
+            manualtag__researcher__id__exact=int(payload['researcher_id']))
+
+        if untagged_images.count() == 0:
+            return_value = 0
+        else:
+            max_id = untagged_images.aggregate(ddm.Max('id')).values()[0]
+            min_id = math.ceil(max_id*random.random())
+            untagged_image = untagged_images.filter(id__gte=min_id)[0]
+
+            return_value = {
+                'id': untagged_image.id,
+                'url': '{}{}'.format(settings.MEDIA_URL, untagged_image.image_file),
+            }
+
+    else:
+        return_value = 0
+
+    return dh.HttpResponse(json.dumps(return_value), content_type='application/json')
+
 
 
 #############################
@@ -235,7 +295,7 @@ def cjr_new_for_raspi(request):
         'species': cjr.xp.species.shortname
     })
 
-    return dh.HttpResponse(data, mimetype='application/json')
+    return dh.HttpResponse(data, content_type='application/json')
 
 
 ##########################

@@ -225,7 +225,7 @@ div.job_wrapper {
 }
 
 .small_comment {
-    font-size: 8;
+    font-size: 8pt;
     font-style: italic;
 }
 
@@ -236,3 +236,37 @@ div.job_wrapper {
 .boxed[id$="button"][class~="deleterbutton"]:hover {
     background-color: red;
 }
+
+#canvas_wrapper {
+    margin: 10px;
+    padding: 10px;
+    display: none;
+}
+
+canvas#tag_canvas {
+    cursor: crosshair;
+}
+
+canvas#over_canvas {
+    cursor: crosshair;
+}
+
+#tag_form_wrapper {
+    display: none;
+}
+
+#greet_researcher {
+    display: none;
+}
+
+#save_proceed_button {
+    background-color: palegreen;
+
+    min-width: 12em;
+    min-height: 6em;
+}
+
+div.debug_output {
+    display: block;
+}
+
