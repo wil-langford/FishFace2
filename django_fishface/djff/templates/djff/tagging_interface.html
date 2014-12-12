@@ -8,38 +8,6 @@
     </script>
     <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.js' %}"></script>
     <script type="text/javascript" src="{% static 'djff/tagging_interface.js' %}" canvas="tag_canvas"></script>
-    <script type="text/javascript">
-
-{#    $(document).ready(function() {#}
-{##}
-{#        var tag_canvas = new fabric.Canvas('over_canvas');#}
-{#        tag_canvas.defaultCursor = 'crosshair';#}
-{##}
-{#        tag_canvas.backgroundColor = 'black';#}
-{##}
-{#        tag_canvas.hasBorders = true;#}
-{##}
-{#        var thing = new fabric.Circle({#}
-{#            left: 30,#}
-{#            top: 30,#}
-{#            radius: 10,#}
-{#            fill: 'yellow',#}
-{#            selectable: false#}
-{#        });#}
-{##}
-{#        tag_canvas.add(thing);#}
-{##}
-{#        tag_canvas.renderAll();#}
-{##}
-{#        tag_canvas.on('mouse:down', function(options) {#}
-{#            var pointer = tag_canvas.getPointer(options.e);#}
-{#            thing.left = pointer.x - thing.radius;#}
-{#            thing.top = pointer.y - thing.radius;#}
-{#            tag_canvas.renderAll();#}
-{#        });#}
-{##}
-{#    });#}
-    </script>
 
 {% endblock %}
 
@@ -53,10 +21,6 @@
         <br />
         <canvas id="tag_canvas" width="400" height="300" class="boxed"></canvas>
     </span>
-
-    <p />
-
-{#    <img id="current_image" src="/static/djff/sample-CAL.jpg" width="1" height="1">#}
 {% endblock %}
 
 {% block preview_area %}
@@ -65,8 +29,7 @@
     <div id="researcher_selection_wrapper">
         <form id="researcher_selection_form">
             <select id="researcher_dropdown">
-{#                <option value="NONE" selected="selected">Please select researcher</option>#}
-                <option value="1" selected="selected">Wil</option>
+                <option value="NONE" selected="selected">Please select researcher</option>
             {% for researcher in researchers %}
                 <option value="{{ researcher.id }}">{{ researcher.name }}</option>
             {% endfor %}
