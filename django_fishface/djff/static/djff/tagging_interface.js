@@ -123,8 +123,7 @@ $(document).ready(function() {
             img.pane.image.setCoords();
             img.pane.base_scale = img.scaleX;
 
-            console.log(img.pane.AAAffType);
-            console.log(img.pane.image.scaleX);
+            img.pane.calcOffset();
         },
         replace_image: function(url) {
             fabric.Image.fromURL(url, this.image_replaced, {
@@ -147,8 +146,7 @@ $(document).ready(function() {
             img.pane.image.sendToBack();
             img.pane.image.setCoords();
 
-            console.log(img.pane.AAAffType);
-            console.log(img.pane.image.scaleX);
+            img.pane.calcOffset();
         }
     });
 
@@ -177,8 +175,6 @@ $(document).ready(function() {
 
             this.mouse_zone = new fabric.Rect({
                 fill: '',
-                //x: this.getCenter().x,
-                //y: this.getCenter().y,
                 height: this.height - this.zoom_border.height,
                 width: this.width - this.zoom_border.width,
                 selectable: false
@@ -244,17 +240,17 @@ $(document).ready(function() {
 
             img.scale(img.pane.actual_scale_factor);
             img.setCoords();
+            img.pane.calcOffset();
 
             img.pane.renderAll();
-
-            console.log(img.pane.AAAffType);
-            console.log(img.pane.image.scaleX);
         },
 
         image_replaced: function(img) {
             img.pane.callSuper('image_replaced', img);
 
             img.scale(img.pane.actual_scale_factor);
+            img.setCoords();
+            img.pane.calcOffset();
 
             img.pane.renderAll();
         },
@@ -389,6 +385,8 @@ $(document).ready(function() {
 
                     $('input#form_start').val('NONE');
                     $('input#form_end').val('NONE');
+
+                    console.log("got new image: " + data.url);
                 }
             },
             dataType: 'json'
