@@ -176,7 +176,7 @@ class ManualMeasurement(models.Model):
 
 class ManualTag(models.Model):
     image = models.ForeignKey(Image)
-    timestamp = models.DateTimeField('DTG of image capture', default=du.timezone.now())
+    timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
     start = models.CommaSeparatedIntegerField('the point in the image where the tag arrow starts',
                                               max_length=20)
     end = models.CommaSeparatedIntegerField('the point in the image where the tag arrow ends',
