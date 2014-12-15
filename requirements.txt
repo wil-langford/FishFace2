@@ -5,3 +5,5 @@ south
 quantities
 Pillow
 pytz
+mpi4py
+django-imagekit
