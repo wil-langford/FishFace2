@@ -184,6 +184,12 @@ class ManualTag(models.Model):
     researcher = models.ForeignKey(Researcher)
 
 
+class ManualVerification(models.Model):
+    tag = models.ForeignKey(ManualTag)
+    timestamp = models.DateTimeField('DTG of image capture', default=du.timezone.now())
+    researcher = models.ForeignKey(Researcher)
+
+
 class CaptureJobTemplate(models.Model):
     voltage = models.FloatField('the voltage that the power supply will be set to', default=0, )
     current = models.FloatField('maximum current in amps that the power supply will provide', default=15, )

@@ -243,14 +243,6 @@ div.job_wrapper {
     display: none;
 }
 
-canvas#tag_canvas {
-    cursor: crosshair;
-}
-
-canvas#over_canvas {
-    cursor: crosshair;
-}
-
 #tag_form_wrapper {
     display: none;
 }
@@ -259,14 +251,18 @@ canvas#over_canvas {
     display: none;
 }
 
-#save_proceed_button {
+#save_proceed_button, #verify_proceed_button {
     background-color: palegreen;
 
     min-width: 12em;
     min-height: 6em;
 }
 
+#verification_form_wrapper {
+    display: none;
+}
+
 div.debug_output {
-    display: block;
+    display: none;
 }
 

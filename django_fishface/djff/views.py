@@ -4,6 +4,7 @@ import datetime
 import json
 import random
 import math
+import operator
 # import time
 # import threading
 
@@ -32,6 +33,7 @@ from djff.models import (
     PowerSupplyLog,
     Researcher,
     ManualTag,
+    ManualVerification,
 )
 
 import djff.utils.telemetry as telemetry
@@ -235,6 +237,99 @@ def tag_submit(request):
 
     return dh.HttpResponse(json.dumps(return_value), content_type='application/json')
 
+######################################
+###  Verification Interface Views  ###
+######################################
+
+def verification_interface(request):
+
+    all_researchers = Researcher.objects.all()
+    researchers = [{'id': researcher.id, 'name': researcher.name }
+                   for researcher in all_researchers ]
+
+
+    context = {
+        'researchers': researchers,
+    }
+    return ds.render(request, 'djff/verification_interface.html', context)
+
+@csrf_dec.csrf_exempt
+def verification_submit(request):
+    payload = request.POST
+
+    logger.debug("got verification_submit payload: {}".format(payload))
+
+    researcher_id = payload['researcher_id']
+
+    if researcher_id != 'NONE':
+        ids = payload['image_ids'].split(',')
+        if len(ids) < 2:
+            number_of_tags = len(ids)
+        else:
+            number_of_tags = None
+
+
+        if (payload['image_ids'] != 'DO_NOT_POST' and
+                payload['images_verified'] != 'DO_NOT_POST'):
+            logger.info('making new database entry')
+
+            verifieds = payload['images_verified'].split(',')
+
+            verified_ids = [x[0] for x in zip(ids,verifieds) if x[1]==1]
+            unverified_ids = [x[0] for x in zip(ids,verifieds) if x[1]==0]
+
+            for image_id in verified_ids:
+                manual_verification = ManualVerification()
+
+                manual_verification.image = Image.objects.get(pk=image_id)
+                manual_verification.researcher = Researcher.objects.get(pk=researcher_id)
+
+                manual_verification.save()
+
+        unverified_tags = ManualTag.objects.filter().exclude(
+            manual_verification__researcher__id__exact=int(payload['researcher_id']))
+
+        if unverified_tags.count() == 0 or number_of_tags is None:
+            return_value = 0
+        else:
+            verify_these_unsorted = list()
+
+            for i in range(number_of_tags):
+                max_id = unverified_tags.aggregate(ddm.Max('id')).values()[0]
+                min_id = math.ceil(max_id*random.random())
+                unverified_tag = unverified_tags.filter(id__gte=min_id)[0]
+
+                start = unverified_tag.start.split(',')
+                end = unverified_tag.start.split(',')
+
+                rotate_angle = - math.degrees(math.atan2(
+                    end[1] - start[1],
+                    end[0] - start[0]
+                ))
+
+                verify_these_unsorted.append({
+                    'id': unverified_tag.id,
+                    'start': unverified_tag.start,
+                    'end': unverified_tag.end,
+                    'rotate_angle': rotate_angle,
+                    'url': '{}{}'.format(settings.MEDIA_URL, unverified_tag.tag.image_file),
+                })
+
+            verify_these = sorted(verify_these_unsorted, key=operator.itemgetter('id'))
+            verify_ids = [x['id'] for x in verify_these]
+
+            return_value = {
+                'verify_these': verify_these,
+                'tag_ids': verify_ids,
+                'tag_image_urls': [x['url'] for x in verify_these],
+                'verify_ids_text': ','.join(verify_ids),
+                'tags_verified_text': ','.join(['0'] * len(verify_these)),
+            }
+
+    else:
+        return_value = 0
+
+    return dh.HttpResponse(json.dumps(return_value), content_type='application/json')
 
 
 #############################

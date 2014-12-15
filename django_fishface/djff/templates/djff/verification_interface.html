@@ -4,7 +4,7 @@
 {% block localscript %}
     <script type="text/javascript">
         if (window.ff == undefined) { window.ff = {}; }
-        window.ff.tag_submit_url = "{% url 'djff:tag_verify' %}";
+        window.ff.verification_submit_url = "{% url 'djff:verification_submit' %}";
     </script>
     <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'djff/verification_interface.js' %}" canvas="tag_canvas"></script>
@@ -17,7 +17,7 @@
     <div id="select_researcher_text">Please select your name from the drop-down list to the right.</div>
 
     <span id="canvas_wrapper">
-        <canvas id="canvas" width="400" height="300" class="boxed"></canvas>
+        <canvas id="verification_canvas" width="400" height="600" class="boxed"></canvas>
     </span>
 {% endblock %}
 
@@ -44,14 +44,12 @@
         to verify this set and view a new set of images.
     </div>
 
-    <div id="tag_form_wrapper">
-        <form id="tag_form">
+    <div id="verification_form_wrapper">
+        <form id="verification_form">
             <input type="submit" id="verify_proceed_button" value="Verify and Proceed">
-            <input type="hidden" class="narrower_input" id="image_ids" name="image_ids" value="DO_NOT_POST">
-            <input type="hidden" class="narrower_input" id="images_verified" name="images_verified" value="DO_NOT_POST">
-            <input type="hidden" class="narrower_input" id="researcher_id" name="researcher_id" value="NONE">
-            <input type="hidden" id="form_start" name="start">
-            <input type="hidden" id="form_end" name="end">
+            <input type="hidden" id="researcher_id" name="researcher_id" value="NONE">
+            <input type="hidden" id="tag_ids" name="tag_ids" value="DO_NOT_POST">
+            <input type="hidden" id="tags_verified" name="tags_verified" value="DO_NOT_POST">
         </form>
     </div>
 
