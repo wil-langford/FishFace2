@@ -18,15 +18,87 @@ $(document).ready(function() {
      */
 
     fabric.FFWindow = fabric.util.createClass(fabric.Canvas, {
-        AAAffType: 'FFWindow',
+        ffType: 'FFWindow',
         initialize: function(canvas_id, hor_tiles, vert_tiles) {
             this.callSuper('initialize', canvas_id);
 
             this.hor_tiles = hor_tiles;
             this.vert_tiles = vert_tiles;
+
+            this.tile_scale_x = false;
+            this.tile_scale_y = false;
+        },
+        add_image: function(url, data, tile_index) {
+            fabric.Image.fromURL(url, this.image_added, {
+                ff_window: this,
+                data: data,
+                tile_index: tile_index
+            });
+        },
+        tile_coords: function(tile_index) {
+            var idx = {
+                x: tile_index % this.hor_tiles,
+                y: (tile_index - (tile_index % this.hor_tiles)) / this.vert_tiles
+            }
+            var w = this.width / this.hor_tiles;
+            var h = this.height / this.vert_tiles;
+
+            return {
+                x: w * idx.x + (w / 2),
+                y: h * idx.y + (h / 2)
+            }
+        },
+        image_added: function(img) {
+            var wdw = img.ff_window;
+            
+            wdw.add(img);
+            wdw.tile[img.tile_index] = img;
+            wdw.tile_data[img.tile_index] = img.data;
+            var orig = img.getOriginalSize()
+
+            if (!wdw.tile_scale_x) {
+                wdw.tile_scale_x = (wdw.width = orig.width) / wdw.hor_tiles;
+                wdw.tile_scale_y = (wdw.height = orig.height) / wdw.vert_tiles;
+            }
+
+            var tc = this.tile_coords(img.tile_index);
+
+            img.set({
+                scaleX: wdw.tile_scale_x,
+                scaleY: wdw.tile_scale_y,
+                x: tc.x,
+                y: tc.y
+            });
+
+            img.setCoords();
+            wdw.calcOffset();
+        },
+        replace_image: function(url, data, tile_index) {
+            fabric.Image.fromURL(url, this.image_replaced, {
+                ff_window: this,
+                data: data,
+                tile_index: tile_index
+            });
+        },
+        image_replaced: function(img) {
+            var wdw = img.ff_window;
+            img.set({
+                scaleX: wdw.tile_scale_x,
+                scaleY: wdw.tile_scale_y,
+                x: wdw.tile[img.tile_index].x,
+                y: wdw.tile[img.tile_index].y
+            });
+            
+            wdw.tile[img.tile_index].remove();
+            wdw.tile[img.tile_index] = img;
+            wdw.add(wdw.tile[img.tile_index]);
+            wdw.tile[img.tile_index].sendToBack();
+            wdw.tile[img.tile_index].setCoords();
+
+            wdw.calcOffset();
         }
     });
-
+    
     //fabric.FFArrow = fabric.util.createClass({
     //    AAAffType: 'FFArrow',
     //    initialize: function (canvas) {
