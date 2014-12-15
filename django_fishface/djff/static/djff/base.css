@@ -267,6 +267,6 @@ canvas#over_canvas {
 }
 
 div.debug_output {
-    display: block;
+    display: none;
 }
 
