@@ -216,8 +216,7 @@ def tag_submit(request):
             manual_tag.save()
 
         untagged_images = Image.objects.filter(is_cal_image=False).exclude(
-            experiment__name__contains='TEST_DATA'
-        ).exclude(
+            xp__name__contains='TEST_DATA').exclude(
             manualtag__researcher__id__exact=int(payload['researcher_id']))
 
         if untagged_images.count() == 0:
