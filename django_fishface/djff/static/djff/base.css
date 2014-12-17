@@ -273,3 +273,20 @@ div.debug_output {
 #researcher_score {
     display: none;
 }
+
+ul.normal_ul {
+    margin: 1em;
+    padding: 0;
+}
+
+ul.normal_ul li {
+    list-style: circle;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background-color: transparent;
+}
+
+div.shift_right {
+    margin-left: 4em;
+}

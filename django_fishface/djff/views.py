@@ -86,6 +86,35 @@ def index(request):
     return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
 
 
+def stats(request):
+    xps = Experiment.objects.all().order_by('xp_start')
+    cjrs = CaptureJobRecord.objects.all()
+    researchers = Researcher.objects.all().order_by('name')
+
+    xps_to_pass = dict()
+    for xp in xps:
+        xps_to_pass[xp.id] = {
+            'id': xp.id,
+            'name': xp.name,
+            'slug': xp.slug,
+            'cjrs': xp.capturejobrecord_set,
+        }
+
+    cjrs_to_pass = dict()
+    for cjr in cjrs:
+        cjrs_to_pass[cjr.id] = {
+            'slug': cjr.full_slug,
+            'images': cjr.image_set,
+        }
+
+    context = {
+        'xps': xps_to_pass,
+        'cjrs': cjrs_to_pass,
+        'researchers': researchers,
+    }
+    return ds.render(request, 'djff/stats.html', context)
+
+
 @csrf_dec.csrf_exempt
 def receive_telemetry(request):
 

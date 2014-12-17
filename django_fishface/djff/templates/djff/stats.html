@@ -1,0 +1,43 @@
+{% extends "djff/base.html" %}
+{% load staticfiles %}
+
+{% block localscript %}
+    <script type="text/javascript">
+        if (window.ff == undefined) { window.ff = {}; }
+    </script>
+
+{% endblock %}
+
+{% block subtitle %}Stats and Aggregate Data{% endblock %}
+
+{% block content %}
+
+<div class="shift_right">
+    <h2>Experiments</h2>
+    <ul class="normal_ul">
+        {% for xp_id, xp in xps.items %}
+            <li>{{ xp.name }} ({{ xp.slug }}, {{ xp.species.short_name }})</li>
+            <ul class="normal_ul">
+                <li>Capture Jobs: {{ xp.cjrs.count }}</li>
+                {% if xp.comment %}
+                    <li>Comment: {{ xp.comment }}</li>
+                {% endif %}
+            </ul>
+        {% endfor %}
+    </ul>
+
+
+    <h2>Researchers</h2>
+    <ul class="normal_ul">
+        {% for researcher in researchers %}
+            <li>{{ researcher.name }}</li>
+            <ul class="normal_ul">
+                <li>Number of tags: {{ researcher.tag_score }}</li>
+            </ul>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}
+
+{% block preview_area %}
+{% endblock %}
