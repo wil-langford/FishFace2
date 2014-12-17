@@ -262,18 +262,18 @@ def verification_submit(request):
     researcher_id = payload['researcher_id']
 
     if researcher_id != 'NONE':
-        ids = payload['image_ids'].split(',')
+        ids = payload['tag_ids'].split(',')
         if len(ids) < 2:
             number_of_tags = len(ids)
         else:
             number_of_tags = None
 
 
-        if (payload['image_ids'] != 'DO_NOT_POST' and
-                payload['images_verified'] != 'DO_NOT_POST'):
+        if (payload['tag_ids'] != 'DO_NOT_POST' and
+                payload['tags_verified'] != 'DO_NOT_POST'):
             logger.info('making new database entry')
 
-            verifieds = payload['images_verified'].split(',')
+            verifieds = payload['tags_verified'].split(',')
 
             verified_ids = [x[0] for x in zip(ids,verifieds) if x[1]==1]
             unverified_ids = [x[0] for x in zip(ids,verifieds) if x[1]==0]
@@ -287,7 +287,7 @@ def verification_submit(request):
                 manual_verification.save()
 
         unverified_tags = ManualTag.objects.filter().exclude(
-            manual_verification__researcher__id__exact=int(payload['researcher_id']))
+            manualverification__researcher__id__exact=int(payload['researcher_id']))
 
         if unverified_tags.count() == 0 or number_of_tags is None:
             return_value = 0
@@ -303,8 +303,8 @@ def verification_submit(request):
                 end = unverified_tag.start.split(',')
 
                 rotate_angle = - math.degrees(math.atan2(
-                    end[1] - start[1],
-                    end[0] - start[0]
+                    int(end[1]) - int(start[1]),
+                    int(end[0]) - int(start[0])
                 ))
 
                 verify_these_unsorted.append({
@@ -312,7 +312,7 @@ def verification_submit(request):
                     'start': unverified_tag.start,
                     'end': unverified_tag.end,
                     'rotate_angle': rotate_angle,
-                    'url': '{}{}'.format(settings.MEDIA_URL, unverified_tag.tag.image_file),
+                    'url': '{}{}'.format(settings.MEDIA_URL, unverified_tag.image.image_file),
                 })
 
             verify_these = sorted(verify_these_unsorted, key=operator.itemgetter('id'))
@@ -322,7 +322,7 @@ def verification_submit(request):
                 'verify_these': verify_these,
                 'tag_ids': verify_ids,
                 'tag_image_urls': [x['url'] for x in verify_these],
-                'verify_ids_text': ','.join(verify_ids),
+                'verify_ids_text': ','.join([str(x) for x in verify_ids]),
                 'tags_verified_text': ','.join(['0'] * len(verify_these)),
             }
 
