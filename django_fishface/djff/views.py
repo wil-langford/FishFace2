@@ -97,14 +97,16 @@ def stats(request):
             'id': xp.id,
             'name': xp.name,
             'slug': xp.slug,
-            'cjrs': xp.capturejobrecord_set,
+            'cjrs': xp.capturejobrecord_set.all(),
+            'actual_xp': xp,
         }
 
     cjrs_to_pass = dict()
     for cjr in cjrs:
         cjrs_to_pass[cjr.id] = {
             'slug': cjr.full_slug,
-            'images': cjr.image_set,
+            'images': cjr.image_set.all(),
+            'actual_cjr': cjr,
         }
 
     context = {

@@ -68,6 +68,18 @@ div#header_title_block a:link {
 
 div#header_title_block a:visited { color: white; }
 
+table {
+    border: none;
+    margin: 2em;
+    border-spacing: 0;
+}
+
+td {
+    border: 1px dotted black;
+    margin: 0;
+    padding: 2px;
+}
+
 .boxed
 {
     border: 1px solid black;

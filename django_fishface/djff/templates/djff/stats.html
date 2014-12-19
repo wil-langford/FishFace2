@@ -13,30 +13,57 @@
 {% block content %}
 
 <div class="shift_right">
-    <h2>Experiments</h2>
-    <ul class="normal_ul">
-        {% for xp_id, xp in xps.items %}
-            <li>{{ xp.name }} ({{ xp.slug }}, {{ xp.species.short_name }})</li>
-            <ul class="normal_ul">
-                <li>Capture Jobs: {{ xp.cjrs.count }}</li>
-                {% if xp.comment %}
-                    <li>Comment: {{ xp.comment }}</li>
-                {% endif %}
-            </ul>
-        {% endfor %}
-    </ul>
-
-
-    <h2>Researchers</h2>
-    <ul class="normal_ul">
+    <h2 class="boxed">Researchers</h2>
+    <table>
+        <tr><th>name</th><th>tagged images</th></tr>
         {% for researcher in researchers %}
-            <li>{{ researcher.name }}</li>
-            <ul class="normal_ul">
-                <li>Number of tags: {{ researcher.tag_score }}</li>
-            </ul>
+            <tr><td>{{ researcher.name }}</td><td>{{ researcher.tag_score }}</td></tr>
         {% endfor %}
-    </ul>
+    </table>
+
+    <h2 class="boxed">Experiments</h2>
+    <table>
+        <tr>
+            <th>name</th>
+            <th>species</th>
+            <th>capture jobs</th>
+            <th>comment</th>
+        </tr>
+        {% for xp_id, xp in xps.items %}
+            <tr>
+                <td>{{ xp.name }} ({{ xp.slug }})</td>
+                <td>{{ xp.actual_xp.species.common_name }}</td>
+                <td>{{ xp.cjrs.count }}</td>
+                <td>{{ xp.comment }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h2 class="boxed">Capture Jobs by Experiment</h2>
+    {% for xp_id, xp in xps.items %}
+        <h3>{{ xp.name }} ({{ xp.slug }})</h3>
+
+        <table>
+            <tr>
+                <th>capture job record</th>
+                <th>voltage</th>
+                <th>current</th>
+                <th>images</th>
+            </tr>
+            {% for cjr in xp.cjrs %}
+                <tr>
+                    <td>{{ cjr.slug }}</td>
+                    <td>{{ cjr.voltage }}</td>
+                    <td>{{ cjr.image_set.count }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+
+    {% endfor %}
+
 </div>
+
+
 {% endblock %}
 
 {% block preview_area %}
