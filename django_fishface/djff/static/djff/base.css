@@ -68,6 +68,18 @@ div#header_title_block a:link {
 
 div#header_title_block a:visited { color: white; }
 
+table {
+    border: none;
+    margin: 2em;
+    border-spacing: 0;
+}
+
+td {
+    border: 1px dotted black;
+    margin: 0;
+    padding: 2px;
+}
+
 .boxed
 {
     border: 1px solid black;
@@ -270,3 +282,23 @@ div.debug_output {
     display: none;
 }
 
+#researcher_score {
+    display: none;
+}
+
+ul.normal_ul {
+    margin: 1em;
+    padding: 0;
+}
+
+ul.normal_ul li {
+    list-style: circle;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background-color: transparent;
+}
+
+div.shift_right {
+    margin-left: 4em;
+}

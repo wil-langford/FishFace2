@@ -5,6 +5,7 @@
     <script type="text/javascript">
         if (window.ff == undefined) { window.ff = {}; }
         window.ff.tag_submit_url = "{% url 'djff:tag_submit' %}";
+        window.ff.researchers = {{ researchers_json|safe }};
     </script>
     <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'djff/tagging_interface.js' %}" canvas="tag_canvas"></script>
@@ -57,6 +58,12 @@
             <input type="hidden" id="form_start" name="start">
             <input type="hidden" id="form_end" name="end">
         </form>
+    </div>
+
+    <p />
+
+    <div id="researcher_score">
+        <p>You have tagged <span class="boxed" id="researcher_tag_score">a specific number of</span> images so far.</p>
     </div>
 
     <div class="debug_output"></div>
