@@ -6,7 +6,7 @@
         if (window.ff == undefined) { window.ff = {}; }
         window.ff.verification_submit_url = "{% url 'djff:verification_submit' %}";
     </script>
-    <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.js' %}"></script>
     <script type="text/javascript" src="{% static 'djff/verification_interface.js' %}" canvas="tag_canvas"></script>
 
 {% endblock %}
@@ -25,7 +25,8 @@
     <div id="researcher_selection_wrapper">
         <form id="researcher_selection_form">
             <select id="researcher_dropdown">
-                <option value="NONE" selected="selected">Please select researcher</option>
+{#                <option value="NONE" selected="selected">Please select researcher</option>#}
+                <option value="1" selected="selected">WIL DEBUG SELECTION</option>
             {% for researcher in researchers %}
                 <option value="{{ researcher.id }}">{{ researcher.name }}</option>
             {% endfor %}
@@ -50,6 +51,7 @@
             <input type="hidden" id="researcher_id" name="researcher_id" value="NONE">
             <input type="hidden" id="tag_ids" name="tag_ids" value="DO_NOT_POST">
             <input type="hidden" id="tags_verified" name="tags_verified" value="DO_NOT_POST">
+            <input type="hidden" id="num_tiles" name="num_tiles" value="DO_NOT_POST">
         </form>
     </div>
 

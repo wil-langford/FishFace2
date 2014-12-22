@@ -298,27 +298,31 @@ def verification_interface(request):
 @csrf_dec.csrf_exempt
 def verification_submit(request):
     payload = request.POST
+    return_value = {
+        'valid': True,
+    }
 
     logger.debug("got verification_submit payload: {}".format(payload))
 
     researcher_id = payload['researcher_id']
 
     if researcher_id != 'NONE':
-        ids = payload['tag_ids'].split(',')
-        if len(ids) < 2:
-            number_of_tags = len(ids)
+        if payload['num_tiles']:
+            number_of_tags = int(payload['num_tiles'])
         else:
             number_of_tags = None
 
 
         if (payload['tag_ids'] != 'DO_NOT_POST' and
-                payload['tags_verified'] != 'DO_NOT_POST'):
+                payload['tags_verified'] != 'DO_NOT_POST' and
+                number_of_tags is not None):
+            ids = payload['tag_ids'].split(',')
             logger.info('making new database entry')
 
             verifieds = payload['tags_verified'].split(',')
 
-            verified_ids = [x[0] for x in zip(ids,verifieds) if x[1]==1]
-            unverified_ids = [x[0] for x in zip(ids,verifieds) if x[1]==0]
+            verified_ids = [x[0] for x in zip(ids, verifieds) if x[1]==1]
+            unverified_ids = [x[0] for x in zip(ids, verifieds) if x[1]==0]
 
             for image_id in verified_ids:
                 manual_verification = ManualVerification()
@@ -332,7 +336,7 @@ def verification_submit(request):
             manualverification__researcher__id__exact=int(payload['researcher_id']))
 
         if unverified_tags.count() == 0 or number_of_tags is None:
-            return_value = 0
+            return_value['valid'] = False
         else:
             verify_these_unsorted = list()
 
@@ -342,12 +346,12 @@ def verification_submit(request):
                 unverified_tag = unverified_tags.filter(id__gte=min_id)[0]
 
                 start = unverified_tag.start.split(',')
-                end = unverified_tag.start.split(',')
+                end = unverified_tag.end.split(',')
 
-                rotate_angle = - math.degrees(math.atan2(
+                rotate_angle = -1 * int(math.degrees(math.atan2(
                     int(end[1]) - int(start[1]),
                     int(end[0]) - int(start[0])
-                ))
+                )))
 
                 verify_these_unsorted.append({
                     'id': unverified_tag.id,
@@ -360,16 +364,16 @@ def verification_submit(request):
             verify_these = sorted(verify_these_unsorted, key=operator.itemgetter('id'))
             verify_ids = [x['id'] for x in verify_these]
 
-            return_value = {
+            return_value.update({
                 'verify_these': verify_these,
                 'tag_ids': verify_ids,
                 'tag_image_urls': [x['url'] for x in verify_these],
                 'verify_ids_text': ','.join([str(x) for x in verify_ids]),
                 'tags_verified_text': ','.join(['0'] * len(verify_these)),
-            }
+            })
 
     else:
-        return_value = 0
+        return_value['valid'] = False
 
     return dh.HttpResponse(json.dumps(return_value), content_type='application/json')
 
