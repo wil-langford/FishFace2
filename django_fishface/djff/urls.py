@@ -136,6 +136,12 @@ urlpatterns = dcu.patterns(
         views.cjr_new_for_raspi,
         name='cjr_new_for_raspi'
     ),
+
+    dcu.url(
+        r'^stats/$',
+        views.stats,
+        name='stats'
+    ),
 )
 
 

@@ -88,6 +88,37 @@ def index(request):
     return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
 
 
+def stats(request):
+    xps = Experiment.objects.all().order_by('xp_start')
+    cjrs = CaptureJobRecord.objects.all()
+    researchers = Researcher.objects.all().order_by('name')
+
+    xps_to_pass = dict()
+    for xp in xps:
+        xps_to_pass[xp.id] = {
+            'id': xp.id,
+            'name': xp.name,
+            'slug': xp.slug,
+            'cjrs': xp.capturejobrecord_set.all(),
+            'actual_xp': xp,
+        }
+
+    cjrs_to_pass = dict()
+    for cjr in cjrs:
+        cjrs_to_pass[cjr.id] = {
+            'slug': cjr.full_slug,
+            'images': cjr.image_set.all(),
+            'actual_cjr': cjr,
+        }
+
+    context = {
+        'xps': xps_to_pass,
+        'cjrs': cjrs_to_pass,
+        'researchers': researchers,
+    }
+    return ds.render(request, 'djff/stats.html', context)
+
+
 @csrf_dec.csrf_exempt
 def receive_telemetry(request):
 
@@ -189,52 +220,62 @@ def telemetry_proxy(request):
 def tagging_interface(request):
 
     all_researchers = Researcher.objects.all()
-    researchers = [{'id': researcher.id, 'name': researcher.name }
+    researchers = [{'id': researcher.id, 'name': researcher.name, 'tag_score': researcher.tag_score }
                    for researcher in all_researchers ]
 
 
     context = {
         'researchers': researchers,
+        'researchers_json': json.dumps(researchers),
     }
     return ds.render(request, 'djff/tagging_interface.html', context)
 
 @csrf_dec.csrf_exempt
 def tag_submit(request):
     payload = request.POST
+    return_value = {
+        'valid': True,
+    }
 
     logger.debug("got tag_submit payload: {}".format(payload))
 
     if payload['researcher_id'] != 'NONE':
+        researcher = Researcher.objects.get(pk=payload['researcher_id'])
+
         if (payload['image_id'] != 'DO_NOT_POST' and
                 payload['start'] != 'NONE' and payload['end'] != 'NONE'):
             logger.info('making new ManualTag database entry')
             manual_tag = ManualTag()
 
             manual_tag.image = Image.objects.get(pk=payload['image_id'])
-            manual_tag.researcher = Researcher.objects.get(pk=payload['researcher_id'])
+            manual_tag.researcher = researcher
             manual_tag.start = payload['start']
             manual_tag.end = payload['end']
 
             manual_tag.save()
+
+        return_value['researcher_score'] = researcher.tag_score
 
         untagged_images = Image.objects.filter(is_cal_image=False).exclude(
             xp__name__contains='TEST_DATA').exclude(
             manualtag__researcher__id__exact=int(payload['researcher_id']))
 
         if untagged_images.count() == 0:
-            return_value = 0
+            return_value['valid'] = False
         else:
+            return_value['untagged_images_count'] = untagged_images.count()
             max_id = untagged_images.aggregate(ddm.Max('id')).values()[0]
             min_id = math.ceil(max_id*random.random())
             untagged_image = untagged_images.filter(id__gte=min_id)[0]
 
-            return_value = {
+            return_value.update({
                 'id': untagged_image.id,
                 'url': '{}{}'.format(settings.MEDIA_URL, untagged_image.image_file),
-            }
+            })
+
 
     else:
-        return_value = 0
+        return_value['valid'] = False
 
     return dh.HttpResponse(json.dumps(return_value), content_type='application/json')
 

@@ -49,6 +49,11 @@ class Researcher(models.Model):
     def __unicode__(self):
         return u'{}'.format(self.name)
 
+    @property
+    def tag_score(self):
+        return self.manualtag_set.count()
+
+
 class PowerSupplyLog(models.Model):
     measurement_datetime = models.DateTimeField('timestamp of measurement', auto_now_add=True)
     current_meas = models.FloatField('current measured by power supply', null=True)
