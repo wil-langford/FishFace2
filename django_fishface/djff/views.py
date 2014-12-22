@@ -218,6 +218,7 @@ def tag_submit(request):
             manual_tag.save()
 
         untagged_images = Image.objects.filter(is_cal_image=False).exclude(
+            xp__name__contains='TEST_DATA').exclude(
             manualtag__researcher__id__exact=int(payload['researcher_id']))
 
         if untagged_images.count() == 0:
@@ -350,7 +351,7 @@ def cq_interface(request):
         }
     job_specs = json.dumps(job_specs)
 
-    all_xps = Experiment.objects.filter()
+    all_xps = Experiment.objects.all()
     xps = [xp for xp in all_xps if Image.objects.filter(xp_id=xp.id, is_cal_image=True)]
     xp_names = dict()
     xp_species = dict()
@@ -513,7 +514,7 @@ def xp_capture(request, xp_id):
         running=True
     )
 
-    cjrs = CaptureJobRecord.objects.filter(xp__id=xp.id)
+    cjrs = CaptureJobRecord.objects.filter(xp__id=xp.id).order_by('job_start')
 
     images_by_cjr = [
         (cjr_obj, Image.objects.filter(cjr__id=cjr_obj.id))
