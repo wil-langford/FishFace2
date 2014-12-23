@@ -55,8 +55,8 @@ $(document).ready(function() {
             };
 
             return {
-                x: this.tile_width * idx.x,
-                y: this.tile_height * idx.y
+                x: this.tile_width * idx.x + (this.tile_width / 2),
+                y: this.tile_height * idx.y + (this.tile_height / 2)
             }
         },
         coords_to_index: function(point) {
@@ -78,6 +78,11 @@ $(document).ready(function() {
             var wdw = img.window;
             var idx = img.tile_index;
             var tag = img.tag;
+
+            img.set({
+                originX: 'center',
+                originY: 'center'
+            });
 
             wdw.add(img);
             wdw.tile[idx] = img;
@@ -119,6 +124,12 @@ $(document).ready(function() {
             var wdw = img.window;
             var idx = img.tile_index;
             var tag = img.tag;
+
+
+            img.set({
+                originX: 'center',
+                originY: 'center'
+            });
 
             img.set({
                 angle: img.tag.rotate_angle
