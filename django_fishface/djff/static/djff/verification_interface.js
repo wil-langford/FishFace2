@@ -6,8 +6,8 @@ $(document).ready(function() {
 
     if (window.ff == undefined) { window.ff = {}; }
 
-    ff.HORIZONTAL_TILES = 2;
-    ff.VERTICAL_TILES = 2 * ff.HORIZONTAL_TILES;
+    ff.HORIZONTAL_TILES = 6;
+    ff.VERTICAL_TILES = 5;
 
     ff.TILES = ff.HORIZONTAL_TILES * ff.VERTICAL_TILES;
 
