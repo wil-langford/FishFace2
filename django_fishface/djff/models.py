@@ -1,10 +1,15 @@
 from django.db import models
-import django.utils as du
 import fields
 import django.dispatch.dispatcher
 import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
 from django.conf import settings
+
+import imagekit as ik
+import imagekit.models as ikm
+import imagekit.processors as ikp
+import imagekit.utils as iku
+
 
 class Species(models.Model):
     name = models.CharField('the full species of the fish', max_length=200,
@@ -14,7 +19,7 @@ class Species(models.Model):
     shortname = models.CharField('a short abbreviation for the species of fish', max_length=5,
                                  default='ABC', unique=True)
     image = models.ImageField('a sample image of the fish species',
-                              blank=True, null=True, upload_to="species_sample_images" )
+                              blank=True, null=True, upload_to="species_sample_images")
 
     def inline_image(self):
         return '<img width=200 src="/media/{}" />'.format(
@@ -64,7 +69,7 @@ class Experiment(models.Model):
     """
     The model for xp-level data.
     """
-    name = models.CharField('descriptive name of xp', max_length=250, default='New Experiment' )
+    name = models.CharField('descriptive name of xp', max_length=250, default='New Experiment')
     xp_start = models.DateTimeField('start date/time of xp')
     species = models.ForeignKey(Species)
     comment = models.TextField('general comments about this experiment (optional)',
@@ -100,8 +105,8 @@ class CaptureJobRecord(models.Model):
 
     def __unicode__(self):
         return u'CaptureJobRecord {} (XP-{}_CJR_{})'.format(self.id,
-                                                     self.xp.id,
-                                                     self.id)
+                                                            self.xp.id,
+                                                            self.id)
 
     @property
     def slug(self):
@@ -127,11 +132,11 @@ class Image(models.Model):
     cjr = models.ForeignKey(CaptureJobRecord, null=True, editable=False, )
 
     # Data available at capture time.
-    capture_timestamp = models.DateTimeField('DTG of image capture', default=du.timezone.now() )
+    capture_timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
     voltage = models.FloatField('voltage at power supply', default=0)
     image_file = models.ImageField('path of image file',
                                    upload_to="experiment_imagery/stills/%Y.%m.%d")
-    is_cal_image = models.BooleanField('is this image a calibration image?', default=False )
+    is_cal_image = models.BooleanField('is this image a calibration image?', default=False)
 
     psu_log = models.ForeignKey(PowerSupplyLog,
                                 null=True, blank=True)
@@ -189,15 +194,28 @@ class ManualTag(models.Model):
     researcher = models.ForeignKey(Researcher)
 
 
+class ManualTagVerificationThumbnail(models.Model):
+    tag = models.ForeignKey(ManualTag)
+    thumbnail = ikm.ProcessedImageField(
+        format='JPEG',
+        options={'quality': 60},
+        # TODO: make a 'processors' generator that creates a processor list based
+        # on the tag.
+        # http://django-imagekit.readthedocs.org/en/latest/advanced_usage.html
+        processors=None,
+    )
+
+
 class ManualVerification(models.Model):
     tag = models.ForeignKey(ManualTag)
-    timestamp = models.DateTimeField('DTG of image capture', default=du.timezone.now())
+    timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
     researcher = models.ForeignKey(Researcher)
 
 
 class CaptureJobTemplate(models.Model):
     voltage = models.FloatField('the voltage that the power supply will be set to', default=0, )
-    current = models.FloatField('maximum current in amps that the power supply will provide', default=15, )
+    current = models.FloatField('maximum current in amps that the power supply will provide',
+                                default=15)
     duration = models.FloatField('the number of seconds to run the job', default=0, )
     interval = models.FloatField('the number of seconds between image captures', default=1, )
     startup_delay = models.FloatField(
@@ -206,7 +224,6 @@ class CaptureJobTemplate(models.Model):
     )
     description = models.TextField('a description of this capture job template (optional)',
                                    null=True, blank=True, )
-
 
     def get_absolute_url(self):
         return dcu.reverse(

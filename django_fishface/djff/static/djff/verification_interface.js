@@ -193,7 +193,7 @@ $(document).ready(function() {
             data: data,
             dataType: 'json',
             success: function (data, status, jqXHR) {
-                console.log(data)
+                console.log(data);
                 if (data.valid) {
                     $('input#tag_ids').attr('value', data.verify_ids_text);
                     $('input#tags_verified').attr('value', data.tags_verified_text);
@@ -271,7 +271,5 @@ $(document).ready(function() {
 
     ff.window.calcOffset();
     ff.window.renderAll();
-
-
 
 });  // end $(document).ready()

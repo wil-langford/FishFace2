@@ -79,9 +79,9 @@ def _file_path_to_numpy_array(image_file_path):
         return _file_object_to_numpy_array(image_file)
 
 
-#######################
-###  General Views  ###
-#######################
+#
+# General Views
+#
 
 
 def index(request):
@@ -159,7 +159,6 @@ def receive_telemetry(request):
 
         logger.info("image stored with ID {}".format(captured_image.id))
 
-
     if payload['command'] == 'job_status_update':
         cjr = ds.get_object_or_404(CaptureJobRecord,
                                    pk=int(payload['cjr_id']))
@@ -213,22 +212,24 @@ def telemetry_proxy(request):
 
     return dh.HttpResponse(content=json.dumps(pi_reply), content_type='application/json')
 
-#################################
-###  Tagging Interface Views  ###
-#################################
+
+#
+# Tagging Interface Views
+#
+
 
 def tagging_interface(request):
 
     all_researchers = Researcher.objects.all()
-    researchers = [{'id': researcher.id, 'name': researcher.name, 'tag_score': researcher.tag_score }
-                   for researcher in all_researchers ]
-
+    researchers = [{'id': researcher.id, 'name': researcher.name, 'tag_score': researcher.tag_score}
+                   for researcher in all_researchers]
 
     context = {
         'researchers': researchers,
         'researchers_json': json.dumps(researchers),
     }
     return ds.render(request, 'djff/tagging_interface.html', context)
+
 
 @csrf_dec.csrf_exempt
 def tag_submit(request):
@@ -273,27 +274,32 @@ def tag_submit(request):
                 'url': '{}{}'.format(settings.MEDIA_URL, untagged_image.image_file),
             })
 
-
     else:
         return_value['valid'] = False
 
     return dh.HttpResponse(json.dumps(return_value), content_type='application/json')
 
-######################################
-###  Verification Interface Views  ###
-######################################
+
+#
+# Verification Interface Views
+#
+
 
 def verification_interface(request):
 
     all_researchers = Researcher.objects.all()
-    researchers = [{'id': researcher.id, 'name': researcher.name }
-                   for researcher in all_researchers ]
+    researchers = [{'id': researcher.id, 'name': researcher.name}
+                   for researcher in all_researchers]
+
+    all_tags = ManualTag.objects.all()
 
 
     context = {
         'researchers': researchers,
+        'tags': all_tags,
     }
     return ds.render(request, 'djff/verification_interface.html', context)
+
 
 @csrf_dec.csrf_exempt
 def verification_submit(request):
@@ -312,7 +318,6 @@ def verification_submit(request):
         else:
             number_of_tags = None
 
-
         if (payload['tag_ids'] != 'DO_NOT_POST' and
                 payload['tags_verified'] != 'DO_NOT_POST' and
                 number_of_tags is not None):
@@ -321,8 +326,8 @@ def verification_submit(request):
 
             verifieds = payload['tags_verified'].split(',')
 
-            verified_ids = [x[0] for x in zip(ids, verifieds) if x[1]==1]
-            unverified_ids = [x[0] for x in zip(ids, verifieds) if x[1]==0]
+            verified_ids = [x[0] for x in zip(ids, verifieds) if x[1] == 1]
+            unverified_ids = [x[0] for x in zip(ids, verifieds) if x[1] == 0]
 
             for image_id in verified_ids:
                 manual_verification = ManualVerification()
@@ -378,9 +383,10 @@ def verification_submit(request):
     return dh.HttpResponse(json.dumps(return_value), content_type='application/json')
 
 
-#############################
-###  Capture Queue Views  ###
-#############################
+#
+# Capture Queue Views
+#
+
 
 def cq_interface(request):
 
@@ -439,9 +445,9 @@ def cjr_new_for_raspi(request):
     return dh.HttpResponse(data, content_type='application/json')
 
 
-##########################
-###  Experiment views  ###
-##########################
+#
+# Experiment views
+#
 
 
 def xp_index(request):
