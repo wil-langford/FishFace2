@@ -66,6 +66,21 @@ def _image_response_from_numpy_array(img, extension):
     return response
 
 
+def _image_response_from_bytes_io(img, extension):
+    """
+    Returns an HttpResponse with an image mimetype based on the
+    extension given.
+
+    :param img: The numpy array to serve as an image.
+    :param extension: "jpg" and "png" work.  Others can be tried at
+                      your own risk.
+    """
+    response = dh.HttpResponse(img.read(), content_type="image/{}".format(
+        extension
+    ))
+    return response
+
+
 def _file_object_to_numpy_array(image_file):
     img_raw = np.asarray(bytearray(image_file.read()), dtype=np.uint8)
     return cv2.imdecode(img_raw, 0)
@@ -764,3 +779,12 @@ def receive_image(request):
     return dh.HttpResponseRedirect(
         dcu.reverse('djff:xp_index'),
     )
+
+
+#
+# Dynamic image views
+#
+
+def verification_image(request, tag_id):
+    tag = ManualTag.objects.get(pk=tag_id)
+    return _image_response_from_bytes_io(tag.verification_image(), 'jpg')

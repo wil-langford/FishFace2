@@ -142,6 +142,12 @@ urlpatterns = dcu.patterns(
         views.stats,
         name='stats'
     ),
+
+    dcu.url(
+        r'^verification_image/tag_(?P<tag_id>\d+).jpg',
+        views.verification_image,
+        name='verification_image'
+    ),
 )
 
 

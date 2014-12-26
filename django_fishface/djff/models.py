@@ -1,14 +1,13 @@
+import math
+
 from django.db import models
-import fields
 import django.dispatch.dispatcher
 import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
 from django.conf import settings
 
-import imagekit as ik
-import imagekit.models as ikm
-import imagekit.processors as ikp
-import imagekit.utils as iku
+import fields
+from utils import djff_imagekit as ffik
 
 
 class Species(models.Model):
@@ -194,16 +193,39 @@ class ManualTag(models.Model):
     researcher = models.ForeignKey(Researcher)
 
 
-class ManualTagVerificationThumbnail(models.Model):
-    tag = models.ForeignKey(ManualTag)
-    thumbnail = ikm.ProcessedImageField(
-        format='JPEG',
-        options={'quality': 60},
-        # TODO: make a 'processors' generator that creates a processor list based
-        # on the tag.
-        # http://django-imagekit.readthedocs.org/en/latest/advanced_usage.html
-        processors=None,
-    )
+    @property
+    def int_start(self):
+        return tuple(int(x) for x in self.start.split(','))
+
+    @property
+    def int_end(self):
+        return tuple(int(x) for x in self.end.split(','))
+
+    @property
+    def vector(self):
+        return tuple(e-s for s,e in zip(self.int_start, self.int_end))
+
+    @property
+    def angle(self):
+        start = self.int_start
+        end = self.int_end
+
+        return math.atan2(
+            end[1] - start[1],
+            end[0] - start[0]
+        )
+
+    @property
+    def degrees(self):
+        return math.degrees(self.angle)
+
+    def verification_image(self):
+        generator = ffik.ManualTagVerificationThumbnail(
+            tag=self,
+            source=self.image.image_file
+        )
+        image = generator.generate()
+        return image
 
 
 class ManualVerification(models.Model):
@@ -267,3 +289,7 @@ class FishLocale(models.Model):
 def image_delete(sender, instance, **kwargs):
     # pass False so ImageField won't save the model
     instance.image_file.delete(False)
+
+@django.dispatch.dispatcher.receiver(ddms.post_save, sender=ManualTag)
+def tag_verification_image_create(sender, instance, **kwargs):
+    instance.update_verification_image()
