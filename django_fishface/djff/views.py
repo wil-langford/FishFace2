@@ -375,10 +375,10 @@ def verification_submit(request):
 
                 verify_these_unsorted.append({
                     'id': unverified_tag.id,
-                    'start': unverified_tag.start,
-                    'end': unverified_tag.end,
-                    'rotate_angle': rotate_angle,
-                    'url': '{}{}'.format(settings.MEDIA_URL, unverified_tag.image.image_file),
+                    'url': dcu.reverse(
+                        'djff:manual_tag_verification_image',
+                        args=(unverified_tag.id,)
+                    ),
                 })
 
             verify_these = sorted(verify_these_unsorted, key=operator.itemgetter('id'))
@@ -389,7 +389,7 @@ def verification_submit(request):
                 'tag_ids': verify_ids,
                 'tag_image_urls': [x['url'] for x in verify_these],
                 'verify_ids_text': ','.join([str(x) for x in verify_ids]),
-                'tags_verified_text': ','.join(['0'] * len(verify_these)),
+                'tags_verified_text': ','.join(['1'] * len(verify_these)),
             })
 
     else:

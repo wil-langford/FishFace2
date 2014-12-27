@@ -36,16 +36,24 @@ $(document).ready(function() {
             this.tile_width = this.width / this.hor_tiles;
             this.tile_height = this.height / this.vert_tiles;
 
-            this.border = new Array(hor_tiles * vert_tiles);
+            this.overlay = new Array(hor_tiles * vert_tiles);
+            this.overlay_fill = new fabric.Color('rgba(200,50,50,0.2)');
 
             for (var i=0; i<hor_tiles*vert_tiles; i++) {
                 var top_left = this.index_to_coords(i);
-                this.border[i] = new fabric.Rect({
-                    top: top_left.y,
-                    left: top_left.x,
+                this.overlay[i] = new fabric.Rect({
+                    originX: 'center',
+                    originY: 'center',
+                    selectable: false,
                     height: this.tile_height,
-                    width: this.tile_width
-                })
+                    width: this.tile_width,
+                    fill: 'transparent'
+                });
+                this.overlay[i].set({
+                    top: top_left.y,
+                    left: top_left.x
+                });
+
             }
         },
         index_to_coords: function(tile_index) {
@@ -81,7 +89,8 @@ $(document).ready(function() {
 
             img.set({
                 originX: 'center',
-                originY: 'center'
+                originY: 'center',
+                selectable: false
             });
 
             wdw.add(img);
@@ -94,24 +103,17 @@ $(document).ready(function() {
                 height: wdw.tile_height,
                 width: wdw.tile_width,
                 left: tc.x,
-                top: tc.y,
-
-                angle: img.tag.rotate_angle
+                top: tc.y
             });
 
-            //img.clipTo = function (ctx) {
-            //    var r = wdw.border[idx];
-            //    ctx.rect(r.left, r.top, r.width, r.height);
-            //}
-
-            img.rotate(img.tag.rotate_angle);
+            wdw.add(wdw.overlay[idx]);
+            wdw.overlay[idx].bringToFront();
 
             wdw.renderAll();
             img.setCoords();
             wdw.calcOffset();
         },
         replace_tile: function(tag, tile_index) {
-            console.log('replace_tile entered');
             fabric.Image.fromURL(tag.url, this.image_replaced, {
                 window: this,
                 tag: tag,
@@ -119,20 +121,14 @@ $(document).ready(function() {
             });
         },
         image_replaced: function(img) {
-            console.log('image_replaced entered');
-            console.log(img.tag);
             var wdw = img.window;
             var idx = img.tile_index;
             var tag = img.tag;
 
-
             img.set({
                 originX: 'center',
-                originY: 'center'
-            });
-
-            img.set({
-                angle: img.tag.rotate_angle
+                originY: 'center',
+                selectable: false
             });
 
             img.set({
@@ -147,9 +143,39 @@ $(document).ready(function() {
             wdw.add(wdw.tile[idx]);
 
             wdw.tile[idx].sendToBack();
+            wdw.overlay[idx].bringToFront();
             wdw.tile[idx].setCoords();
 
             wdw.calcOffset();
+        },
+        get_verifications: function() {
+            return $("input#tags_verified").attr('value').split(',');
+        },
+        set_verifications: function(verifications) {
+            $("input#tags_verified").attr('value', verifications.join(','))
+        },
+        get_verification: function(idx) {
+            var vers = this.get_verifications();
+            return vers[idx];
+        },
+        set_verification: function(idx, zero_or_one) {
+            var vers = this.get_verifications();
+            vers[idx] = zero_or_one;
+            this.set_verifications(vers);
+        },
+        toggle_tile: function(idx) {
+            console.log("toggling tile " + idx);
+            current_state = this.get_verification(idx);
+            console.log("current state " + current_state);
+            if (current_state == '0') {
+                this.set_verification(idx, '1');
+                this.overlay[idx].set({fill: 'transparent'})
+            } else {
+                this.set_verification(idx, '0');
+                this.overlay[idx].fill = 'rgba(200,50,50,0.5)';
+            }
+            console.log("new state " + this.get_verification(idx));
+            this.renderAll();
         }
     });
 
@@ -171,8 +197,7 @@ $(document).ready(function() {
         var point = new fabric.Point(pointer.x, pointer.y);
         var tile_index = ff.window.coords_to_index(point);
         if (tile_index == ff.DOWN_MOUSE_TILE_INDEX) {
-            // TODO: implement the red flag toggling
-            alert("Not yet implemented.")
+            ff.window.toggle_tile(tile_index);
         }
         ff.window.renderAll();
         ff.window.calcOffset();
@@ -193,12 +218,9 @@ $(document).ready(function() {
             data: data,
             dataType: 'json',
             success: function (data, status, jqXHR) {
-                console.log(data);
                 if (data.valid) {
                     $('input#tag_ids').attr('value', data.verify_ids_text);
                     $('input#tags_verified').attr('value', data.tags_verified_text);
-
-                    console.log("got new tags: " + data.tag_ids_text);
 
                     for (var tile_index in data.verify_these) {
                         ff.window.replace_tile(
@@ -243,15 +265,13 @@ $(document).ready(function() {
     for (var i = 0; i < (ff.TILES); i++) {
         ff.window.add_tile({
             id: 'NONE',
-            url: '/static/djff/sample-CAL.jpg',
-            rotate_angle: 0,
-            start: '0,0',
-            end: '0,0'
+            url: '/static/djff/sample-CAL.jpg'
         }, i);
     }
 
     ff.window.calcOffset();
     ff.window.renderAll();
+
 
     var researcher_id = 1;
     var researcher_name = 'DEBUG_RESEARCHER_WIL';
