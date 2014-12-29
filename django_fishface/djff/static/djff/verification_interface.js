@@ -37,7 +37,7 @@ $(document).ready(function() {
             this.tile_height = this.height / this.vert_tiles;
 
             this.overlay = new Array(hor_tiles * vert_tiles);
-            this.overlay_fill = new fabric.Color('rgba(200,50,50,0.2)');
+            this.overlay_fill = 'rgba(200,50,50,0.5)';
 
             for (var i=0; i<hor_tiles*vert_tiles; i++) {
                 var top_left = this.index_to_coords(i);
@@ -85,7 +85,6 @@ $(document).ready(function() {
         image_added: function(img) {
             var wdw = img.window;
             var idx = img.tile_index;
-            var tag = img.tag;
 
             img.set({
                 originX: 'center',
@@ -95,7 +94,6 @@ $(document).ready(function() {
 
             wdw.add(img);
             wdw.tile[idx] = img;
-            var orig = img.getOriginalSize();
 
             var tc = wdw.index_to_coords(idx);
 
@@ -123,7 +121,6 @@ $(document).ready(function() {
         image_replaced: function(img) {
             var wdw = img.window;
             var idx = img.tile_index;
-            var tag = img.tag;
 
             img.set({
                 originX: 'center',
@@ -164,7 +161,7 @@ $(document).ready(function() {
             this.set_verifications(vers);
         },
         toggle_tile: function(idx) {
-            current_state = this.get_verification(idx);
+            var current_state = this.get_verification(idx);
             if (ff.window.tile[idx].tag.id != 'NONE') {
                 if (current_state == '0') {
                     this.set_tile(idx, 1);
@@ -177,7 +174,7 @@ $(document).ready(function() {
         set_tile: function(idx, state) {
             this.set_verification(idx, state.toString());
             if (state == 0) {
-                this.overlay[idx].fill = 'rgba(200,50,50,0.5)';
+                this.overlay[idx].fill = this.overlay_fill;
             } else {
                 this.overlay[idx].set({fill: 'transparent'})
             }
