@@ -38,7 +38,6 @@
 </header>
 
 <div id="sidebar">
-    {% block sidebar %}
         <ul id="main_menu">
         <li class="non_menu_li">Setup</li>
         <a href="{% url 'djff:xp_index' %}"><li class="menu_li" id="menu_experiments">Experiments</li></a>
@@ -52,6 +51,7 @@
         <li class="non_menu_li">Information</li>
         <a href="{% url 'djff:stats' %}"><li class="menu_li" id="menu_stats">Stats</li></a>
         </ul>
+    {% block sidebar %}
     {% endblock %}
 </div>
 
