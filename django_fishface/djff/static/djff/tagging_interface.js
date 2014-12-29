@@ -203,6 +203,8 @@ $(document).ready(function() {
             if (this.zoom_update_pane) {
                 this.zoom_update_pane.echo_zoom_move(this);
             }
+
+            this.renderAll();
         },
         zoom_reset: function() {
             var reset = new fabric.Point(this.zoom_border.width/2 , this.zoom_border.height/2);
@@ -399,6 +401,8 @@ $(document).ready(function() {
             },
             dataType: 'json'
         });
+
+        over.zoom_reset();
 
         tagger.renderAll();
         over.renderAll();
