@@ -40,13 +40,17 @@
 <div id="sidebar">
     {% block sidebar %}
         <ul id="main_menu">
-        <a href="{% url 'djff:xp_index' %}"><li id="menu_experiments">Experiments</li></a>
-        <a href="{% url 'djff:sp_index' %}"><li id="menu_species">Species</li></a>
-        <a href="{% url 'djff:cjt_index' %}"><li id="menu_templates">CapJob Templates</li></a>
-        <a href="{% url 'djff:cq_interface' %}"><li id="menu_job_queue">CapJob Queue</li></a>
-        <a href="{% url 'djff:tagging_interface' %}"><li id="menu_tagging">Tag Data</li></a>
-        <a href="{% url 'djff:verification_interface' %}"><li id="menu_verification">Verify Tags</li></a>
-        <a href="{% url 'djff:stats' %}"><li id="menu_stats">Stats</li></a>
+        <li class="non_menu_li">Setup</li>
+        <a href="{% url 'djff:xp_index' %}"><li class="menu_li" id="menu_experiments">Experiments</li></a>
+        <a href="{% url 'djff:sp_index' %}"><li class="menu_li" id="menu_species">Species</li></a>
+        <li class="non_menu_li">Capturing</li>
+        <a href="{% url 'djff:cjt_index' %}"><li class="menu_li" id="menu_templates">CapJob Templates</li></a>
+        <a href="{% url 'djff:cq_interface' %}"><li class="menu_li" id="menu_job_queue">CapJob Queue</li></a>
+        <li class="non_menu_li">Analysis</li>
+        <a href="{% url 'djff:tagging_interface' %}"><li class="menu_li" id="menu_tagging">Tag Data</li></a>
+        <a href="{% url 'djff:verification_interface' %}"><li class="menu_li" id="menu_verification">Verify Tags</li></a>
+        <li class="non_menu_li">Information</li>
+        <a href="{% url 'djff:stats' %}"><li class="menu_li" id="menu_stats">Stats</li></a>
         </ul>
     {% endblock %}
 </div>

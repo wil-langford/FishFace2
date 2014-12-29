@@ -152,9 +152,19 @@ ul#main_menu li {
     text-align: right;
 }
 
+
+ul#main_menu li.non_menu_li {
+    text-align: left;
+    background-color: #AAAAAA;
+}
+
 ul#main_menu a:link{
     color: black;
     text-decoration: none;
+}
+
+ul#main_menu li.menu_li:hover {
+    background-color: lavender;
 }
 
 ul#main_menu a:visited{ color: black; }
