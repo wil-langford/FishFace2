@@ -16,6 +16,8 @@
 {% block content %}
     <div id="select_researcher_text">Please select your name from the drop-down list to the right.</div>
 
+    <div id="zero_unverified">There are currently no unverified tags.  Perhaps it's time to tag some more?</div>
+
     <span id="canvas_wrapper">
         <canvas id="verification_canvas" width="960" height="600" class="boxed"></canvas>
     </span>
@@ -26,8 +28,7 @@
     <div id="researcher_selection_wrapper">
         <form id="researcher_selection_form">
             <select id="researcher_dropdown">
-{#                <option value="NONE" selected="selected">Please select researcher</option>#}
-                <option value="1" selected="selected">WIL DEBUG SELECTION</option>
+                <option value="NONE" selected="selected">Please select researcher</option>
             {% for researcher in researchers %}
                 <option value="{{ researcher.id }}">{{ researcher.name }}</option>
             {% endfor %}

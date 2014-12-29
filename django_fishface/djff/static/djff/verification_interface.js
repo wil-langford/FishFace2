@@ -164,18 +164,23 @@ $(document).ready(function() {
             this.set_verifications(vers);
         },
         toggle_tile: function(idx) {
-            console.log("toggling tile " + idx);
             current_state = this.get_verification(idx);
-            console.log("current state " + current_state);
-            if (current_state == '0') {
-                this.set_verification(idx, '1');
-                this.overlay[idx].set({fill: 'transparent'})
-            } else {
-                this.set_verification(idx, '0');
-                this.overlay[idx].fill = 'rgba(200,50,50,0.5)';
+            if (ff.window.tile[idx].tag.id != 'NONE') {
+                if (current_state == '0') {
+                    this.set_tile(idx, 1);
+                } else {
+                    this.set_tile(idx, 0);
+                }
             }
-            console.log("new state " + this.get_verification(idx));
             this.renderAll();
+        },
+        set_tile: function(idx, state) {
+            this.set_verification(idx, state.toString());
+            if (state == 0) {
+                this.overlay[idx].fill = 'rgba(200,50,50,0.5)';
+            } else {
+                this.overlay[idx].set({fill: 'transparent'})
+            }
         }
     });
 
@@ -204,8 +209,8 @@ $(document).ready(function() {
     });
 
 
-    function get_new_tags(do_post) {
-        if (do_post == false) {
+    ff.get_new_tags = function(do_post) {
+        if (do_post == 0) {
             $('input#tag_ids').attr('value', 'DO_NOT_POST');
             $('input#tags_verified').attr('value', 'DO_NOT_POST');
         }
@@ -219,6 +224,8 @@ $(document).ready(function() {
             dataType: 'json',
             success: function (data, status, jqXHR) {
                 if (data.valid) {
+                    $('#canvas_wrapper').css('display', 'block');
+                    $('div#zero_unverified').css('display', 'none');
                     $('input#tag_ids').attr('value', data.verify_ids_text);
                     $('input#tags_verified').attr('value', data.tags_verified_text);
 
@@ -228,6 +235,16 @@ $(document).ready(function() {
                             tile_index
                         );
                     }
+
+                    for (var i = 0; i < (ff.TILES); i++) {
+                        ff.window.set_tile(i, 1);
+                    }
+
+                } else {
+                    if (data.reason == 'zero_unverified') {
+                        $('div#zero_unverified').css('display', 'block');
+                        $('#canvas_wrapper').css('display', 'none');
+                    }
                 }
             }
         });
@@ -235,9 +252,9 @@ $(document).ready(function() {
         ff.window.renderAll();
     }
 
-    $('form#tag_form').submit(function (event) {
+    $('#verification_form').on('submit', function (event) {
         event.preventDefault();
-        get_new_tags(true);
+        ff.get_new_tags(1);
     });
 
     $('#researcher_dropdown').change(function (event) {
@@ -256,7 +273,7 @@ $(document).ready(function() {
             $('#canvas_wrapper').css('display', 'block');
             $('#verification_form_wrapper').css('display', 'block');
 
-            get_new_tags(false);
+            ff.get_new_tags(0);
 
             ff.window.renderAll();
         }
@@ -265,29 +282,9 @@ $(document).ready(function() {
     for (var i = 0; i < (ff.TILES); i++) {
         ff.window.add_tile({
             id: 'NONE',
-            url: '/static/djff/sample-CAL.jpg'
+            url: '/static/djff/no_image.png'
         }, i);
     }
-
-    ff.window.calcOffset();
-    ff.window.renderAll();
-
-
-    var researcher_id = 1;
-    var researcher_name = 'DEBUG_RESEARCHER_WIL';
-
-    $('input#researcher_id').attr('value', researcher_id);
-
-    $('#res_name').html(researcher_name);
-    $('#res_name2').html(researcher_name);
-
-    $('#researcher_selection_wrapper').css('display', 'none');
-    $('#select_researcher_text').css('display', 'none');
-    $('#greet_researcher').css('display', 'block');
-    $('#canvas_wrapper').css('display', 'block');
-    $('#verification_form_wrapper').css('display', 'block');
-
-    get_new_tags(false);
 
     ff.window.calcOffset();
     ff.window.renderAll();

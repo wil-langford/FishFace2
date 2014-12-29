@@ -278,6 +278,7 @@ def tag_submit(request):
 
         if untagged_images.count() == 0:
             return_value['valid'] = False
+            return_value['reason'] = 'zero_untagged'
         else:
             return_value['untagged_images_count'] = untagged_images.count()
             max_id = untagged_images.aggregate(ddm.Max('id')).values()[0]
@@ -291,6 +292,7 @@ def tag_submit(request):
 
     else:
         return_value['valid'] = False
+        return_value['reason'] = 'no_researcher'
 
     return dh.HttpResponse(json.dumps(return_value), content_type='application/json')
 
@@ -329,59 +331,72 @@ def verification_submit(request):
 
     if researcher_id != 'NONE':
         if payload['num_tiles']:
-            number_of_tags = int(payload['num_tiles'])
+            number_of_tiles = int(payload['num_tiles'])
         else:
-            number_of_tags = None
+            number_of_tiles = None
 
         if (payload['tag_ids'] != 'DO_NOT_POST' and
                 payload['tags_verified'] != 'DO_NOT_POST' and
-                number_of_tags is not None):
-            ids = payload['tag_ids'].split(',')
-            logger.info('making new database entry')
+                number_of_tiles is not None):
+            ids_and_verifications = zip(
+                payload['tag_ids'].split(','),
+                payload['tags_verified'].split(','),
+            )
 
-            verifieds = payload['tags_verified'].split(',')
+            ids, verifications = zip(*[x for x in ids_and_verifications if x[0] != 'NONE'])
 
-            verified_ids = [x[0] for x in zip(ids, verifieds) if x[1] == 1]
-            unverified_ids = [x[0] for x in zip(ids, verifieds) if x[1] == 0]
+            ids_set = set(ids)
+            antiverified_tag_ids = set([x[0] for x in zip(ids, verifications) if x[1] == '0'])
+            verified_tag_ids = ids_set - antiverified_tag_ids
 
-            for image_id in verified_ids:
+            logger.debug('verified_tag_ids {}'.format(str(verified_tag_ids)))
+            logger.debug('antiverified_tag_ids {}'.format(str(antiverified_tag_ids)))
+
+            for tag_id in verified_tag_ids:
+                logger.info('adding verification for tag id {}'.format(tag_id))
                 manual_verification = ManualVerification()
 
-                manual_verification.image = Image.objects.get(pk=image_id)
+                manual_verification.tag = ManualTag.objects.get(pk=tag_id)
                 manual_verification.researcher = Researcher.objects.get(pk=researcher_id)
 
                 manual_verification.save()
 
-        unverified_tags = ManualTag.objects.filter().exclude(
-            manualverification__researcher__id__exact=int(payload['researcher_id']))
+            logger.info('Tags antiverified: {}'.format(antiverified_tag_ids))
+            for tag_id in antiverified_tag_ids:
+                logger.info("Deleting antiverified tag with id {}".format(tag_id))
+                antiverified_tag = ManualTag.objects.get(pk=tag_id)
+                antiverified_tag.delete()
 
-        if unverified_tags.count() == 0 or number_of_tags is None:
+        unverified_tags = list(set(ManualTag.objects.filter().exclude(
+            manualverification__researcher__id__exact=int(payload['researcher_id']))))
+        random.shuffle(unverified_tags)
+        if number_of_tiles is not None:
+            unverified_tags = unverified_tags[:number_of_tiles]
+
+        if len(unverified_tags) == 0 or number_of_tiles is None:
             return_value['valid'] = False
+            return_value['reason'] = 'zero_unverified'
         else:
-            verify_these_unsorted = list()
+            verify_these = list()
 
-            for i in range(number_of_tags):
-                max_id = unverified_tags.aggregate(ddm.Max('id')).values()[0]
-                min_id = math.ceil(max_id*random.random())
-                unverified_tag = unverified_tags.filter(id__gte=min_id)[0]
-
-                start = unverified_tag.start.split(',')
-                end = unverified_tag.end.split(',')
-
-                rotate_angle = -1 * int(math.degrees(math.atan2(
-                    int(end[1]) - int(start[1]),
-                    int(end[0]) - int(start[0])
-                )))
-
-                verify_these_unsorted.append({
-                    'id': unverified_tag.id,
+            for tag in unverified_tags:
+                verify_these.append({
+                    'id': tag.id,
                     'url': dcu.reverse(
                         'djff:manual_tag_verification_image',
-                        args=(unverified_tag.id,)
+                        args=(tag.id,)
                     ),
                 })
 
-            verify_these = sorted(verify_these_unsorted, key=operator.itemgetter('id'))
+            short_by = number_of_tiles - len(verify_these)
+            if short_by > 0:
+                verify_these.extend([
+                    {
+                        'id': 'NONE',
+                        'url': settings.STATIC_URL + 'djff/no_image.png'
+                    }
+                ] * short_by)
+
             verify_ids = [x['id'] for x in verify_these]
 
             return_value.update({
@@ -394,6 +409,7 @@ def verification_submit(request):
 
     else:
         return_value['valid'] = False
+        return_value['reason'] = 'no_researcher'
 
     return dh.HttpResponse(json.dumps(return_value), content_type='application/json')
 

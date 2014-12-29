@@ -289,7 +289,3 @@ class FishLocale(models.Model):
 def image_delete(sender, instance, **kwargs):
     # pass False so ImageField won't save the model
     instance.image_file.delete(False)
-
-@django.dispatch.dispatcher.receiver(ddms.post_save, sender=ManualTag)
-def tag_verification_image_create(sender, instance, **kwargs):
-    instance.update_verification_image()

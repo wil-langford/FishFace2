@@ -298,3 +298,7 @@ ul.normal_ul li {
 div.shift_right {
     margin-left: 4em;
 }
+
+div#zero_unverified {
+    display: none;
+}
