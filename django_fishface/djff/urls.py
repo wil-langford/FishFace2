@@ -120,6 +120,18 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
+        r'^verification/$',
+        views.verification_interface,
+        name='verification_interface'
+    ),
+
+    dcu.url(
+        r'^verification_submit/$',
+        views.verification_submit,
+        name='verification_submit'
+    ),
+
+    dcu.url(
         r'^cjr/new_for_raspi/$',
         views.cjr_new_for_raspi,
         name='cjr_new_for_raspi'
@@ -129,6 +141,12 @@ urlpatterns = dcu.patterns(
         r'^stats/$',
         views.stats,
         name='stats'
+    ),
+
+    dcu.url(
+        r'^verification_image/manual_tag_(?P<tag_id>\d+).jpg',
+        views.manual_tag_verification_image,
+        name='manual_tag_verification_image'
     ),
 )
 

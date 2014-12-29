@@ -1,0 +1,62 @@
+{% extends "djff/base.html" %}
+{% load staticfiles %}
+
+{% block localscript %}
+    <script type="text/javascript">
+        if (window.ff == undefined) { window.ff = {}; }
+        window.ff.verification_submit_url = "{% url 'djff:verification_submit' %}";
+    </script>
+    <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.js' %}"></script>
+    <script type="text/javascript" src="{% static 'djff/verification_interface.js' %}" canvas="tag_canvas"></script>
+
+{% endblock %}
+
+{% block subtitle %}Verifying Data Analysis{% endblock %}
+
+{% block content %}
+    <div id="select_researcher_text">Please select your name from the drop-down list to the right.</div>
+
+    <div id="zero_unverified">There are currently no unverified tags.  Perhaps it's time to tag some more?</div>
+
+    <span id="canvas_wrapper">
+        <canvas id="verification_canvas" width="960" height="600" class="boxed"></canvas>
+    </span>
+
+{% endblock %}
+
+{% block preview_area %}
+    <div id="researcher_selection_wrapper">
+        <form id="researcher_selection_form">
+            <select id="researcher_dropdown">
+                <option value="NONE" selected="selected">Please select researcher</option>
+            {% for researcher in researchers %}
+                <option value="{{ researcher.id }}">{{ researcher.name }}</option>
+            {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div id="greet_researcher">
+        Hello, <span id="res_name"></span>.
+        (<a href="" id="change_res">not <span id="res_name2"></span></a>?)
+
+        <p>In the area to the left, you'll see a grid of images.  All of the fish are supposed to
+        be "facing" to the right.  If any of the fish aren't facing to the right, click on them
+        to highlight them in red.  When all of the fish that aren't facing right are highlighted,
+        or if they were all facing to the right to begin with, then click the green button below
+        to verify this set and view a new set of images.
+    </div>
+
+    <div id="verification_form_wrapper">
+        <form id="verification_form">
+            <input type="submit" id="verify_proceed_button" value="Verify and Proceed">
+            <input type="hidden" id="researcher_id" name="researcher_id" value="NONE">
+            <input type="hidden" id="tag_ids" name="tag_ids" value="DO_NOT_POST">
+            <input type="hidden" id="tags_verified" name="tags_verified" value="DO_NOT_POST">
+            <input type="hidden" id="num_tiles" name="num_tiles" value="DO_NOT_POST">
+        </form>
+    </div>
+
+    <div class="debug_output"></div>
+
+{% endblock %}
