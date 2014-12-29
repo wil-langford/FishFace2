@@ -192,7 +192,6 @@ class ManualTag(models.Model):
                                             max_length=20)
     researcher = models.ForeignKey(Researcher)
 
-
     @property
     def int_start(self):
         return tuple(int(x) for x in self.start.split(','))
@@ -203,7 +202,7 @@ class ManualTag(models.Model):
 
     @property
     def vector(self):
-        return tuple(e-s for s,e in zip(self.int_start, self.int_end))
+        return tuple(e - s for s, e in zip(self.int_start, self.int_end))
 
     @property
     def angle(self):

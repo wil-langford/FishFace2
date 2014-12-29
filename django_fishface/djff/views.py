@@ -4,13 +4,9 @@ import datetime
 import json
 import random
 import math
-import operator
-# import time
-# import threading
 
 import cv2
 import pytz
-# import requests
 
 import django.shortcuts as ds
 import django.http as dh
@@ -148,7 +144,6 @@ def receive_telemetry(request):
         is_cal_image = (str(payload['is_cal_image']).lower()
                         in ['true', 't', 'yes', 'y', '1'])
         voltage = float(payload['voltage'])
-        current = float(payload['current'])
 
         capture_timestamp = datetime.datetime.utcfromtimestamp(
             float(payload['capture_time'])).replace(tzinfo=dut.utc)
@@ -310,7 +305,6 @@ def verification_interface(request):
 
     all_tags = ManualTag.objects.all()
 
-
     context = {
         'researchers': researchers,
         'tags': all_tags,
@@ -463,8 +457,8 @@ def cjr_new_for_raspi(request):
 
     cjr.running = True
 
-    cjr.job_start = datetime.datetime.utcfromtimestamp(float(request.POST['start_timestamp'])).replace(
-        tzinfo=pytz.utc)
+    cjr.job_start = datetime.datetime.utcfromtimestamp(
+        float(request.POST['start_timestamp'])).replace(tzinfo=pytz.utc)
 
     cjr.save()
 
@@ -539,23 +533,17 @@ def xp_capturer(request):
         'voltage': request.POST['voltage'],
         'species': xp.species.shortname,
         'no_reply': 1,
+        'is_cal_image': request.POST.get('is_cal_image', False),
+        'cjr_id': request.POST.get('cjr_id', 0),
     }
 
-    # default value for is_cal_image
-    payload['is_cal_image'] = request.POST.get(
-        'is_cal_image',
-        False
-    )
-
-    # default value for cjr_id
-    payload['cjr_id'] = request.POST.get(
-        'cjr_id',
-        0
-    )
+    response = {
+        'xp_id': xp.id
+    }
 
     # if it's not a cal image OR if it's a cal image and the user
     # checked the "ready to capture cal image" box...
-    if (not request.POST['is_cal_image'] == 'True' or request.POST.get('cal_ready', '') == 'True'):
+    if not request.POST['is_cal_image'] == 'True' or request.POST.get('cal_ready', '') == 'True':
         telemeter = telemetry.Telemeter()
         response = telemeter.post_to_raspi(payload)
 
@@ -619,9 +607,9 @@ def xp_capture(request, xp_id):
     )
 
 
-#######################
-###  Species views  ###
-#######################
+#
+# Species views
+#
 
 
 class SpeciesIndex(dvg.ListView):
@@ -653,9 +641,9 @@ def sp_new(request):
     )
 
 
-##################################
-###  CaptureJobTemplate views  ###
-##################################
+#
+# CaptureJobTemplate views
+#
 
 
 class CaptureJobTemplateIndex(dvg.ListView):
@@ -685,6 +673,7 @@ def cjt_new(request):
         dcu.reverse('djff:cjt_detail',
                     args=(cjt.id,))
     )
+
 
 def insert_capturejob_into_queue(request):
     post = request.POST
@@ -733,9 +722,9 @@ def abort_running_job(request):
     return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
 
 
-################################
-###  Internal Capture views  ###
-################################
+#
+# Internal Capture views
+#
 
 
 @csrf_dec.csrf_exempt
@@ -760,7 +749,6 @@ def receive_image(request):
             is_cal_image = (str(request.POST['is_cal_image']).lower()
                             in ['true', 't', 'yes', 'y', '1'])
             voltage = float(request.POST['voltage'])
-            current = float(request.POST['current'])
 
             capture_timestamp = datetime.datetime.utcfromtimestamp(
                 float(request.POST['capture_time'])
@@ -800,6 +788,7 @@ def receive_image(request):
 #
 # Dynamic image views
 #
+
 
 def manual_tag_verification_image(request, tag_id):
     tag = ManualTag.objects.get(pk=tag_id)
