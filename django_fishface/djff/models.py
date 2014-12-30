@@ -140,6 +140,11 @@ class Image(models.Model):
                                    upload_to="experiment_imagery/stills/%Y.%m.%d")
     is_cal_image = models.BooleanField('is this image a calibration image?', default=False)
 
+    bad_tags = models.IntegerField(
+        "how many of this image's tags have been deleted during validation",
+        default=0)
+
+
     psu_log = models.ForeignKey(PowerSupplyLog,
                                 null=True, blank=True)
 
@@ -296,3 +301,6 @@ def image_delete(sender, instance, **kwargs):
 def tag_delete(sender, instance, **kwargs):
     instance.researcher.bad_tags += 1
     instance.researcher.save()
+
+    instance.image.bad_tags += 1
+    instance.image.save()
