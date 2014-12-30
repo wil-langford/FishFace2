@@ -391,6 +391,7 @@ $(document).ready(function() {
                     $('input#form_end').val('NONE');
 
                     $('span#researcher_tag_score').html(data.researcher_score);
+                    $('span#researcher_bad_tags').html(data.researcher_bad_tags);
 
                     if (data.untagged_images_count) {
                         $('span#researcher_tags_remaining').html(data.untagged_images_count);
