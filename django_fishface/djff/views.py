@@ -231,7 +231,12 @@ def telemetry_proxy(request):
 def tagging_interface(request):
 
     all_researchers = Researcher.objects.all()
-    researchers = [{'id': researcher.id, 'name': researcher.name, 'tag_score': researcher.tag_score}
+    researchers = [{
+                       'id': researcher.id,
+                       'name': researcher.name,
+                       'tag_score': researcher.tag_score,
+                       'bad_tags': researcher.bad_tags,
+                   }
                    for researcher in all_researchers]
 
     context = {
@@ -266,6 +271,7 @@ def tag_submit(request):
             manual_tag.save()
 
         return_value['researcher_score'] = researcher.tag_score
+        return_value['researcher_bad_tags'] = researcher.bad_tags
 
         untagged_images = Image.objects.filter(is_cal_image=False).exclude(
             xp__name__contains='TEST_DATA').exclude(

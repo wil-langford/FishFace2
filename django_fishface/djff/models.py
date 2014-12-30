@@ -49,6 +49,9 @@ class Species(models.Model):
 class Researcher(models.Model):
     name = models.CharField('name of the researcher', max_length=200)
     email = models.EmailField('email address of the researcher (optional)', null=True, blank=True, )
+    bad_tags = models.IntegerField(
+        "how many of this researcher's tags have been deleted during validation",
+        default=0)
 
     def __unicode__(self):
         return u'{}'.format(self.name)
@@ -288,3 +291,8 @@ class FishLocale(models.Model):
 def image_delete(sender, instance, **kwargs):
     # pass False so ImageField won't save the model
     instance.image_file.delete(False)
+
+@django.dispatch.dispatcher.receiver(ddms.pre_delete, sender=ManualTag)
+def tag_delete(sender, instance, **kwargs):
+    instance.researcher.bad_tags += 1
+    instance.researcher.save()
