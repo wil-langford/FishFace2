@@ -68,6 +68,18 @@ div#header_title_block a:link {
 
 div#header_title_block a:visited { color: white; }
 
+table {
+    border: none;
+    margin: 2em;
+    border-spacing: 0;
+}
+
+td {
+    border: 1px dotted black;
+    margin: 0;
+    padding: 2px;
+}
+
 .boxed
 {
     border: 1px solid black;
@@ -140,9 +152,19 @@ ul#main_menu li {
     text-align: right;
 }
 
+
+ul#main_menu li.non_menu_li {
+    text-align: left;
+    background-color: #AAAAAA;
+}
+
 ul#main_menu a:link{
     color: black;
     text-decoration: none;
+}
+
+ul#main_menu li.menu_li:hover {
+    background-color: lavender;
 }
 
 ul#main_menu a:visited{ color: black; }
@@ -243,14 +265,6 @@ div.job_wrapper {
     display: none;
 }
 
-canvas#tag_canvas {
-    cursor: crosshair;
-}
-
-canvas#over_canvas {
-    cursor: crosshair;
-}
-
 #tag_form_wrapper {
     display: none;
 }
@@ -259,14 +273,42 @@ canvas#over_canvas {
     display: none;
 }
 
-#save_proceed_button {
+#save_proceed_button, #verify_proceed_button {
     background-color: palegreen;
 
     min-width: 12em;
     min-height: 6em;
 }
 
-div.debug_output {
-    display: block;
+#verification_form_wrapper {
+    display: none;
 }
 
+div.debug_output {
+    display: none;
+}
+
+#researcher_score {
+    display: none;
+}
+
+ul.normal_ul {
+    margin: 1em;
+    padding: 0;
+}
+
+ul.normal_ul li {
+    list-style: circle;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background-color: transparent;
+}
+
+div.shift_right {
+    margin-left: 4em;
+}
+
+div#zero_unverified {
+    display: none;
+}
