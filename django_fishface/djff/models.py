@@ -295,7 +295,7 @@ class FishLocale(models.Model):
                                             auto_now_add=True)
 
 
-class CaptureQueue(models.Model):
+class CaptureJobQueue(models.Model):
     name = models.CharField('name of the queue', max_length=50)
     timestamp = models.DateTimeField('when this queue was saved', auto_now_add=True)
     queue = jsonfield.JSONField('a queue spec object')
