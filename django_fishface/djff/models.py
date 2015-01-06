@@ -6,6 +6,8 @@ import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
 from django.conf import settings
 
+import jsonfield
+
 import fields
 from utils import djff_imagekit as ffik
 
@@ -291,6 +293,13 @@ class FishLocale(models.Model):
     tank = models.ForeignKey(Tank)
     datetime_in_tank = models.DateTimeField('the date and time that the fish was in the tank',
                                             auto_now_add=True)
+
+
+class CaptureQueue(models.Model):
+    name = models.CharField('name of the queue', max_length=50)
+    timestamp = models.DateTimeField('when this queue was saved', auto_now_add=True)
+    queue = jsonfield.JSONField('a queue spec object')
+    comment = models.TextField('description of this queue')
 
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
