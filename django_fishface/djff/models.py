@@ -165,7 +165,7 @@ class Image(models.Model):
         return '<a href="/media/{}" target="_newtab">X</a>'.format(
             self.image_file,
         )
-    linked_inline_image.allow_tags = True
+    linked_inline_bullet.allow_tags = True
 
 
 class ImageAnalysis(models.Model):
