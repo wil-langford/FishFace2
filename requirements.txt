@@ -5,3 +5,4 @@ south
 quantities
 Pillow
 pytz
+picamera
