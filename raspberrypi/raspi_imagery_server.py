@@ -9,7 +9,6 @@ import threading
 import time
 import io
 import BaseHTTPServer
-import urlparse
 import requests
 import datetime
 import logging
@@ -75,7 +74,7 @@ DATE_FORMAT = "%Y-%m-%d-%H:%M:%S"
 def delay_until(unix_timestamp):
     now = time.time()
     while now < unix_timestamp:
-        time.sleep(unix_timestamp-now)
+        time.sleep(unix_timestamp - now)
         now = time.time()
 
 
@@ -153,7 +152,6 @@ class CaptureJob(threading.Thread):
         if self.status == 'running':
             self.status = 'completed'
 
-
         if self.interval > 0:
             deathcry = self.get_status_dict()
             deathcry['command'] = 'job_status_update'
@@ -187,7 +185,7 @@ class CaptureJob(threading.Thread):
         self.logger.debug('first capture in {} seconds'.format(first_capture_at - time.time()))
         self.capture_times = [first_capture_at]
         for j in range(1, int(self.duration / self.interval)):
-            self.capture_times.append(first_capture_at + j*self.interval)
+            self.capture_times.append(first_capture_at + j * self.interval)
 
         self.job_ends_after = self.capture_times[-1]
         self.total = len(self.capture_times)
@@ -244,6 +242,7 @@ class CaptureJob(threading.Thread):
         else:
             return 1000000
 
+
 class CaptureJobController(threading.Thread):
     def __init__(self, imagery_server):
         super(CaptureJobController, self).__init__(name='capturejob_controller')
@@ -283,10 +282,10 @@ class CaptureJobController(threading.Thread):
                                  "Cries remaining to post: {}".format(len(self._deathcries)))
                 self.server.telemeter.post_to_fishface(self.deathcry)
 
-
-            ###
-            ### Primary CJC loop handler.
-            ###
+            #
+            # Primary CJC loop handler.
+            #
+            # 0 5 0 8 0 12 0
 
             if self._current_job is not None:
                 self.logger.debug('Reporting on current job.')
@@ -304,13 +303,13 @@ class CaptureJobController(threading.Thread):
                     self._staged_job = CaptureJob(self, **self._queue.pop(0))
 
             else:  # there is no current job
-                if self._staged_job is not None: # there is a staged job
+                if self._staged_job is not None:  # there is a staged job
                     self.logger.info('Promoting staged job.')
                     self._current_job = self._staged_job
                     self._current_job.start()
                     self._staged_job = None
-                else: # there is no staged job
-                    if self._queue: # there are jobs in queue
+                else:  # there is no staged job
+                    if self._queue:  # there are jobs in queue
                         self.logger.info('No jobs active or staged, but jobs in queue.')
                         self._current_job = CaptureJob(self, **self._queue.pop(0))
                         self._current_job.start()
@@ -324,7 +323,6 @@ class CaptureJobController(threading.Thread):
                                 'current': 0,
                                 'enable_output': 0,
                             })
-
 
             delay_for_seconds(delay_until_next_loop)
 
@@ -398,6 +396,7 @@ class CaptureJobController(threading.Thread):
     @deathcry.setter
     def deathcry(self, deathcry):
         self._deathcries.append(deathcry)
+
 
 class Telemeter(object):
     def __init__(self, imagery_server):
@@ -656,7 +655,6 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Method", "POST")
         self.send_header("Access-Control-Allow-Origin", origin)
         self.end_headers()
-
 
     # noinspection PyPep8Naming
     def do_POST(self):

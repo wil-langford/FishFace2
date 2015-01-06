@@ -798,4 +798,4 @@ def receive_image(request):
 
 def manual_tag_verification_image(request, tag_id):
     tag = ManualTag.objects.get(pk=tag_id)
-    return _image_response_from_bytes_io(tag.verification_image(), 'jpg')
+    return _image_response_from_bytes_io(tag.verification_image, 'jpg')
