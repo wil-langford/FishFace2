@@ -226,6 +226,7 @@ class ManualTag(models.Model):
     def degrees(self):
         return math.degrees(self.angle)
 
+    @property
     def verification_image(self):
         generator = ffik.ManualTagVerificationThumbnail(
             tag=self,
