@@ -78,14 +78,14 @@ class Researcher(models.Model):
     @property
     def accuracy_score(self):
         try:
-            return round(float(self.verified_tags) / self.all_tags_count, 3)
+            return round(float(self.verified_tags) / (self.all_tags_count - self.unverified_tags), 3)
         except ZeroDivisionError:
             return None
 
     @property
     def antiaccuracy_score(self):
         try:
-            return round(float(self.bad_tags) / self.all_tags_count, 3)
+            return round(float(self.bad_tags) / (self.all_tags_count - self.unverified_tags), 3)
         except ZeroDivisionError:
             return None
 
