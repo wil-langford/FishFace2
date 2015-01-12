@@ -236,6 +236,7 @@ def tagging_interface(request):
                        'name': researcher.name,
                        'tag_score': researcher.tag_score,
                        'bad_tags': researcher.bad_tags,
+                       'good_tags': researcher.verified_tags
                    }
                    for researcher in all_researchers]
 
@@ -270,8 +271,9 @@ def tag_submit(request):
 
             manual_tag.save()
 
-        return_value['researcher_score'] = researcher.tag_score
+        return_value['researcher_all_tags'] = researcher.all_tags_count
         return_value['researcher_bad_tags'] = researcher.bad_tags
+        return_value['researcher_good_tags'] = researcher.verified_tags
 
         untagged_images = Image.objects.filter(is_cal_image=False).exclude(
             xp__name__contains='TEST_DATA').exclude(

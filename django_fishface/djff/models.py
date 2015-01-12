@@ -2,6 +2,7 @@ import math
 
 from django.db import models
 import django.dispatch.dispatcher
+import django.db.models as ddm
 import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
 from django.conf import settings
@@ -60,6 +61,27 @@ class Researcher(models.Model):
     def tag_score(self):
         return self.manualtag_set.count()
 
+    @property
+    def all_tags_count(self):
+        return self.tag_score + self.bad_tags
+
+    @property
+    def unverified_tags(self):
+        tags = self.manualtag_set.filter(researcher=self.id).annotate(ver_count=ddm.Count('manualverification'))
+        return tags.filter(ver_count=0).count()
+
+    @property
+    def verified_tags(self):
+        tags = self.manualtag_set.filter(researcher=self.id).annotate(ver_count=ddm.Count('manualverification'))
+        return tags.filter(ver_count__gt=0).count()
+
+    @property
+    def accuracy_score(self):
+        return round(float(self.verified_tags) / self.all_tags_count, 3)
+
+    @property
+    def antiaccuracy_score(self):
+        return round(float(self.bad_tags) / self.all_tags_count, 3)
 
 class PowerSupplyLog(models.Model):
     measurement_datetime = models.DateTimeField('timestamp of measurement', auto_now_add=True)
