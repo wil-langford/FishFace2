@@ -15,9 +15,23 @@
 <div class="shift_right">
     <h2 class="boxed">Researchers</h2>
     <table>
-        <tr><th>name</th><th>tagged images</th></tr>
+        <tr>
+            <th>name</th>
+            <th>total tags</th>
+            <th>verified tags</th>
+            <th class="bad">antiverified tags</th>
+            <th>accuracy rate</th>
+            <th class="bad">antiaccuracy rate</th>
+        </tr>
         {% for researcher in researchers %}
-            <tr><td>{{ researcher.name }}</td><td>{{ researcher.tag_score }}</td></tr>
+            <tr>
+                <td>{{ researcher.name }}</td>
+                <td>{{ researcher.all_tags_count }}</td>
+                <td>{{ researcher.verified_tags }}</td>
+                <td class="bad">{{ researcher.bad_tags }}</td>
+                <td>{{ researcher.accuracy_score }}</td>
+                <td class="bad">{{ researcher.antiaccuracy_score }}</td>
+            </tr>
         {% endfor %}
     </table>
 
@@ -54,6 +68,7 @@
                 <tr>
                     <td>{{ cjr.slug }}</td>
                     <td>{{ cjr.voltage }}</td>
+                    <td>{{ cjr.current }}</td>
                     <td>{{ cjr.image_set.count }}</td>
                 </tr>
             {% endfor %}
