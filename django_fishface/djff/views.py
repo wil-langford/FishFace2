@@ -274,6 +274,10 @@ def tag_submit(request):
         return_value['researcher_all_tags'] = researcher.all_tags_count
         return_value['researcher_bad_tags'] = researcher.bad_tags
         return_value['researcher_good_tags'] = researcher.verified_tags
+        return_value['researcher_unverified_tags'] = researcher.unverified_tags
+        return_value['researcher_tags_undergone_verification'] = researcher.all_tags_count - researcher.unverified_tags
+        return_value['researcher_good_rate'] = researcher.accuracy_score
+        return_value['researcher_bad_rate'] = researcher.antiaccuracy_score
 
         untagged_images = Image.objects.filter(is_cal_image=False).exclude(
             xp__name__contains='TEST_DATA').exclude(
