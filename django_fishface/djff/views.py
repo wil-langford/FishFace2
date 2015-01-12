@@ -110,7 +110,7 @@ def stats(request):
             'id': xp.id,
             'name': xp.name,
             'slug': xp.slug,
-            'cjrs': xp.capturejobrecord_set.all(),
+            'cjrs': xp.capturejobrecord_set.all().order_by('id'),
             'actual_xp': xp,
         }
 
