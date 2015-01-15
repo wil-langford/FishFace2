@@ -89,6 +89,7 @@ class Researcher(models.Model):
         except ZeroDivisionError:
             return None
 
+
 class PowerSupplyLog(models.Model):
     measurement_datetime = models.DateTimeField('timestamp of measurement', auto_now_add=True)
     current_meas = models.FloatField('current measured by power supply', null=True)
@@ -164,6 +165,7 @@ class Image(models.Model):
     # Data available at capture time.
     capture_timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
     voltage = models.FloatField('voltage at power supply', default=0)
+    current = models.FloatField('current at power supply', default=0)
     image_file = models.ImageField('path of image file',
                                    upload_to="experiment_imagery/stills/%Y.%m.%d")
     is_cal_image = models.BooleanField('is this image a calibration image?', default=False)

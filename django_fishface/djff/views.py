@@ -144,6 +144,7 @@ def receive_telemetry(request):
         is_cal_image = (str(payload['is_cal_image']).lower()
                         in ['true', 't', 'yes', 'y', '1'])
         voltage = float(payload['voltage'])
+        current = float(payload['current'])
 
         capture_timestamp = datetime.datetime.utcfromtimestamp(
             float(payload['capture_time'])).replace(tzinfo=dut.utc)
@@ -159,6 +160,7 @@ def receive_telemetry(request):
             xp=xp,
             capture_timestamp=capture_timestamp,
             voltage=voltage,
+            current=current,
             is_cal_image=is_cal_image,
             cjr=cjr,
             image_file=request.FILES[
@@ -761,6 +763,7 @@ def receive_image(request):
             is_cal_image = (str(request.POST['is_cal_image']).lower()
                             in ['true', 't', 'yes', 'y', '1'])
             voltage = float(request.POST['voltage'])
+            current = float(request.POST['current'])
 
             capture_timestamp = datetime.datetime.utcfromtimestamp(
                 float(request.POST['capture_time'])
@@ -780,6 +783,7 @@ def receive_image(request):
                 xp=xp,
                 capture_timestamp=capture_timestamp,
                 voltage=voltage,
+                current=current,
                 is_cal_image=is_cal_image,
                 cjr=cjr,
                 image_file=request.FILES[
