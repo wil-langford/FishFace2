@@ -30,6 +30,7 @@ from djff.models import (
     Researcher,
     ManualTag,
     ManualVerification,
+    CaptureJobQueue,
 )
 
 import djff.utils.telemetry as telemetry
@@ -454,7 +455,7 @@ def cq_interface(request):
 
 @csrf_dec.csrf_exempt
 def cjr_new_for_raspi(request):
-    logger.debug("making new CJR with: {}".format(request.POST))
+    logger.info("making new CJR with: {}".format(request.POST))
     cjr = CaptureJobRecord()
 
     cjr.xp_id = int(request.POST['xp_id'])
@@ -474,6 +475,21 @@ def cjr_new_for_raspi(request):
     })
 
     return dh.HttpResponse(data, content_type='application/json')
+
+
+def save_cjq(request):
+    rp = request.POST
+    logger.info("making new CJQ with: {}".format(rp))
+
+    cjq = CaptureJobQueue()
+
+    cjq.name = rp.name
+    cjq.comment = rp.comment
+    cjq.queue = rp.queue
+
+    cjq.save()
+
+    return dh.HttpResponse(status=201)
 
 
 #
