@@ -497,10 +497,14 @@ class ImageryServer(object):
 
         self._current_frame = image
         self._current_frame_capture_time = new_frame_capture_time
+        self._current_frame_voltage = self.power_supply.voltage_sense
+        self._current_frame_current = self.power_supply.current_sense
 
     def post_current_image_to_server(self, payload, sync=True):
         current_frame = self._current_frame
         current_frame_capture_time = self._current_frame_capture_time
+        current_frame_voltage = self._current_frame_voltage
+        current_frame_current = self._current_frame_current
 
         stream = io.BytesIO(current_frame).read()
 
@@ -527,6 +531,8 @@ class ImageryServer(object):
 
         payload['filename'] = image_filename
         payload['capture_time'] = current_frame_capture_time
+        payload['voltage'] = float(current_frame_voltage)
+        payload['current'] = float(current_frame_current)
         payload['is_cal_image'] = str(is_cal_image)
 
         files = {image_filename: stream}
