@@ -481,6 +481,8 @@ class ImageryServer(object):
 
             'abort_running_job': self.capturejob_controller.abort_running_job,
             'abort_all': self.capturejob_controller.abort_all,
+
+            'imagery_server_monitor': self.monitor,
         }
 
         self._heartbeat_icl = 0
@@ -558,6 +560,29 @@ class ImageryServer(object):
 
     def get_current_frame(self):
         return self._current_frame
+
+    def monitor(self, payload):
+        response = {
+            'command': 'imagery_server_monitor',
+            'psu_voltage_meas': self.power_supply.voltage_sense,
+            'psu_current_meas': self.power_supply.current_sense,
+        }
+
+        if self._current_job is not None:
+            response['current_job'] = self.get_current_job_status()
+            response['xp_id'] = response['current_job']['xp_id']
+        else:
+            response['xp_id'] = False
+
+        if self._staged_job is not None:
+            response['staged_job'] = self.get_staged_job_status()
+
+        if self._queue:
+            response['queue_count'] = len(self._queue)
+        else:
+            response['queue_count'] = 0
+
+        return response
 
     def run(self):
         def image_capture_loop():
