@@ -83,6 +83,83 @@ def delay_for_seconds(seconds):
     delay_until(later)
 
 
+class RegisteredThreadWithHeartbeat(threading.Thread):
+    """
+    Remember to override the _heartbeat_run(), _run_at_start(), and _run_at_end() methods.
+    """
+
+    def __init__(self, thread_registry, heartbeat_interval=1, *args, **kwargs):
+        super(RegisteredThreadWithHeartbeat, self).__init__(*args, **kwargs)
+
+        self._heartbeat_count = 0
+        self._heartbeat_timestamp = None
+        self._heartbeat_interval = heartbeat_interval
+        self._heartbeat_lock = threading.Lock()
+
+        self._keep_alive = True
+
+        self._thread_registry = thread_registry
+
+        self._last_known_registry_index = len(self._thread_registry)
+        thread_registry.append({
+            'thread': self,
+            'name': self.name,
+            'delta': None,
+        })
+
+    def run(self):
+        self._run_at_start()
+
+        while self._keep_alive:
+            self._heartbeat_run()
+            self.beat_heart()
+            delay_for_seconds(self._heartbeat_interval)
+
+        self._run_at_end()
+
+    def _heartbeat_run(self):
+        raise NotImplementedError
+
+    def _run_at_start(self):
+        raise NotImplementedError
+
+    def _run_at_end(self):
+        raise NotImplementedError
+
+    def beat_heart(self):
+        with self._heartbeat_lock:
+            self._heartbeat_timestamp = time.time()
+            self._heartbeat_count += 1
+
+        self._thread_registry[self.index_in_registry]['delta'] = self.last_heartbeat_delta
+
+    @property
+    def heartbeat_count(self):
+        return self._heartbeat_count
+
+    @property
+    def last_heartbeat(self):
+        return self._heartbeat_timestamp
+
+    @property
+    def last_heartbeat_delta(self):
+        return time.time() - self._heartbeat_timestamp
+
+    @property
+    def index_in_registry(self):
+        if self._thread_registry[self._last_known_registry_index]['thread'] is self:
+            return self._last_known_registry_index
+
+        if self._thread_registry is None:
+            return None
+
+        for idx, thread in self._thread_registry:
+            if thread['thread'] is self:
+                return idx
+
+        raise Exception("Thread named {} is not in the registry.".format(self.name))
+
+
 class CaptureJob(threading.Thread):
     def __init__(self, controller,
                  startup_delay, interval, duration,
@@ -469,6 +546,8 @@ class ImageryServer(object):
         self._current_frame_capture_time = None
 
         self.telemeter = Telemeter(self)
+
+        self.thread_registry = list()
 
         self.command_dispatch = {
             'set_psu': self.set_psu,
