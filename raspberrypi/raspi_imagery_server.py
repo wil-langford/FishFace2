@@ -88,15 +88,20 @@ class RegisteredThreadWithHeartbeat(threading.Thread):
     Remember to override the _heartbeat_run(), _run_at_start(), and _run_at_end() methods.
     """
 
-    def __init__(self, thread_registry, heartbeat_interval=1, *args, **kwargs):
+    def __init__(self,
+                 thread_registry, heartbeat_interval=1,
+                 heartbeat_publish_interval=None,
+                 *args, **kwargs):
         super(RegisteredThreadWithHeartbeat, self).__init__(*args, **kwargs)
 
         self._heartbeat_count = 0
         self._heartbeat_timestamp = None
         self._heartbeat_interval = heartbeat_interval
+        self._heartbeat_publish_interval = heartbeat_publish_interval
         self._heartbeat_lock = threading.Lock()
 
         self._keep_looping = True
+        self.ready = False
 
         self._thread_registry = thread_registry
 
@@ -108,11 +113,12 @@ class RegisteredThreadWithHeartbeat(threading.Thread):
             'ready': False,
         })
 
+        logger.debug('{} thread initialized.'.format(self.name))
+
     def run(self):
+        logger.debug('{} thread started.'.format(self.name))
         try:
             self._pre_run()
-
-            self._thread_registry[self.index_in_registry]['ready'] = True
 
             while self._keep_looping:
                 self._heartbeat_run()
@@ -121,19 +127,29 @@ class RegisteredThreadWithHeartbeat(threading.Thread):
         finally:
             self._post_run()
 
+    def set_ready(self):
+        logger.info('{} thread reports that it is ready.'.format(self.name))
+        self.ready = True
+        self._thread_registry[self.index_in_registry]['ready'] = True
+
     def _heartbeat_run(self):
         raise NotImplementedError
 
     def _pre_run(self):
-        raise NotImplementedError
+        self.set_ready()
 
     def _post_run(self):
-        raise NotImplementedError
+        pass
 
     def beat_heart(self):
         with self._heartbeat_lock:
             self._heartbeat_timestamp = time.time()
             self._heartbeat_count += 1
+
+        if self._heartbeat_publish_interval is not None:
+            if not self._heartbeat_count % self._heartbeat_publish_interval:
+                logger.debug('{} thread heartbeat count is {}'.format(self.name,
+                                                                      self._heartbeat_count))
 
         self._thread_registry[self.index_in_registry]['delta'] = self.last_heartbeat_delta
 
@@ -277,6 +293,8 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
             self.total = len(self.capture_times)
             self.remaining = len(self.capture_times)
 
+        self.set_ready()
+
     def _post_run(self):
         self.stop_timestamp = time.time()
         if self.status == 'running':
@@ -368,23 +386,37 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
 
         self._deathcries = list()
 
-        self._keep_controller_running = True
-
         self.imagery_server = imagery_server
 
     def _pre_run(self):
-        # TODO: now that we're making the raspi server more thread-friendly, we should wait for
-        # TODO: actual signals from the relevant threads
-        if REAL_HARDWARE:
-            wait_time = 3
-        else:
-            wait_time = 1
-        self.logger.debug('Waiting {} seconds for the rest of the threads to catch up.'.format(wait_time))
-        delay_for_seconds(wait_time)
-        self.logger.info('CaptureJob Controller starting up.')
+        logger.info('CJC is waiting for the threads it depends on to be ready.')
 
-    def _post_run(self):
-        pass
+        if_threads_do_not_start_abort_at = time.time() + 10
+
+        threads_to_wait_for = [
+            'current_framer',
+        ]
+        waiting_for_threads = list()
+        for thr in self._thread_registry:
+            if thr['name'] in threads_to_wait_for:
+                waiting_for_threads.append(thr['thread'])
+
+        if not waiting_for_threads:
+            logger.error("No threads found to watch.")
+            raise Exception("Can't find threads to watch.")
+
+        logger.debug("waiting for: {}".format(str([thr.name for thr in waiting_for_threads])))
+
+        while time.time() < if_threads_do_not_start_abort_at:
+            if (self.imagery_server.httpd._soon_to_be_ready and
+                    all([thr.ready for thr in waiting_for_threads])):
+                break
+            delay_for_seconds(0.1)
+        else:
+            logger.error('Threads that the CJC depend on did not report readiness. Aborting.')
+            self.imagery_server.abort()
+
+        self.logger.info('Threads ready; CaptureJob Controller starting up.')
 
     def _heartbeat_run(self):
         # TODO: replace my naive deathcry system with a real threading.Queue-based system.
@@ -560,7 +592,7 @@ class CurrentFramer(RegisteredThreadWithHeartbeat):
                  imagery_server, thread_registry,
                  *args, **kwargs):
         super(CurrentFramer, self).__init__(
-            name='frame_update_from_camera',
+            name='current_framer',
             thread_registry=thread_registry,
             heartbeat_interval=0,
             *args, **kwargs)
@@ -572,9 +604,6 @@ class CurrentFramer(RegisteredThreadWithHeartbeat):
 
         self.camera.resolution = (2048, 1536)
         self.camera.rotation = 180
-
-    def _pre_run(self):
-        pass
 
     def _heartbeat_run(self):
         stream = io.BytesIO()
@@ -591,6 +620,9 @@ class CurrentFramer(RegisteredThreadWithHeartbeat):
             self._current_frame_capture_time = new_frame_capture_time
             self._current_frame_voltage = self.imagery_server.power_supply.voltage_sense
             self._current_frame_current = self.imagery_server.power_supply.current_sense
+
+        if not self.ready:
+            self.set_ready()
 
     def _post_run(self):
         self.camera.close()
@@ -615,27 +647,32 @@ class ImageryServer(object):
     def __init__(self):
         self.thread_registry = list()
 
-        self._keep_capturing = True
-        self._keep_capturejob_looping = True
-
         if REAL_HARDWARE:
             self.power_supply = RobustPowerSupply.RobustPowerSupply()
         else:
             self.power_supply = ik.HP6652a()
 
-        self.capturejob_controller = CaptureJobController(imagery_server=self,
-                                                          thread_registry=self.thread_registry)
-        self.capturejob_controller.start()
-
         self.current_framer = CurrentFramer(imagery_server=self,
                                             thread_registry=self.thread_registry)
         self.current_framer.start()
+
+        self.server_address = (HOST, PORT)
+        self.httpd = BaseHTTPServer.HTTPServer(
+            self.server_address,
+            CommandHandler
+        )
+        self.httpd.parent = self
+
+        self.capturejob_controller = CaptureJobController(imagery_server=self,
+                                                          thread_registry=self.thread_registry)
+        self.capturejob_controller.start()
 
         self.power_supply.output = False
         self.power_supply.current = 0
         self.power_supply.voltage = 0
 
         self._job_status = None
+        self.httpd_server_starting = True
 
         self._current_frame = None
         self._current_frame_capture_time = None
@@ -719,23 +756,17 @@ class ImageryServer(object):
         return self._current_frame
 
     def run(self):
-        server_address = (HOST, PORT)
-        httpd = BaseHTTPServer.HTTPServer(
-            server_address,
-            CommandHandler
-        )
-        httpd.parent = self
 
-        logger.info("starting http server")
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            for thr in self.thread_registry:
-                thr['thread'].abort()
+        logger.info("starting http server thread")
 
-            self._keep_capturejob_looping = False
-            self.capturejob_controller.stop_controller()
-            httpd.server_close()
+        self.httpd._soon_to_be_ready = True
+        self.httpd.serve_forever()
+
+    def abort(self):
+        for thr in self.thread_registry:
+            thr['thread'].abort()
+
+        self.httpd.server_close()
 
     def set_psu(self, payload):
         if bool(int(payload.get('reset', False))):
@@ -846,7 +877,10 @@ def main():
 
     imagery_server = ImageryServer()
 
-    imagery_server.run()
+    try:
+        imagery_server.run()
+    except KeyboardInterrupt:
+        imagery_server.abort()
 
     logger.info("Exiting Raspi unprivileged server.")
 
