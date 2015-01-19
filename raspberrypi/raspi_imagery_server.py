@@ -6,6 +6,7 @@ attached camera module and send imagery to a FishFace server.
 """
 
 import threading
+import Queue
 import time
 import io
 import BaseHTTPServer
@@ -15,6 +16,7 @@ import logging
 import logging.handlers
 import json
 import cgi
+import sys
 
 import fishface_server_auth
 
@@ -204,6 +206,7 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
         self.logger.setLevel(logging.DEBUG)
 
         self.controller = controller
+        self.publish_deathcry = self.controller.publish_deathcry
 
         self.status = 'staged'
 
@@ -304,7 +307,8 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
             deathcry = self.get_status_dict()
             deathcry['command'] = 'job_status_update'
 
-            self.controller.deathcry = deathcry
+            logger.debug("publishing deathcry of thread {}".format(self.name))
+            self.publish_deathcry(deathcry)
 
     def _job_without_capture(self):
         # We don't need to do anything periodically except check to see if the job has been
@@ -368,6 +372,31 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
             return 1000000
 
 
+class DeathcryPublisher(RegisteredThreadWithHeartbeat):
+    def __init__(self,
+                 post_method, thread_registry,
+                 *args, **kwargs):
+        super(DeathcryPublisher, self).__init__(
+            name='deathcry_publisher',
+            thread_registry=thread_registry,
+            heartbeat_interval=0.3,
+            *args, **kwargs)
+
+        self.deathcries = Queue.Queue()
+        self.post_method = post_method
+
+    def _heartbeat_run(self):
+        try:
+            deathcry = self.deathcries.get_nowait()
+            self.post_method(self.deathcries.get())
+            self.deathcries.task_done()
+        except Queue.Empty:
+            pass
+
+    def add_deathcry(self, deathcry):
+        self.deathcries.put(deathcry)
+
+
 class CaptureJobController(RegisteredThreadWithHeartbeat):
     def __init__(self,
                  imagery_server,
@@ -377,6 +406,8 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
                                                    heartbeat_interval=0.5,
                                                    name='capturejob_controller',
                                                    *args, **kwargs)
+        self.imagery_server = imagery_server
+
         self.logger = logging.getLogger('raspi.capturejob_controller')
         self.logger.setLevel(logging.DEBUG)
 
@@ -384,18 +415,28 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
         self._current_job = None
         self._staged_job = None
 
-        self._deathcries = list()
+        self.deathcry_publisher = DeathcryPublisher(
+            post_method=self.imagery_server.telemeter.post_to_fishface,
+            thread_registry=self._thread_registry
+        )
+        self.deathcry_publisher.start()
+        self.publish_deathcry = self.deathcry_publisher.add_deathcry
 
-        self.imagery_server = imagery_server
+        self._deathcries = Queue.Queue()
+
 
     def _pre_run(self):
-        logger.info('CJC is waiting for the threads it depends on to be ready.')
-
         if_threads_do_not_start_abort_at = time.time() + 10
 
         threads_to_wait_for = [
             'current_framer',
+            'deathcry_publisher',
         ]
+
+        logger.info('CJC is waiting for the threads it depends on to be ready: {}.'.format(str(
+            threads_to_wait_for
+        )))
+
         waiting_for_threads = list()
         for thr in self._thread_registry:
             if thr['name'] in threads_to_wait_for:
@@ -408,7 +449,7 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
         logger.debug("waiting for: {}".format(str([thr.name for thr in waiting_for_threads])))
 
         while time.time() < if_threads_do_not_start_abort_at:
-            if (self.imagery_server.httpd._soon_to_be_ready and
+            if (self.imagery_server._httpd_soon_to_be_ready and
                     all([thr.ready for thr in waiting_for_threads])):
                 break
             delay_for_seconds(0.1)
@@ -419,12 +460,6 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
         self.logger.info('Threads ready; CaptureJob Controller starting up.')
 
     def _heartbeat_run(self):
-        # TODO: replace my naive deathcry system with a real threading.Queue-based system.
-        while len(self._deathcries):
-            self.logger.info("Posting deathcries.  " +
-                             "Cries remaining to post: {}".format(len(self._deathcries)))
-            self.imagery_server.telemeter.post_to_fishface(self.deathcry)
-
         #
         # Primary CJC loop handler.
         #
@@ -530,20 +565,9 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
         return payload
 
     def abort(self):
-        logger.info('Aborting all jobs in preparation for CJC shutdown.')
+        logger.info('Shutting down CJC.')
         self.abort_all_jobs(payload=None)
         super(CaptureJobController, self).abort()
-
-    @property
-    def deathcry(self):
-        try:
-            return self._deathcries.pop(0)
-        except IndexError:
-            return False
-
-    @deathcry.setter
-    def deathcry(self, deathcry):
-        self._deathcries.append(deathcry)
 
 
 class Telemeter(object):
@@ -646,6 +670,7 @@ class ImageryServer(object):
 
     def __init__(self):
         self.thread_registry = list()
+        self.telemeter = Telemeter(imagery_server=self)
 
         if REAL_HARDWARE:
             self.power_supply = RobustPowerSupply.RobustPowerSupply()
@@ -662,6 +687,7 @@ class ImageryServer(object):
             CommandHandler
         )
         self.httpd.parent = self
+        self._httpd_soon_to_be_ready = False
 
         self.capturejob_controller = CaptureJobController(imagery_server=self,
                                                           thread_registry=self.thread_registry)
@@ -676,8 +702,6 @@ class ImageryServer(object):
 
         self._current_frame = None
         self._current_frame_capture_time = None
-
-        self.telemeter = Telemeter(self)
 
         self.command_dispatch = {
             'set_psu': self.set_psu,
@@ -759,7 +783,7 @@ class ImageryServer(object):
 
         logger.info("starting http server thread")
 
-        self.httpd._soon_to_be_ready = True
+        self._httpd_soon_to_be_ready = True
         self.httpd.serve_forever()
 
     def abort(self):
@@ -884,6 +908,16 @@ def main():
 
     logger.info("Exiting Raspi unprivileged server.")
 
+    force_exit_at = time.time() + 3
+    while time.time() < force_exit_at:
+        if threading.active_count() == 1:
+            break
+        delay_for_seconds(0.1)
+    else:
+        logger.error("Not all non-main threads died when they were supposed to: {}".format(
+            [thr.name for thr in threading.enumerate()]
+        ))
+        sys.exit()
 
 if __name__ == '__main__':
     main()
