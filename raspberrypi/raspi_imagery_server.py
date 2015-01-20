@@ -6,6 +6,7 @@ attached camera module and send imagery to a FishFace server.
 """
 
 import threading
+import Queue
 import time
 import io
 import BaseHTTPServer
@@ -15,6 +16,7 @@ import logging
 import logging.handlers
 import json
 import cgi
+import sys
 
 import fishface_server_auth
 
@@ -83,16 +85,119 @@ def delay_for_seconds(seconds):
     delay_until(later)
 
 
-class CaptureJob(threading.Thread):
+class RegisteredThreadWithHeartbeat(threading.Thread):
+    """
+    Remember to override the _heartbeat_run(), _run_at_start(), and _run_at_end() methods.
+    """
+
+    def __init__(self,
+                 thread_registry, heartbeat_interval=1,
+                 heartbeat_publish_interval=None,
+                 *args, **kwargs):
+        super(RegisteredThreadWithHeartbeat, self).__init__(*args, **kwargs)
+
+        self._heartbeat_count = 0
+        self._heartbeat_timestamp = None
+        self._heartbeat_interval = heartbeat_interval
+        self._heartbeat_publish_interval = heartbeat_publish_interval
+        self._heartbeat_lock = threading.Lock()
+
+        self._keep_looping = True
+        self.ready = False
+
+        self._thread_registry = thread_registry
+
+        self._last_known_registry_index = len(self._thread_registry)
+        thread_registry.append(self)
+
+        logger.debug('{} thread initialized.'.format(self.name))
+
+    def run(self):
+        logger.debug('{} thread started.'.format(self.name))
+        try:
+            self._pre_run()
+
+            while self._keep_looping:
+                self._heartbeat_run()
+                self.beat_heart()
+                delay_for_seconds(self._heartbeat_interval)
+        finally:
+            self._post_run()
+
+    def set_ready(self):
+        logger.info('{} thread reports that it is ready.'.format(self.name))
+        self.ready = True
+
+    def _heartbeat_run(self):
+        raise NotImplementedError
+
+    def _pre_run(self):
+        self.set_ready()
+
+    def _post_run(self):
+        pass
+
+    def beat_heart(self):
+        with self._heartbeat_lock:
+            self._heartbeat_timestamp = time.time()
+            self._heartbeat_count += 1
+
+        if self._heartbeat_publish_interval is not None:
+            if not self._heartbeat_count % self._heartbeat_publish_interval:
+                logger.debug('{} thread heartbeat count is {}'.format(self.name,
+                                                                      self._heartbeat_count))
+
+    @property
+    def heartbeat_count(self):
+        return self._heartbeat_count
+
+    def _set_name(self, new_name):
+        new_name_str = str(new_name)
+        logger.info("Renaming thread '{}' to '{}'.".format(self.name, new_name_str))
+        self.name = new_name_str
+
+    @property
+    def last_heartbeat(self):
+        return self._heartbeat_timestamp
+
+    @property
+    def last_heartbeat_delta(self):
+        return time.time() - self._heartbeat_timestamp
+
+    @property
+    def index_in_registry(self):
+        if self._thread_registry[self._last_known_registry_index] is self:
+            return self._last_known_registry_index
+
+        if self._thread_registry is None:
+            return None
+
+        for idx, thr in self._thread_registry:
+            if thr is self:
+                return idx
+
+        raise Exception("Thread named {} is not in the registry.".format(self.name))
+
+    def abort(self):
+        self._keep_looping = False
+        logger.info('Thread {} aborted.'.format(self.name))
+
+
+class CaptureJob(RegisteredThreadWithHeartbeat):
     def __init__(self, controller,
                  startup_delay, interval, duration,
                  voltage, current,
-                 xp_id, species):
-        super(CaptureJob, self).__init__(name='capturejob')
+                 xp_id, species,
+                 thread_registry,
+                 *args, **kwargs):
+        super(CaptureJob, self).__init__(thread_registry,
+                                         name='capturejob',
+                                         *args, **kwargs)
         self.logger = logging.getLogger('raspi.capturejob')
         self.logger.setLevel(logging.DEBUG)
 
         self.controller = controller
+        self.publish_deathcry = self.controller.publish_deathcry
 
         self.status = 'staged'
 
@@ -105,6 +210,19 @@ class CaptureJob(threading.Thread):
         self.xp_id = xp_id
         self.species = species
 
+        if self.interval <= 0:
+            self.name = 'job_without_capture_{}_seconds_at_{}_volts'.format(
+                self.duration, self.voltage
+            )
+            self._captureless = True
+            self._heartbeat_run = self._job_without_capture
+            self._heartbeat_interval = 0
+        else:
+            self.name = 'XP_{}_CJR_pending_id'.format(self.xp_id)
+            self._captureless = False
+            self._heartbeat_run = self._job_with_capture
+            self._heartbeat_interval = 1
+
         self.cjr_id = None
 
         self.total = None
@@ -116,11 +234,9 @@ class CaptureJob(threading.Thread):
         self.start_timestamp = None
         self.stop_timestamp = None
 
-        self._keep_looping = None
-
         self._heartbeat_cj = 0
 
-    def run(self):
+    def _pre_run(self):
         self.start_timestamp = time.time()
 
         self.logger.info("starting up job for experiment {}".format(self.xp_id))
@@ -138,70 +254,71 @@ class CaptureJob(threading.Thread):
             'start_timestamp': self.start_timestamp
         }
 
-        self._keep_looping = True
+        if self._captureless:  # no imagery captured with this job
+            self.total = 0
+            self.remaining = 0
 
-        if self.interval > 0:
-            logger.debug('cjr creation payload: {}'.format(payload))
-            response = requests.post(CJR_NEW_URL, auth=(fishface_server_auth.USERNAME, fishface_server_auth.PASSWORD), data=payload)
+            self.logger.info('starting captureless wait period')
+            self.controller.set_psu({
+                'enable_output': True,
+                'voltage': self.voltage,
+                'current': self.current,
+            })
+            self.job_ends_after = time.time() + self.duration
+            self.status = 'running'
+
+        else:  # we are capturing imagery with this job
+            self.logger.info("Asking server to create new CJR for XP_{}.".format(self.xp_id))
+            response = requests.post(CJR_NEW_URL, auth=(
+                fishface_server_auth.USERNAME,
+                fishface_server_auth.PASSWORD
+            ), data=payload)
             self.cjr_id = response.json()['cjr_id']
-            self.job_with_capture()
-        else:
-            self.job_without_capture()
+            self._set_name(self.name[:-10] + str(self.cjr_id))
+            self.logger.info('Preparing capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
 
+            first_capture_at = self.start_timestamp + self.startup_delay
+
+            self.capture_times = [first_capture_at]
+            for j in range(1, int(self.duration / self.interval)):
+                self.capture_times.append(first_capture_at + j * self.interval)
+
+            self.job_ends_after = self.capture_times[-1]
+            self.total = len(self.capture_times)
+            self.remaining = len(self.capture_times)
+
+        self.set_ready()
+
+    def _post_run(self):
         self.stop_timestamp = time.time()
         if self.status == 'running':
             self.status = 'completed'
 
-        if self.interval > 0:
+        if not self._captureless:
             deathcry = self.get_status_dict()
             deathcry['command'] = 'job_status_update'
 
-            self.controller.deathcry = deathcry
+            logger.debug("publishing deathcry of thread {}".format(self.name))
+            self.publish_deathcry(deathcry)
 
-    def job_without_capture(self):
-        self.total = 0
-        self.remaining = 0
+    def _job_without_capture(self):
+        # We don't need to do anything periodically except check to see if the job has been
+        # aborted, and that is handled by the RegisteredThreadWithHeartbeat class.
+        pass
 
-        self.logger.info('starting captureless wait period')
-        self.controller.set_psu({
-            'enable_output': True,
-            'voltage': self.voltage,
-            'current': self.current,
-        })
+    def _job_with_capture(self):
+
         self.status = 'running'
 
-        self.job_ends_after = time.time() + self.duration
-
-        while self._keep_looping and time.time() < self.job_ends_after:
-            self._heartbeat_cj += 1
-            if self._heartbeat_cj % 1 == 0:
-                logger.debug("CaptureJob.job_without_capture.heartbeat {}".format(self._heartbeat_cj))
-            delay_for_seconds(1)
-
-    def job_with_capture(self):
-        self.logger.info('preparing to capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
-        first_capture_at = self.start_timestamp + self.startup_delay
-
-        self.logger.debug('first capture in {} seconds'.format(first_capture_at - time.time()))
-        self.capture_times = [first_capture_at]
-        for j in range(1, int(self.duration / self.interval)):
-            self.capture_times.append(first_capture_at + j * self.interval)
-
-        self.job_ends_after = self.capture_times[-1]
-        self.total = len(self.capture_times)
-        self.remaining = len(self.capture_times)
-
         for i, next_capture_time in enumerate(self.capture_times):
-            self._heartbeat_cj += 1
-            if self._heartbeat_cj % 1 == 0:
-                logger.debug("CaptureJob.job_without_capture.heartbeat {}".format(self._heartbeat_cj))
+            self.beat_heart()
             delay_until(next_capture_time)
-            self.status = 'running'
             if not self._keep_looping:
                 break
 
-            self.logger.debug('POSTing image to server')
-            self.controller.server.post_current_image_to_server({
+            logger.debug('telling server to post XP_{}_CJR_{} data image'.format(
+                self.xp_id, self.cjr_id))
+            self.controller.imagery_server.post_current_image_to_server({
                 'command': 'post_image',
                 'xp_id': self.xp_id,
                 'is_cal_image': 0,
@@ -210,14 +327,17 @@ class CaptureJob(threading.Thread):
                 'current': self.current,
                 'species': self.species,
             }, sync=False)
-            self.logger.debug('POSTed image to server')
 
             self.remaining = self.total - i - 1
 
+        # We handled the heartbeat stuff manually above, so no need to have the
+        # RegisteredThreadWithHeartbeat class do its own looping.
+        self._keep_looping = False
+
     def abort_job(self):
+        self._keep_looping = False
         self.logger.info('Job aborted: {}'.format(self.get_status_dict()))
         self.status = 'aborted'
-        self._keep_looping = False
 
     def get_status_dict(self):
         return {
@@ -243,9 +363,41 @@ class CaptureJob(threading.Thread):
             return 1000000
 
 
-class CaptureJobController(threading.Thread):
-    def __init__(self, imagery_server):
-        super(CaptureJobController, self).__init__(name='capturejob_controller')
+class DeathcryPublisher(RegisteredThreadWithHeartbeat):
+    def __init__(self,
+                 post_method, thread_registry,
+                 *args, **kwargs):
+        super(DeathcryPublisher, self).__init__(
+            name='deathcry_publisher',
+            thread_registry=thread_registry,
+            heartbeat_interval=0.3,
+            *args, **kwargs)
+
+        self.deathcries = Queue.Queue()
+        self.post_method = post_method
+
+    def _heartbeat_run(self):
+        try:
+            self.post_method(self.deathcries.get_nowait())
+            self.deathcries.task_done()
+        except Queue.Empty:
+            pass
+
+    def add_deathcry(self, deathcry):
+        self.deathcries.put(deathcry)
+
+
+class CaptureJobController(RegisteredThreadWithHeartbeat):
+    def __init__(self,
+                 imagery_server,
+                 thread_registry,
+                 *args, **kwargs):
+        super(CaptureJobController, self).__init__(thread_registry=thread_registry,
+                                                   heartbeat_interval=0.5,
+                                                   name='capturejob_controller',
+                                                   *args, **kwargs)
+        self.imagery_server = imagery_server
+
         self.logger = logging.getLogger('raspi.capturejob_controller')
         self.logger.setLevel(logging.DEBUG)
 
@@ -253,78 +405,96 @@ class CaptureJobController(threading.Thread):
         self._current_job = None
         self._staged_job = None
 
-        self._deathcries = list()
+        self.deathcry_publisher = DeathcryPublisher(
+            post_method=self.imagery_server.telemeter.post_to_fishface,
+            thread_registry=self._thread_registry
+        )
+        self.deathcry_publisher.start()
+        self.publish_deathcry = self.deathcry_publisher.add_deathcry
 
-        self._keep_controller_running = True
+        self._deathcries = Queue.Queue()
 
-        self.server = imagery_server
 
-        self._heartbeat_cjc = 0
+    def _pre_run(self):
+        if_threads_do_not_start_abort_at = time.time() + 10
 
-    def run(self):
-        if REAL_HARDWARE:
-            wait_time = 3
+        threads_to_wait_for = [
+            'current_framer',
+            'deathcry_publisher',
+        ]
+
+        logger.info('CJC is waiting for the threads it depends on to be ready: ' +
+                    '{} and httpd.'.format(str(threads_to_wait_for)))
+
+        waiting_for_threads = list()
+        for thr in self._thread_registry:
+            if thr.name in threads_to_wait_for:
+                waiting_for_threads.append(thr)
+
+        if not waiting_for_threads:
+            logger.error("No threads found to watch.")
+            raise Exception("Can't find threads to watch.")
+
+        logger.debug("waiting for: {}".format(str([thr.name for thr in waiting_for_threads])))
+
+        while time.time() < if_threads_do_not_start_abort_at:
+            if (self.imagery_server._httpd_soon_to_be_ready and
+                    all([thr.ready for thr in waiting_for_threads])):
+                break
+            delay_for_seconds(0.1)
         else:
-            wait_time = 1
-        self.logger.debug('Waiting {} seconds for the rest of the threads to catch up.'.format(wait_time))
-        delay_for_seconds(wait_time)
-        self.logger.info('CaptureJob Controller starting up.')
-        while self._keep_controller_running:
-            self._heartbeat_cjc += 1
-            delay_until_next_loop = 1
+            logger.error('Threads that the CJC depend on did not report readiness. Aborting.')
+            self.imagery_server.abort()
 
-            if self._heartbeat_cjc % 50 == 0:
-                logger.debug("CaptureJobController.run thread heartbeat {}".format(self._heartbeat_cjc))
+        self.logger.info('Threads ready; CaptureJob Controller starting up.')
 
-            # logger.debug("CHECKING deathcries")
-            while len(self._deathcries):
-                self.logger.info("Posting deathcries.  " +
-                                 "Cries remaining to post: {}".format(len(self._deathcries)))
-                self.server.telemeter.post_to_fishface(self.deathcry)
+    def _heartbeat_run(self):
+        #
+        # Primary CJC loop handler.
+        #
 
-            #
-            # Primary CJC loop handler.
-            #
-            # 0 5 0 8 0 12 0
+        if self._current_job is not None:
+            self.logger.debug('Reporting on current job.')
+            current_status = self.get_current_job_status()
+            if current_status['cjr_id'] is not None:
+                current_status['command'] = 'job_status_update'
+                self.imagery_server.telemeter.post_to_fishface(current_status)
 
-            if self._current_job is not None:
-                self.logger.debug('Reporting on current job.')
-                current_status = self.get_current_job_status()
-                if current_status['cjr_id'] is not None:
-                    current_status['command'] = 'job_status_update'
-                    self.server.telemeter.post_to_fishface(current_status)
+            if self._current_job.status == 'aborted' or self._current_job.job_ends_after < time.time():
+                self.logger.info("Current job is dead or expired; clearing it.")
+                self._current_job = None
+                delay_until_next_loop = 0.2
+            elif self._queue and self._staged_job is None and self._current_job.job_ends_in < 10:
+                self.logger.info("Current job ends soon; promoting queued job to staged job.")
+                self._staged_job = CaptureJob(self,
+                    thread_registry=self.imagery_server.thread_registry,
+                    **self._queue.pop(0)
+                )
 
-                if self._current_job.status == 'aborted' or self._current_job.job_ends_after < time.time():
-                    self.logger.info("Current job is dead or expired; clearing it.")
-                    self._current_job = None
-                    delay_until_next_loop = 0.2
-                elif self._queue and self._staged_job is None and self._current_job.job_ends_in < 10:
-                    self.logger.info("Current job ends soon; promoting queued job to staged job.")
-                    self._staged_job = CaptureJob(self, **self._queue.pop(0))
-
-            else:  # there is no current job
-                if self._staged_job is not None:  # there is a staged job
-                    self.logger.info('Promoting staged job.')
-                    self._current_job = self._staged_job
+        else:  # there is no current job
+            if self._staged_job is not None:  # there is a staged job
+                self.logger.info('Promoting staged job.')
+                self._current_job = self._staged_job
+                self._current_job.start()
+                self._staged_job = None
+            else:  # there is no staged job
+                if self._queue:  # there are jobs in queue
+                    self.logger.info('No jobs active or staged, but jobs in queue.')
+                    self._current_job = CaptureJob(self,
+                        thread_registry=self.imagery_server.thread_registry,
+                        **self._queue.pop(0)
+                    )
                     self._current_job.start()
-                    self._staged_job = None
-                else:  # there is no staged job
-                    if self._queue:  # there are jobs in queue
-                        self.logger.info('No jobs active or staged, but jobs in queue.')
-                        self._current_job = CaptureJob(self, **self._queue.pop(0))
-                        self._current_job.start()
-                        self.logger.debug('Started new current job.')
+                    self.logger.debug('Started new current job.')
 
-                    else:  # queue is empty
-                        if self.server.power_supply.output:
-                            self.logger.info('Shutting down power supply until the next job arrives.')
-                            self.set_psu({
-                                'voltage': 0,
-                                'current': 0,
-                                'enable_output': 0,
-                            })
-
-            delay_for_seconds(delay_until_next_loop)
+                else:  # queue is empty
+                    if self.imagery_server.power_supply.output:
+                        self.logger.info('Shutting down power supply until the next job arrives.')
+                        self.set_psu({
+                            'voltage': 0,
+                            'current': 0,
+                            'enable_output': 0,
+                        })
 
     def get_current_job_status(self):
         return self._current_job.get_status_dict()
@@ -337,7 +507,7 @@ class CaptureJobController(threading.Thread):
         if self._current_job is not None:
             self._current_job.abort_job()
 
-    def abort_all(self, payload):
+    def abort_all_jobs(self, payload):
         self.logger.info("Aborting all jobs!")
         self._queue = list()
         self._staged_job = None
@@ -354,7 +524,7 @@ class CaptureJobController(threading.Thread):
 
     def set_psu(self, *args, **kwargs):
         self.logger.debug('Passing set_psu request up to the ImageryServer.')
-        self.server.set_psu(*args, **kwargs)
+        self.imagery_server.set_psu(*args, **kwargs)
 
     def complete_status(self, payload):
         response = {'command': 'job_status'}
@@ -383,19 +553,10 @@ class CaptureJobController(threading.Thread):
         self._queue = queue
         return payload
 
-    def stop_controller(self):
-        self.logger.info('Stopping capturejob controller.')
-        self._keep_controller_running = False
-
-    @property
-    def deathcry(self):
-        if self._deathcries:
-            return self._deathcries.pop(0)
-        return False
-
-    @deathcry.setter
-    def deathcry(self, deathcry):
-        self._deathcries.append(deathcry)
+    def abort(self):
+        logger.info('Shutting down CJC.')
+        self.abort_all_jobs(payload=None)
+        super(CaptureJobController, self).abort()
 
 
 class Telemeter(object):
@@ -439,36 +600,97 @@ class Telemeter(object):
         logger.info("Unrecognized command received from server:\n{}".format(payload))
 
 
+class CurrentFramer(RegisteredThreadWithHeartbeat):
+    def __init__(self,
+                 imagery_server, thread_registry,
+                 *args, **kwargs):
+        super(CurrentFramer, self).__init__(
+            name='current_framer',
+            thread_registry=thread_registry,
+            heartbeat_interval=0,
+            *args, **kwargs)
+
+        self.imagery_server = imagery_server
+
+        self.camera = picamera.PiCamera()
+        self.frame_lock = threading.Lock()
+
+        self.camera.resolution = (2048, 1536)
+        self.camera.rotation = 180
+
+    def _heartbeat_run(self):
+        stream = io.BytesIO()
+        new_frame_capture_time = time.time()
+        self.camera.capture(
+            stream,
+            format='jpeg'
+        )
+
+        image = stream.getvalue()
+
+        with self.frame_lock:
+            self._current_frame = image
+            self._current_frame_capture_time = new_frame_capture_time
+            self._current_frame_voltage = self.imagery_server.power_supply.voltage_sense
+            self._current_frame_current = self.imagery_server.power_supply.current_sense
+
+        if not self.ready:
+            self.set_ready()
+
+    def _post_run(self):
+        self.camera.close()
+
+    @property
+    def current_frame_and_metadata(self):
+        with self.frame_lock:
+            return (
+                self._current_frame,
+                {
+                    'timestamp': self._current_frame_capture_time,
+                    'voltage': self._current_frame_voltage,
+                    'current': self._current_frame_current,
+                }
+            )
+
+
 class ImageryServer(object):
     """
     """
 
     def __init__(self):
-        self.capturejob_controller = CaptureJobController(self)
-        self.capturejob_controller.start()
-
-        self._keep_capturing = True
-        self._keep_capturejob_looping = True
+        self.thread_registry = list()
+        self.telemeter = Telemeter(imagery_server=self)
 
         if REAL_HARDWARE:
             self.power_supply = RobustPowerSupply.RobustPowerSupply()
         else:
             self.power_supply = ik.HP6652a()
 
+        self.current_framer = CurrentFramer(imagery_server=self,
+                                            thread_registry=self.thread_registry)
+        self.current_framer.start()
+
+        self.server_address = (HOST, PORT)
+        self.httpd = BaseHTTPServer.HTTPServer(
+            self.server_address,
+            CommandHandler
+        )
+        self.httpd.parent = self
+        self._httpd_soon_to_be_ready = False
+
+        self.capturejob_controller = CaptureJobController(imagery_server=self,
+                                                          thread_registry=self.thread_registry)
+        self.capturejob_controller.start()
+
         self.power_supply.output = False
         self.power_supply.current = 0
         self.power_supply.voltage = 0
 
-        self.camera = picamera.PiCamera()
-        self.camera.resolution = (2048, 1536)
-        self.camera.rotation = 180
-
         self._job_status = None
+        self.httpd_server_starting = True
 
         self._current_frame = None
         self._current_frame_capture_time = None
-
-        self.telemeter = Telemeter(self)
 
         self.command_dispatch = {
             'set_psu': self.set_psu,
@@ -480,31 +702,16 @@ class ImageryServer(object):
             'set_queue': self.capturejob_controller.set_queue,
 
             'abort_running_job': self.capturejob_controller.abort_running_job,
-            'abort_all': self.capturejob_controller.abort_all,
+            'abort_all': self.capturejob_controller.abort_all_jobs,
         }
 
-        self._heartbeat_icl = 0
-
-    def _capture_new_current_frame(self):
-        stream = io.BytesIO()
-        new_frame_capture_time = time.time()
-        self.camera.capture(
-            stream,
-            format='jpeg'
-        )
-
-        image = stream.getvalue()
-
-        self._current_frame = image
-        self._current_frame_capture_time = new_frame_capture_time
-        self._current_frame_voltage = self.power_supply.voltage_sense
-        self._current_frame_current = self.power_supply.current_sense
-
     def post_current_image_to_server(self, payload, sync=True):
-        current_frame = self._current_frame
-        current_frame_capture_time = self._current_frame_capture_time
-        current_frame_voltage = self._current_frame_voltage
-        current_frame_current = self._current_frame_current
+        logger.debug('preparing to post current image to server')
+
+        current_frame, current_meta = self.current_framer.current_frame_and_metadata
+        current_frame_capture_time = current_meta['timestamp']
+        current_frame_voltage = current_meta['voltage']
+        current_frame_current = current_meta['current']
 
         stream = io.BytesIO(current_frame).read()
 
@@ -543,12 +750,14 @@ class ImageryServer(object):
             self.telemeter.post_to_fishface(payload, files=files)
             logger.debug("image posted in {} seconds".format(time.time() - image_start_post_time))
         else:
-            def async_image_post(url, files_unshadow, payload_unshadow):
+            logger.debug("posting image asynchronously: {}".format(payload['filename']))
+            def async_image_post(url, async_files, async_payload):
                 async_logger = logging.getLogger('raspi.async_image_post')
-                self.telemeter.post_to_fishface(payload_unshadow, files=files_unshadow)
+                self.telemeter.post_to_fishface(async_payload, files=async_files)
                 async_logger.debug("image posted async in {} seconds".format(time.time() - image_start_post_time))
 
             async_thread = threading.Thread(
+                name="async_image_post_thread_{}".format(payload['filename']),
                 target=async_image_post,
                 args=(TELEMETRY_URL, files, payload)
             )
@@ -560,40 +769,23 @@ class ImageryServer(object):
         return self._current_frame
 
     def run(self):
-        def image_capture_loop():
-            while self._keep_capturing:
-                self._heartbeat_icl += 1
-                if self._heartbeat_icl % 100 == 0:
-                    logger.debug("ImageryServer.run.image_capture_loop thread heartbeat: {}".format(
-                        self._heartbeat_icl
-                    ))
-                self._capture_new_current_frame()
-            self.camera.close()
 
-        thread = threading.Thread(name='capture', target=image_capture_loop)
-        logger.info("starting capture thread loop")
-        thread.start()
+        logger.info("starting http server thread")
 
-        logger.info("capture thread loop started")
+        self._httpd_soon_to_be_ready = True
+        self.httpd.serve_forever()
 
-        server_address = (HOST, PORT)
-        httpd = BaseHTTPServer.HTTPServer(
-            server_address,
-            CommandHandler
-        )
-        httpd.parent = self
+    def abort(self):
+        for thr in self.thread_registry:
+            thr.abort()
 
-        logger.info("starting http server")
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            self._keep_capturing = False
-            self._keep_capturejob_looping = False
-            self.capturejob_controller.stop_controller()
-            httpd.server_close()
+        self.httpd.server_close()
 
     def set_psu(self, payload):
         if bool(int(payload.get('reset', False))):
+            self.power_supply.voltage = 0
+            self.power_supply.current = 0
+            self.power_supply.output = False
             self.power_supply.reset()
             return False
 
@@ -606,12 +798,16 @@ class ImageryServer(object):
                 voltage
             ))
             self.power_supply.voltage = voltage
+        else:
+            self.power_supply.voltage = 0
 
         if current:
             logger.debug("setting psu max current to {} A".format(
                 current
             ))
             self.power_supply.current = current
+        else:
+            self.power_supply.current = 0
 
         if enable_output:
             logger.debug("enabling psu output")
@@ -621,7 +817,7 @@ class ImageryServer(object):
         self.power_supply.output = enable_output
 
         thread = threading.Thread(
-            name='psu_sensed_data',
+            name='posting_psu_sensed_data',
             target=self.post_power_supply_sensed_data,
             args=(payload, 1,)
         )
@@ -694,10 +890,23 @@ def main():
 
     imagery_server = ImageryServer()
 
-    imagery_server.run()
+    try:
+        imagery_server.run()
+    except KeyboardInterrupt:
+        imagery_server.abort()
 
     logger.info("Exiting Raspi unprivileged server.")
 
+    force_exit_at = time.time() + 3
+    while time.time() < force_exit_at:
+        if threading.active_count() == 1:
+            break
+        delay_for_seconds(0.1)
+    else:
+        logger.error("Not all non-main threads died when they were supposed to: {}".format(
+            [thr.name for thr in threading.enumerate()]
+        ))
+        sys.exit()
 
 if __name__ == '__main__':
     main()
