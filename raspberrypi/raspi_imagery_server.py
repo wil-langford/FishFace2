@@ -772,24 +772,30 @@ class ImageryServer(object):
 
     def monitor(self, payload):
         response = {
-            'command': 'imagery_server_monitor',
+            'command': 'raspi_status_monitor',
             'psu_voltage_meas': self.power_supply.voltage_sense,
             'psu_current_meas': self.power_supply.current_sense,
         }
 
         if self._current_job is not None:
-            response['current_job'] = self.get_current_job_status()
+            response['current_job_status'] = self.get_current_job_status()
             response['xp_id'] = response['current_job']['xp_id']
         else:
             response['xp_id'] = False
 
         if self._staged_job is not None:
-            response['staged_job'] = self.get_staged_job_status()
+            response['staged_job_status'] = self.get_staged_job_status()
 
         if self._queue:
             response['queue_count'] = len(self._queue)
         else:
             response['queue_count'] = 0
+
+        response['threads'] = [{
+            'name': thr.name,
+            'delta': thr.last_heartbeat_delta,
+            'last': thr.last_heartbeat,
+        } for thr in self.thread_registry]
 
         return response
 
