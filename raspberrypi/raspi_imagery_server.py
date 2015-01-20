@@ -241,11 +241,6 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
 
         self.logger.info("starting up job for experiment {}".format(self.xp_id))
         self.status = 'startup_delay'
-        self.controller.set_psu({
-            'enable_output': True,
-            'voltage': self.voltage,
-            'current': self.current,
-        })
 
         payload = {
             'xp_id': self.xp_id,
@@ -254,16 +249,18 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
             'start_timestamp': self.start_timestamp
         }
 
+        self.controller.set_psu({
+            'enable_output': bool(self.voltage),
+            'voltage': self.voltage,
+            'current': self.current,
+        })
+
         if self._captureless:  # no imagery captured with this job
             self.total = 0
             self.remaining = 0
 
             self.logger.info('starting captureless wait period')
-            self.controller.set_psu({
-                'enable_output': True,
-                'voltage': self.voltage,
-                'current': self.current,
-            })
+
             self.job_ends_after = time.time() + self.duration
             self.status = 'running'
 
