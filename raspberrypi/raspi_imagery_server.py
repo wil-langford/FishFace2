@@ -258,11 +258,10 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
         if self._captureless:  # no imagery captured with this job
             self.total = 0
             self.remaining = 0
-
-            self.logger.info('starting captureless wait period')
-
             self.job_ends_after = time.time() + self.duration
+
             self.status = 'running'
+            self.logger.info('starting captureless wait period')
 
         else:  # we are capturing imagery with this job
             self.logger.info("Asking server to create new CJR for XP_{}.".format(self.xp_id))
@@ -457,7 +456,9 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
                 current_status['command'] = 'job_status_update'
                 self.imagery_server.telemeter.post_to_fishface(current_status)
 
-            if self._current_job.status == 'aborted' or self._current_job.job_ends_after < time.time():
+            if self._current_job.status == 'aborted' or (
+                        self._current_job.job_ends_after is not None and
+                            self._current_job.job_ends_after < time.time()):
                 self.logger.info("Current job is dead or expired; clearing it.")
                 self._current_job = None
                 delay_until_next_loop = 0.2

@@ -88,7 +88,7 @@ class RobustPowerSupply(object):
                 try:
                     read_voltage = self.psu.voltage
                     break
-                except SerialException, ValueError:
+                except (SerialException, ValueError):
                     pass
 
                 if attempt == MAX_ATTEMPTS:
@@ -102,7 +102,10 @@ class RobustPowerSupply(object):
             for attempt in range(MAX_ATTEMPTS):
                 logger.debug("Attempt {} to set voltage.".format(attempt))
 
-                self.psu.voltage = value
+                try:
+                    self.psu.voltage = value
+                except (SerialException, ValueError):
+                    pass
 
                 if abs(float(self.voltage) - value) < VOLTAGE_TOLERANCE:
                     break
@@ -120,7 +123,7 @@ class RobustPowerSupply(object):
                 try:
                     sensed_voltage = self.psu.voltage_sense
                     break
-                except SerialException, ValueError:
+                except (SerialException, ValueError):
                     pass
 
                 if attempt == MAX_ATTEMPTS:
@@ -139,7 +142,7 @@ class RobustPowerSupply(object):
                 try:
                     read_current = self.psu.current
                     break
-                except SerialException, ValueError:
+                except (SerialException, ValueError):
                     pass
 
                 if attempt == MAX_ATTEMPTS:
@@ -153,7 +156,10 @@ class RobustPowerSupply(object):
             for attempt in range(MAX_ATTEMPTS):
                 logger.debug("Attempt {} to set current.".format(attempt))
 
-                self.psu.current = value
+                try:
+                    self.psu.current = value
+                except (SerialException, ValueError):
+                    pass
 
                 if abs(float(self.current) - value) < CURRENT_TOLERANCE:
                     break
@@ -171,7 +177,7 @@ class RobustPowerSupply(object):
                 try:
                     sensed_current = self.psu.current_sense
                     break
-                except SerialException, ValueError:
+                except (SerialException, ValueError):
                     pass
 
                 if attempt == MAX_ATTEMPTS:
