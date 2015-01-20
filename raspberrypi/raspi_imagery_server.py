@@ -108,12 +108,7 @@ class RegisteredThreadWithHeartbeat(threading.Thread):
         self._thread_registry = thread_registry
 
         self._last_known_registry_index = len(self._thread_registry)
-        thread_registry.append({
-            'thread': self,
-            'name': self.name,
-            'delta': None,
-            'ready': False,
-        })
+        thread_registry.append(self)
 
         logger.debug('{} thread initialized.'.format(self.name))
 
@@ -132,7 +127,6 @@ class RegisteredThreadWithHeartbeat(threading.Thread):
     def set_ready(self):
         logger.info('{} thread reports that it is ready.'.format(self.name))
         self.ready = True
-        self._thread_registry[self.index_in_registry]['ready'] = True
 
     def _heartbeat_run(self):
         raise NotImplementedError
@@ -153,8 +147,6 @@ class RegisteredThreadWithHeartbeat(threading.Thread):
                 logger.debug('{} thread heartbeat count is {}'.format(self.name,
                                                                       self._heartbeat_count))
 
-        self._thread_registry[self.index_in_registry]['delta'] = self.last_heartbeat_delta
-
     @property
     def heartbeat_count(self):
         return self._heartbeat_count
@@ -163,7 +155,6 @@ class RegisteredThreadWithHeartbeat(threading.Thread):
         new_name_str = str(new_name)
         logger.info("Renaming thread '{}' to '{}'.".format(self.name, new_name_str))
         self.name = new_name_str
-        self._thread_registry[self.index_in_registry]['name'] = new_name_str
 
     @property
     def last_heartbeat(self):
@@ -175,14 +166,14 @@ class RegisteredThreadWithHeartbeat(threading.Thread):
 
     @property
     def index_in_registry(self):
-        if self._thread_registry[self._last_known_registry_index]['thread'] is self:
+        if self._thread_registry[self._last_known_registry_index] is self:
             return self._last_known_registry_index
 
         if self._thread_registry is None:
             return None
 
         for idx, thr in self._thread_registry:
-            if thr['thread'] is self:
+            if thr is self:
                 return idx
 
         raise Exception("Thread named {} is not in the registry.".format(self.name))
@@ -387,8 +378,7 @@ class DeathcryPublisher(RegisteredThreadWithHeartbeat):
 
     def _heartbeat_run(self):
         try:
-            deathcry = self.deathcries.get_nowait()
-            self.post_method(self.deathcries.get())
+            self.post_method(self.deathcries.get_nowait())
             self.deathcries.task_done()
         except Queue.Empty:
             pass
@@ -433,14 +423,13 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
             'deathcry_publisher',
         ]
 
-        logger.info('CJC is waiting for the threads it depends on to be ready: {}.'.format(str(
-            threads_to_wait_for
-        )))
+        logger.info('CJC is waiting for the threads it depends on to be ready: ' +
+                    '{} and httpd.'.format(str(threads_to_wait_for)))
 
         waiting_for_threads = list()
         for thr in self._thread_registry:
-            if thr['name'] in threads_to_wait_for:
-                waiting_for_threads.append(thr['thread'])
+            if thr.name in threads_to_wait_for:
+                waiting_for_threads.append(thr)
 
         if not waiting_for_threads:
             logger.error("No threads found to watch.")
@@ -788,7 +777,7 @@ class ImageryServer(object):
 
     def abort(self):
         for thr in self.thread_registry:
-            thr['thread'].abort()
+            thr.abort()
 
         self.httpd.server_close()
 
