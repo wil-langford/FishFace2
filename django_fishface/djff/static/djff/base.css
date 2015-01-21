@@ -34,7 +34,6 @@
 
 .body-background { color: #FFDDAA }
 
-
 html, body
 {
     margin: 0;
@@ -311,4 +310,69 @@ div.shift_right {
 
 div#zero_unverified {
     display: none;
+}
+
+div#raspi_monitor {
+    position: absolute;
+    right: 1em;
+    background-color: cadetblue;
+    bottom: 1em;
+    padding: 5px;
+    border: 1px solid black;
+    line-height: 1.7;
+    text-align: center;
+    font-size: 10pt;
+}
+
+div#raspi_monitor .hover_wrapper .hover_text {
+    position: absolute;
+    bottom: 2em;
+    right: 16em;
+    background-color: palegreen;
+    visibility: collapse;
+    min-width: 15em;
+    border: 1px black solid;
+    text-align: justify;
+    padding: 3px;
+    line-height: 1;
+    font-weight: normal;
+}
+
+div#raspi_monitor .hover_wrapper:hover .hover_text {
+    visibility: visible;
+}
+
+div#raspi_monitor .monitor_status_box
+{
+    display: inline;
+    text-align: center;
+    border: 1px solid black;
+    padding: 2px;
+    width: 2em;
+    font-weight: bolder;
+}
+
+div#raspi_monitor .monitor_status_box
+{
+    display: inline;
+    text-align: center;
+    border: 1px solid black;
+    padding: 2px;
+    width: 2em;
+    font-weight: bolder;
+}
+
+div#raspi_monitor .psu_monitor_box
+{
+    background-color: #FFDDAA;
+}
+
+div#raspi_monitor .hw_monitor_label {
+    margin: 0;
+    padding: 2px;
+    line-height: 1;
+    font-size: 10pt;
+    border: 1px solid gray;
+    margin-bottom: 5px;
+    background-color: navajowhite;
 }

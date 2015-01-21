@@ -701,6 +701,8 @@ class ImageryServer(object):
 
             'abort_running_job': self.capturejob_controller.abort_running_job,
             'abort_all': self.capturejob_controller.abort_all_jobs,
+
+            'raspi_monitor': self.monitor,
         }
 
     def post_current_image_to_server(self, payload, sync=True):
@@ -765,6 +767,21 @@ class ImageryServer(object):
 
     def get_current_frame(self):
         return self._current_frame
+
+    def monitor(self, payload):
+        response = {
+            'command': 'raspi_monitor',
+            'psu_voltage_meas': round(float(self.power_supply.voltage_sense), 3),
+            'psu_current_meas': round(float(self.power_supply.current_sense), 3),
+        }
+
+        response['threads'] = [{
+            'name': thr.name,
+            'delta': thr.last_heartbeat_delta,
+            'last': thr.last_heartbeat,
+        } for thr in self.thread_registry]
+
+        return response
 
     def run(self):
 
