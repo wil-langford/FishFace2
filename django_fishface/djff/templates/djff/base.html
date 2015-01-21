@@ -56,6 +56,42 @@
 </div>
 
 <div id="preview_area">
+    <div id="raspi_monitor">
+        <p class="hw_monitor_label">Remote<br>Hardware<br>Monitor</p>
+        <span class="hover_wrapper monitor_status_box">
+            RASPI<span class="hover_text">Green means that the Raspberry Pi's master server reports
+            that it is running properly. (imagery_server)</span>
+        </span>
+        <br>
+        <span class="hover_wrapper monitor_status_box">
+            CF<span class="hover_text">Green means that the thread that refreshes the image from
+            the camera is running. (current_framer)</span>
+        </span>
+        <span class="hover_wrapper monitor_status_box">
+            CJC<span class="hover_text">Green means that the raspi is ready to process queued
+            capture jobs. (capturejob_controller)</span>
+        </span>
+        <span class="hover_wrapper monitor_status_box">
+            DP<span class="hover_text">Green means that the thread that publishes the final status
+            of completed jobs back to the database is running. (deathcry_publisher)</span>
+        </span>
+        <br>
+        <span class="hover_wrapper monitor_status_box psu_monitor_box">
+            <span id="psu_monitor_voltage">0</span> V<span class="hover_text">
+            The delivered voltage as measured by the power supply.</span>
+        </span>
+        <span class="hover_wrapper monitor_status_box psu_monitor_box">
+            <span id="psu_monitor_current">0</span> A<span class="hover_text">
+            The delivered current as measured by the power supply.</span>
+        </span>
+        <span class="hover_wrapper monitor_status_box psu_monitor_box">
+            <span id="output_enabled">OFF</span><span class="hover_text">
+            Whether or not the power supply's output is enabled.</span>
+        </span>
+
+    </div>
+
+
     {% block preview_area %}
     {% endblock %}
 </div>
