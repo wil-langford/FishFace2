@@ -704,7 +704,7 @@ class ImageryServer(object):
             'abort_running_job': self.capturejob_controller.abort_running_job,
             'abort_all': self.capturejob_controller.abort_all_jobs,
 
-            'imagery_server_monitor': self.monitor,
+            'raspi_monitor': self.monitor,
         }
 
     def post_current_image_to_server(self, payload, sync=True):
@@ -772,24 +772,10 @@ class ImageryServer(object):
 
     def monitor(self, payload):
         response = {
-            'command': 'raspi_status_monitor',
-            'psu_voltage_meas': self.power_supply.voltage_sense,
-            'psu_current_meas': self.power_supply.current_sense,
+            'command': 'raspi_monitor',
+            'psu_voltage_meas': float(self.power_supply.voltage_sense),
+            'psu_current_meas': float(self.power_supply.current_sense),
         }
-
-        if self._current_job is not None:
-            response['current_job_status'] = self.get_current_job_status()
-            response['xp_id'] = response['current_job']['xp_id']
-        else:
-            response['xp_id'] = False
-
-        if self._staged_job is not None:
-            response['staged_job_status'] = self.get_staged_job_status()
-
-        if self._queue:
-            response['queue_count'] = len(self._queue)
-        else:
-            response['queue_count'] = 0
 
         response['threads'] = [{
             'name': thr.name,
