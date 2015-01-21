@@ -431,6 +431,7 @@ def verification_submit(request):
 def cq_interface(request):
 
     cjts = CaptureJobTemplate.objects.all()
+    cjt_ids = [cjt.id for cjt in cjts]
     job_specs = dict()
     for cjt in cjts:
         job_specs[cjt.id] = {
@@ -456,9 +457,33 @@ def cq_interface(request):
         'xp_species_json': json.dumps(xp_species),
         'job_specs': job_specs,
         'cjts': cjts,
+        'cjt_ids': cjt_ids,
         'raspi_telemetry_url': settings.TELEMETRY_URL,
     }
     return ds.render(request, 'djff/cq_interface.html', context)
+
+
+def cq_builder(request):
+
+    cjts = CaptureJobTemplate.objects.all()
+    cjt_ids = [cjt.id for cjt in cjts]
+    job_specs = dict()
+    for cjt in cjts:
+        job_specs[cjt.id] = {
+            'voltage': cjt.voltage,
+            'current': cjt.current,
+            'startup_delay': cjt.startup_delay,
+            'interval': cjt.interval,
+            'duration': cjt.duration
+        }
+    job_specs = json.dumps(job_specs)
+
+    context = {
+        'job_specs': job_specs,
+        'cjts': cjts,
+        'cjt_ids': cjt_ids,
+    }
+    return ds.render(request, 'djff/cq_builder.html', context)
 
 
 @csrf_dec.csrf_exempt

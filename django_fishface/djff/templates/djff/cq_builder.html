@@ -1,0 +1,42 @@
+{% extends "djff/base.html" %}
+{% load staticfiles %}
+
+{% block localscript %}
+<script type="text/javascript">
+$(document).ready(function() {
+    console.log(window.ff);
+    window.ff.job_specs = {{ job_specs|safe }};
+    window.ff.cjt_ids = {{ cjt_ids|safe }};
+});
+</script>
+<script type="text/javascript" src="{% static 'djff/cq_builder.js' %}"></script>
+{% endblock %}
+
+{% block subtitle %}Capture Queue Builder{% endblock %}
+
+{% block content %}
+    <div id="capture_queue_builder_wrapper" class="job_wrapper">
+        <form>
+            <h2>Queue Name: <input type="text" name="queue_name"/></h2>
+            <span id="clear_queue_button" class="boxed deleterbutton">CLEAR QUEUE</span>
+            <br>
+            <ul class="queue_block" id="capture_queue_builder">
+                <li id="queue_placeholder">No queued jobs.</li>
+            </ul>
+            <br>
+            <input type="submit" value="save queue">
+        </form>
+    </div>
+
+{% endblock %}
+
+{% block preview_area %}
+    <h3>Capturejob Template Palette</h3>
+    <ul class="queue_block" id="cjt_list">
+    {% for cjt in cjts %}
+        <li class="fresh_cjt" id="CJT_{{ cjt.id }}"></li>
+    {% endfor %}
+    </ul>
+
+
+{% endblock %}

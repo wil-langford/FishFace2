@@ -228,6 +228,16 @@ input[type="radio"] {
     min-height: 2em;
 }
 
+#capture_queue_builder_wrapper {
+    background-color: #aaaaaa;
+    text-align: center;
+    padding: 2em;
+}
+
+#capture_queue_builder {
+    min-height: 2em;
+}
+
 .queue_block {
     display: inline-table;
 }
@@ -316,12 +326,13 @@ div#raspi_monitor {
     position: absolute;
     left: 1em;
     background-color: cadetblue;
-    bottom: 1em;
+    bottom: 2em;
     padding: 5px;
     border: 1px solid black;
     line-height: 1.7;
     text-align: center;
     font-size: 10pt;
+    min-width: 10em;
 }
 
 div#raspi_monitor .hover_wrapper .hover_text {

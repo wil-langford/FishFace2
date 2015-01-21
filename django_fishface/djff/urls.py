@@ -108,6 +108,12 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
+        r'^cq_builder/$',
+        views.cq_builder,
+        name='cq_builder'
+    ),
+
+    dcu.url(
         r'^tag/$',
         views.tagging_interface,
         name='tagging_interface'
