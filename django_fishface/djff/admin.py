@@ -54,6 +54,7 @@ class ImageAdmin(admin.ModelAdmin):
             'fields': [
                 'capture_timestamp',
                 'voltage',
+                'current',
                 'is_cal_image',
                 'psu_log',
                 'image_file',
@@ -64,6 +65,7 @@ class ImageAdmin(admin.ModelAdmin):
     # inlines = [PowerSupplyLogInline]
     list_display = (
         'voltage',
+        'current',
         'capture_timestamp',
         'is_cal_image',
         'xp',

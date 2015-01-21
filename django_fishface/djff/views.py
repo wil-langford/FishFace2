@@ -111,7 +111,7 @@ def stats(request):
             'id': xp.id,
             'name': xp.name,
             'slug': xp.slug,
-            'cjrs': xp.capturejobrecord_set.all(),
+            'cjrs': xp.capturejobrecord_set.all().order_by('id'),
             'actual_xp': xp,
         }
 
@@ -145,6 +145,7 @@ def receive_telemetry(request):
         is_cal_image = (str(payload['is_cal_image']).lower()
                         in ['true', 't', 'yes', 'y', '1'])
         voltage = float(payload['voltage'])
+        current = float(payload['current'])
 
         capture_timestamp = datetime.datetime.utcfromtimestamp(
             float(payload['capture_time'])).replace(tzinfo=dut.utc)
@@ -160,6 +161,7 @@ def receive_telemetry(request):
             xp=xp,
             capture_timestamp=capture_timestamp,
             voltage=voltage,
+            current=current,
             is_cal_image=is_cal_image,
             cjr=cjr,
             image_file=request.FILES[
@@ -237,6 +239,7 @@ def tagging_interface(request):
                        'name': researcher.name,
                        'tag_score': researcher.tag_score,
                        'bad_tags': researcher.bad_tags,
+                       'good_tags': researcher.verified_tags
                    }
                    for researcher in all_researchers]
 
@@ -271,8 +274,13 @@ def tag_submit(request):
 
             manual_tag.save()
 
-        return_value['researcher_score'] = researcher.tag_score
+        return_value['researcher_all_tags'] = researcher.all_tags_count
         return_value['researcher_bad_tags'] = researcher.bad_tags
+        return_value['researcher_good_tags'] = researcher.verified_tags
+        return_value['researcher_unverified_tags'] = researcher.unverified_tags
+        return_value['researcher_tags_undergone_verification'] = researcher.all_tags_count - researcher.unverified_tags
+        return_value['researcher_good_rate'] = researcher.accuracy_score
+        return_value['researcher_bad_rate'] = researcher.antiaccuracy_score
 
         untagged_images = Image.objects.filter(is_cal_image=False).exclude(
             xp__name__contains='TEST_DATA').exclude(
@@ -771,6 +779,7 @@ def receive_image(request):
             is_cal_image = (str(request.POST['is_cal_image']).lower()
                             in ['true', 't', 'yes', 'y', '1'])
             voltage = float(request.POST['voltage'])
+            current = float(request.POST['current'])
 
             capture_timestamp = datetime.datetime.utcfromtimestamp(
                 float(request.POST['capture_time'])
@@ -790,6 +799,7 @@ def receive_image(request):
                 xp=xp,
                 capture_timestamp=capture_timestamp,
                 voltage=voltage,
+                current=current,
                 is_cal_image=is_cal_image,
                 cjr=cjr,
                 image_file=request.FILES[
