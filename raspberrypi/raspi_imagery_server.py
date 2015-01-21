@@ -773,8 +773,8 @@ class ImageryServer(object):
     def monitor(self, payload):
         response = {
             'command': 'raspi_monitor',
-            'psu_voltage_meas': float(self.power_supply.voltage_sense),
-            'psu_current_meas': float(self.power_supply.current_sense),
+            'psu_voltage_meas': round(float(self.power_supply.voltage_sense), 3),
+            'psu_current_meas': round(float(self.power_supply.current_sense), 3),
         }
 
         response['threads'] = [{

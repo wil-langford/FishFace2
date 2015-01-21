@@ -31,6 +31,9 @@ $(document).ready(function() {
                     } else {
                         thr_status_element.css('background-color', 'red');
                     }
+
+                    $("#psu_monitor_voltage").html(data.psu_voltage_meas);
+                    $("#psu_monitor_current").html(data.psu_current_meas);
                 }
             },
             dataType: 'json'
