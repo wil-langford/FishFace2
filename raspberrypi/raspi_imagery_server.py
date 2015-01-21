@@ -10,13 +10,15 @@ import Queue
 import time
 import io
 import BaseHTTPServer
-import requests
+import SocketServer
 import datetime
 import logging
 import logging.handlers
 import json
 import cgi
 import sys
+
+import requests
 
 import fishface_server_auth
 
@@ -162,7 +164,10 @@ class RegisteredThreadWithHeartbeat(threading.Thread):
 
     @property
     def last_heartbeat_delta(self):
-        return time.time() - self._heartbeat_timestamp
+        if self._heartbeat_timestamp is not None:
+            return time.time() - self._heartbeat_timestamp
+        else:
+            return 1000000
 
     @property
     def index_in_registry(self):
@@ -650,6 +655,8 @@ class CurrentFramer(RegisteredThreadWithHeartbeat):
                 }
             )
 
+class ThreadedHTTPServer(BaseHTTPServer.HTTPServer, SocketServer.ThreadingMixIn):
+    pass
 
 class ImageryServer(object):
     """
@@ -669,7 +676,7 @@ class ImageryServer(object):
         self.current_framer.start()
 
         self.server_address = (HOST, PORT)
-        self.httpd = BaseHTTPServer.HTTPServer(
+        self.httpd = ThreadedHTTPServer(
             self.server_address,
             CommandHandler
         )
@@ -851,6 +858,7 @@ class ImageryServer(object):
         logger.debug('Posting psu sensed data:\n{}'.format(payload))
 
         self.telemeter.post_to_fishface(payload)
+
 
 
 class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
