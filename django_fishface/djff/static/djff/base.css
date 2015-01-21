@@ -314,7 +314,7 @@ div#zero_unverified {
 
 div#raspi_monitor {
     position: absolute;
-    right: 1em;
+    left: 1em;
     background-color: cadetblue;
     bottom: 1em;
     padding: 5px;
@@ -327,7 +327,7 @@ div#raspi_monitor {
 div#raspi_monitor .hover_wrapper .hover_text {
     position: absolute;
     bottom: 2em;
-    right: 16em;
+    left: 16em;
     background-color: palegreen;
     visibility: collapse;
     min-width: 15em;
@@ -375,4 +375,8 @@ div#raspi_monitor .hw_monitor_label {
     border: 1px solid gray;
     margin-bottom: 5px;
     background-color: navajowhite;
+}
+
+div#raspi_monitor #RASPI {
+    background-color: yellow;
 }
