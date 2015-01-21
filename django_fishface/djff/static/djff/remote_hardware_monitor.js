@@ -8,6 +8,12 @@ $(document).ready(function() {
             type: 'POST',
             url: window.ff.telemetry_proxy_url,  // set by inline javascript on the main page
             data: payload,
+            error: function (jqXHR, status, error) {
+                    $('#RASPI').css('background-color', 'red');
+                    $('#CJC').css('background-color', 'gray');
+                    $('#DP').css('background-color', 'gray');
+                    $('#CF').css('background-color', 'gray');
+            },
             success: function (data, status, jqXHR) {
                 if (data.command=='raspi_monitor') {
                     $('#RASPI').css('background-color', 'lightgreen');
