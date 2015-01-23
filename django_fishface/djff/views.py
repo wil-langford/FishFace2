@@ -486,6 +486,28 @@ def cq_builder(request):
     return ds.render(request, 'djff/cq_builder.html', context)
 
 
+def cq_saver(request):
+    data = json.loads(request.POST.get('payload_json'))
+
+    if data['cq_id'] != '':
+        cq = CaptureJobQueue.objects.get(pk=int(data['cq_id']))
+    else:
+        cq = CaptureJobQueue()
+
+    cq.name = data['name']
+    cq.queue = data['queue']
+    cq.comment = data['comment']
+    cq.save()
+
+    payload = json.dumps({
+        'cq_id': cq.id,
+        'name': cq.name,
+        'comment': cq.comment
+    })
+
+    return dh.HttpResponse(payload, content_type='application/json')
+
+
 @csrf_dec.csrf_exempt
 def cjr_new_for_raspi(request):
     logger.info("making new CJR with: {}".format(request.POST))

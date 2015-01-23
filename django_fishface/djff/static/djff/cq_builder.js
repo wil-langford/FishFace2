@@ -57,18 +57,17 @@ $(document).ready(function(){
     }
 
     function clear_queue() {
-        $('#capture_queue_builder').html('<li id="queue_placeholder">No queued jobs.</li>');
+        no_jobs_placeholder();
     }
 
     function no_jobs_placeholder() {
         if (get_queue_array().length == 0) {
-            $('#capture_queue_builder').html('<li id="queue_placeholder">No queued jobs.</li>');
+            $('#capture_queue_builder').html(
+                '<li id="queue_placeholder">No queued jobs.</li>'
+            );
+
         }
     }
-
-    // Bind functions to events
-
-    $('#clear_queue_button').click(clear_queue);
 
     /*
      * Add some jQuery UI magic
@@ -79,6 +78,7 @@ $(document).ready(function(){
         cursor: 'pointer',
         revert: false,
         dropOnEmpty: true,
+        cancel: "#queue_placeholder",
         placeholder: "ui_sortable_placeholder",
 
         start: function(event, ui) {
@@ -123,11 +123,61 @@ $(document).ready(function(){
         revert: false
     });
 
+    /*
+     * Bind functions to UI events.
+     */
+
+    $('#clear_queue_button').click(clear_queue);
+
+    $("#save_queue_button").click(function() {
+        var queue_array = get_queue_array();
+
+        if (queue_array.length > 0 || window.ff.queue_id != '') {
+
+            var queue_name = $('input#queue_name').val();
+            var queue_comment = $('textarea#queue_comment').val();
+            queue_name = queue_name == undefined? '': queue_name;
+            queue_comment = queue_comment == undefined? '': queue_comment;
+
+            if (queue_name == '') {
+                console.log('no name!');
+                return false;
+            }
+
+            var payload = {
+                cq_id: window.ff.cq_id,
+                name: queue_name,
+                queue: queue_array,
+                comment: queue_comment
+            };
+
+            console.log(payload);
+
+            $.ajax({
+                type: 'POST',
+                url: window.ff.cq_saver_url,  // set by inline javascript on the main page
+                data: { payload_json: JSON.stringify(payload) },
+                success: function (data, status, jqXHR) {
+                    if (data.cq_id > 0) {
+                        window.ff.cq_id = data.cq_id;
+                        $('input#queue_name').val(data.name);
+                        $('textarea#queue_comment').val(data.comment);
+
+                    }
+                },
+                error: function(jqXHR, status, error) {
+
+                },
+                dataType: 'json'
+            });
+        }
+    });
+
     // Executable stuff
     date_format = 'YYYY-MM-DD HH:mm:ss.SSZZ';
 
     for (idx in window.ff.cjt_ids) {
-        var cjt_id = window.ff.cjt_ids[idx]
+        var cjt_id = window.ff.cjt_ids[idx];
         var cjt = $('#CJT_' + cjt_id);
         cjt.attr('data-attrib_job_spec', data_attrib_from_job_spec(window.ff.job_specs[cjt_id]));
         cjt.html(inner_li_from_job_spec(window.ff.job_specs[cjt_id]));

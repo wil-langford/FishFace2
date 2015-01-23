@@ -327,7 +327,7 @@ class FishLocale(models.Model):
 
 class CaptureJobQueue(models.Model):
     name = models.CharField('name of the queue', max_length=50)
-    timestamp = models.DateTimeField('when this queue was saved', auto_now_add=True)
+    timestamp = models.DateTimeField('when this queue was most recently saved', auto_now=True)
     queue = jsonfield.JSONField('a queue spec object')
     comment = models.TextField('description of this queue')
 
