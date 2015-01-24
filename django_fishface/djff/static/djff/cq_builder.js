@@ -20,6 +20,14 @@ $(document).ready(function(){
         return job_spec;
     }
 
+    function li_from_queue(queue) {
+        return '<li class="saved_queue" id="CJQ_' + queue.id + '">' +
+            'Name: ' + queue.name + '<br>' +
+            'Description: ' + queue.comment + '<br><br>' +
+            '<span class="boxed queue_loader" id="CJQ_' + queue.id + '_LOAD">&larr;load</span> ' +
+            '<span class="boxed queue_deleter" id="CJQ_' + queue.id + '_DEL">delete</span>' +
+            '</li>';
+    }
 
     function li_from_job_spec(job_spec) {
         return '<li class="job_queue_item" data-attrib_job_spec=' + data_attrib_from_job_spec(job_spec) + '>' +
@@ -41,6 +49,33 @@ $(document).ready(function(){
         return inner_li;
     }
 
+    function refresh_queues() {
+        $.ajax({
+            type: 'GET',
+            url: window.ff.cjqs_url,  // set by inline javascript on the main page
+            success: function (data, status, jqXHR) {
+                window.ff.cjqs = data.cjqs;
+                window.ff.cjq_ids = data.cjq_ids;
+                var cjq_list = $('#cjq_list');
+                cjq_list.html('');
+                if (data.cjq_ids.length > 0) {
+                    for (var i in data.cjq_ids) {
+                        var queue = data.cjqs[data.cjq_ids[i]];
+                        console.log(queue);
+                        cjq_list.append(li_from_queue(queue));
+                    }
+                } else {
+                    cjq_list.html('<li>No saved queues.<li>');
+                }
+                
+            },
+            error: function(jqXHR, status, error) {
+
+            },
+            dataType: 'json'
+        });
+    }
+
     function get_queue_array() {
         var queue_attrib_array = $('#capture_queue_builder').sortable('toArray', {'attribute': 'data-attrib_job_spec'});
         var queue_array = [];
@@ -57,7 +92,11 @@ $(document).ready(function(){
     }
 
     function clear_queue() {
+        $('#capture_queue_builder').html('');
+        $('input#queue_name').val('');
+        $('textarea#queue_comment').val('');
         no_jobs_placeholder();
+        window.ff.cjq_id = 0;
     }
 
     function no_jobs_placeholder() {
@@ -65,7 +104,23 @@ $(document).ready(function(){
             $('#capture_queue_builder').html(
                 '<li id="queue_placeholder">No queued jobs.</li>'
             );
+        }
+    }
 
+    function load_queue(id) {
+        clear_queue();
+        window.ff.cjq_id = id;
+        var queue = window.ff.cjqs[id];
+        var queue_array = queue.queue;
+
+        var cjq = $('#capture_queue_builder');
+        cjq.html('');
+
+        $('input#queue_name').val(queue.name);
+        $('textarea#queue_comment').val(queue.comment);
+        for (var j in queue_array) {
+            var job_spec = queue_array[j];
+            cjq.append(li_from_job_spec(job_spec));
         }
     }
 
@@ -127,12 +182,16 @@ $(document).ready(function(){
      * Bind functions to UI events.
      */
 
+    $('#cjq_list').on('click', '.queue_loader', function() {
+        load_queue($(this)[0].id.split('_')[1]);
+    });
+
     $('#clear_queue_button').click(clear_queue);
 
     $("#save_queue_button").click(function() {
         var queue_array = get_queue_array();
 
-        if (queue_array.length > 0 || window.ff.queue_id != '') {
+        if (queue_array.length > 0 || window.ff.queue_id > 0) {
 
             var queue_name = $('input#queue_name').val();
             var queue_comment = $('textarea#queue_comment').val();
@@ -145,25 +204,25 @@ $(document).ready(function(){
             }
 
             var payload = {
-                cq_id: window.ff.cq_id,
+                cjq_id: window.ff.cjq_id,
                 name: queue_name,
                 queue: queue_array,
                 comment: queue_comment
             };
 
-            console.log(payload);
-
             $.ajax({
                 type: 'POST',
-                url: window.ff.cq_saver_url,  // set by inline javascript on the main page
+                url: window.ff.cjq_saver_url,  // set by inline javascript on the main page
                 data: { payload_json: JSON.stringify(payload) },
                 success: function (data, status, jqXHR) {
-                    if (data.cq_id > 0) {
-                        window.ff.cq_id = data.cq_id;
+                    if (data.cjq_id > 0) {
+                        window.ff.cjq_id = data.cjq_id;
                         $('input#queue_name').val(data.name);
                         $('textarea#queue_comment').val(data.comment);
 
                     }
+
+                    refresh_queues();
                 },
                 error: function(jqXHR, status, error) {
 
@@ -182,6 +241,8 @@ $(document).ready(function(){
         cjt.attr('data-attrib_job_spec', data_attrib_from_job_spec(window.ff.job_specs[cjt_id]));
         cjt.html(inner_li_from_job_spec(window.ff.job_specs[cjt_id]));
     }
+
+    refresh_queues();
 
     var main_loop = window.setInterval(
         function() {  // executed once per second to update displays with timers

@@ -415,3 +415,13 @@ form#queue_form {
     font-size: larger;
     font-width: bolder;
 }
+
+span.queue_deleter {
+    background-color: pink;
+    font-size: 10pt;
+}
+
+span.queue_loader {
+    font-size: 10pt;
+    background-color: lightblue;
+}

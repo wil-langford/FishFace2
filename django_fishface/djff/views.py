@@ -463,10 +463,30 @@ def cq_interface(request):
     return ds.render(request, 'djff/cq_interface.html', context)
 
 
-def cq_builder(request):
+def cjqs(request):
+    cjqs = CaptureJobQueue.objects.all()
+    cjq_ids = [cjq.id for cjq in cjqs]
+    queues = dict()
+    for cjq in cjqs:
+        queues[cjq.id] = {
+            'id': cjq.id,
+            'name': cjq.name,
+            'comment': cjq.comment,
+            'queue': cjq.queue,
+        }
 
+    payload = json.dumps({
+        'cjq_ids': cjq_ids,
+        'cjqs': queues
+    })
+
+    return dh.HttpResponse(payload, content_type='application/json')
+
+
+def cq_builder(request):
     cjts = CaptureJobTemplate.objects.all()
     cjt_ids = [cjt.id for cjt in cjts]
+
     job_specs = dict()
     for cjt in cjts:
         job_specs[cjt.id] = {
@@ -486,23 +506,25 @@ def cq_builder(request):
     return ds.render(request, 'djff/cq_builder.html', context)
 
 
-def cq_saver(request):
+def cjq_saver(request):
     data = json.loads(request.POST.get('payload_json'))
 
-    if data['cq_id'] != '':
-        cq = CaptureJobQueue.objects.get(pk=int(data['cq_id']))
-    else:
-        cq = CaptureJobQueue()
+    cjq_id = int(data['cjq_id'])
 
-    cq.name = data['name']
-    cq.queue = data['queue']
-    cq.comment = data['comment']
-    cq.save()
+    if cjq_id:
+        cjq = CaptureJobQueue.objects.get(pk=cjq_id)
+    else:
+        cjq = CaptureJobQueue()
+
+    cjq.name = data['name']
+    cjq.queue = data['queue']
+    cjq.comment = data['comment']
+    cjq.save()
 
     payload = json.dumps({
-        'cq_id': cq.id,
-        'name': cq.name,
-        'comment': cq.comment
+        'cjq_id': cjq.id,
+        'name': cjq.name,
+        'comment': cjq.comment
     })
 
     return dh.HttpResponse(payload, content_type='application/json')

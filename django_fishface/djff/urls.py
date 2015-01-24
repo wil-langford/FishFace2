@@ -114,9 +114,15 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
-        r'^cq_saver/$',
-        views.cq_saver,
-        name='cq_saver'
+        r'^cjq_saver/$',
+        views.cjq_saver,
+        name='cjq_saver'
+    ),
+
+    dcu.url(
+        r'^cjqs/$',
+        views.cjqs,
+        name='cjqs'
     ),
 
     dcu.url(
