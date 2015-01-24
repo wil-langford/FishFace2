@@ -18,10 +18,8 @@ $(document).ready(function(){
     }
 
     function repopulate_fields(data, textStatus, jqXHR) {
-        console.log(JSON.stringify(data));
         var temp_xp_id = data.xp_id;
         if (temp_xp_id != undefined && data.current_job != undefined) {
-            console.log("setting xp_id " + temp_xp_id);
             $('#xp_display_wrapper').attr('data-xp_id', temp_xp_id);
         }
 
@@ -32,7 +30,6 @@ $(document).ready(function(){
 
             if (data.current_job != undefined) {
                 var cj = data.current_job;
-                console.log('data.current: ' + JSON.stringify(cj));
                 $('#current_job_wrapper').css('display', 'block');
                 $('#current_job_status').html(cj.status);
                 $('#current_job_remaining_total').html(cj.remaining + "/" + cj.total);
@@ -84,7 +81,6 @@ $(document).ready(function(){
         if ($('#current_job_wrapper').css('display') == 'none') {
             $('#xp_display_wrapper').attr('data-xp_id', '');
             check_xp_id();
-            console.log('Changing experiment.');
         } else {
             $('#xp_display_wrapper').append(
                 '<div id="no_change_during_run" class="bad boxed">Can\'t' +
@@ -115,7 +111,6 @@ $(document).ready(function(){
             $('#xp_select_wrapper').css('display', 'block');
             check_xp_id = false;
         }
-        console.log("checked xp_id: " + check_xp_id);
         return check_xp_id;
     }
 
@@ -128,7 +123,6 @@ $(document).ready(function(){
     function push_entire_queue_to_raspi() {
         queue_array = cq_util.get_queue_array();
         if (queue_array != []) {
-            console.log("setting queue to: " + queue_array.toString());
             xp_id = get_xp_id();
             send_to_raspi({
                 'command': 'set_queue',
@@ -139,8 +133,7 @@ $(document).ready(function(){
         }
     }
 
-    function clear_queue() {
-        console.log('Clearing queue');
+    window.ff.cq_util.clear_queue = function() {
         xp_id = get_xp_id();
         send_to_raspi({
             'command': 'set_queue',
@@ -187,19 +180,22 @@ $(document).ready(function(){
     $('#change_xp_button').click(change_experiment);
 
     $('#go_button').click(start_queue);
-    $('#clear_queue_button').click(clear_queue);
+    $('#clear_queue_button').click(cq_util.clear_queue);
     $('#abort_all_button').click(abort_all);
 
     $('#refresh_button').click(repop);
     $('#monitor_button').click(start_periodic_monitor);
     $('#monitor_stop_button').click(stop_periodic_monitor);
 
+    $('#cjq_list').on('click', '.queue_loader', function() {
+        if (cq_util.get_queue_array().length == 0) {
+            cq_util.load_queue($(this)[0].id.split('_')[1]);
+        }
+    });
 
     $('#xp_select_form').submit(function() {
-        console.log("submitting xp_id!!!");
         var xp_id = +$('input[name=xp]:checked').val();
         $('#xp_display_wrapper').attr('data-xp_id', xp_id);
-        console.log("xp_id from page: " + get_xp_id());
         check_xp_id();
         repop();
         return false;
@@ -230,18 +226,13 @@ $(document).ready(function(){
         update: function(event, ui) {
             $('#queue_placeholder').remove();
 
-            console.log("inside update")
-            console.log(cq_util.get_queue_array());
-
-            if (cq_util.get_queue_array().length == 0) {
-                $('#capture_job_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
-            }
-
             if (window.fishface_push_queue_on_update == true) {
                 push_entire_queue_to_raspi();
                 repop();
                 start_periodic_monitor();
             }
+
+            cq_util.no_jobs_placeholder();
         },
         stop: function(event, ui) {
             if (ui.item.hasClass("fresh_cjt")) {
@@ -252,12 +243,9 @@ $(document).ready(function(){
         beforeStop: function(event, ui) {
             if (keep_job_in_queue == 0) {
                 ui.item.remove();
-                console.log("inside update")
-                console.log(cq_util.get_queue_array());
-                console.log(cq_util.get_queue_array().length)
 
                 if (cq_util.get_queue_array().length == 0) {
-                    $('#capture_job_queue').html('<li id="queue_placeholder">No queued jobs.</li>');
+                    cq_util.no_jobs_placeholder();
                 }
                 if (window.fishface_push_queue_on_update == true) {
                     push_entire_queue_to_raspi();
@@ -298,6 +286,8 @@ $(document).ready(function(){
     $("#xp_select_form input:radio:last").attr('checked', true);
 
     repop();
+
+    cq_util.refresh_queues();
 
     var main_loop = window.setInterval(
         function() {  // executed once per second to update displays with timers

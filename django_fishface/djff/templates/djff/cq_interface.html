@@ -10,6 +10,13 @@
         window.ff.xp_species = {{ xp_species_json|safe }};
         window.ff.job_specs = {{ job_specs|safe }};
         window.ff.cjt_ids = {{ cjt_ids|safe }};
+
+        window.ff.cjq_saver_url = "{% url 'djff:cjq_saver' %}";
+        window.ff.cjqs_url = "{% url 'djff:cjqs' %}";
+
+        window.ff.cjq_id = 0;
+
+        window.ff.which_template = 'cq_interface';
     });
 </script>
 
@@ -109,6 +116,11 @@
 {% endblock %}
 
 {% block preview_area %}
+    <h3>Saved Queues</h3>
+    <ul class="queue_block" id="cjq_list">
+        <li>Loading saved queues...</li>
+    </ul>
+
     <h3>Capturejob Template Palette</h3>
     <ul class="queue_block" id="cjt_list">
     {% for cjt in cjts %}

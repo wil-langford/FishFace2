@@ -23,12 +23,15 @@ $(document).ready(function(){
     }
 
     cq_util.li_from_queue = function(queue) {
-        return '<li class="saved_queue" id="CJQ_' + queue.id + '">' +
+        var output = '<li class="saved_queue" id="CJQ_' + queue.id + '">' +
             'Name: ' + queue.name + '<br>' +
             'Description: ' + queue.comment + '<br><br>' +
-            '<span class="boxed queue_loader" id="CJQ_' + queue.id + '_LOAD">&larr;load</span> ' +
-            '<span class="boxed queue_deleter" id="CJQ_' + queue.id + '_DEL">delete</span>' +
-            '</li>';
+            '<span class="boxed queue_loader" id="CJQ_' + queue.id + '_LOAD">&larr;load</span>';
+        if (window.ff.which_template == 'cq_builder') {
+            output = output + ' <span class="boxed queue_deleter" id="CJQ_' + queue.id + '_DEL">delete</span>';
+        }
+        output = output + '</li>';
+        return output;
     }
 
     cq_util.li_from_job_spec = function(job_spec) {
@@ -94,15 +97,17 @@ $(document).ready(function(){
 
     cq_util.no_jobs_placeholder = function() {
         if (cq_util.get_queue_array().length == 0) {
-            $('#capture_queue_builder').html(
+            $('#capture_job_queue').html(
                 '<li id="queue_placeholder">No queued jobs.</li>'
             );
         }
     }
 
     cq_util.load_queue = function(id) {
-        cq_util.clear_queue();
-        var cjq = $('#capture_queue_builder');
+        if (window.ff.which_template == 'cq_builder') {
+            cq_util.clear_queue();
+        }
+        var cjq = $('#capture_job_queue');
         cjq.html('');
 
         window.ff.cjq_id = id;
@@ -140,9 +145,6 @@ $(document).ready(function(){
 
     window.ff.cq_util = cq_util;
 
-    $('#cjq_list').on('click', '.queue_loader', function() {
-        cq_util.load_queue($(this)[0].id.split('_')[1]);
-    });
 
 
 });  // End of document.ready()

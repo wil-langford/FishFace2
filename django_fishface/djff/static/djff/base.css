@@ -224,7 +224,7 @@ input[type="radio"] {
     text-align: center;
 }
 
-#capturejob_queue {
+#capture_job_queue {
     min-height: 2em;
 }
 
