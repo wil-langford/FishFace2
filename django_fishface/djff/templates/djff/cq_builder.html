@@ -12,6 +12,7 @@ $(document).ready(function() {
     window.ff.cjq_id = 0;
 });
 </script>
+<script type="text/javascript" src="{% static 'djff/cq_utils.js' %}"></script>
 <script type="text/javascript" src="{% static 'djff/cq_builder.js' %}"></script>
 {% endblock %}
 
@@ -33,7 +34,7 @@ $(document).ready(function() {
         <span id="save_queue_button" class="boxed">SAVE QUEUE</span>
         <span id="clear_queue_button" class="boxed deleterbutton">CLEAR QUEUE</span>
         <br>
-        <ul class="queue_block" id="capture_queue_builder">
+        <ul class="queue_block" id="capture_job_queue">
             <li id="queue_placeholder">No queued jobs.</li>
         </ul>
     </div>
