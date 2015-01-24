@@ -7,20 +7,18 @@ $(document).ready(function(){
                job_spec.startup_delay + "_" +
                job_spec.interval + "_" +
                job_spec.duration;
-    }
+    };
 
     cq_util.job_spec_from_data_attrib = function(data_attrib) {
         var job_spec_array = data_attrib.split("_");
-        var job_spec = {
+        return {
             voltage: job_spec_array[0],
             current: job_spec_array[1],
             startup_delay: job_spec_array[2],
             interval: job_spec_array[3],
             duration: job_spec_array[4]
         };
-
-        return job_spec;
-    }
+    };
 
     cq_util.li_from_queue = function(queue) {
         var output = '<li class="saved_queue" id="CJQ_' + queue.id + '">' +
@@ -32,13 +30,13 @@ $(document).ready(function(){
         }
         output = output + '</li>';
         return output;
-    }
+    };
 
     cq_util.li_from_job_spec = function(job_spec) {
         return '<li class="job_queue_item" data-attrib_job_spec=' + cq_util.data_attrib_from_job_spec(job_spec) + '>' +
                cq_util.inner_li_from_job_spec(job_spec) +
                '</li>';
-    }
+    };
 
     cq_util.inner_li_from_job_spec = function(job_spec) {
         var inner_li;
@@ -52,7 +50,7 @@ $(document).ready(function(){
             inner_li = 'Set (' + job_spec.voltage + 'V, ' + job_spec.current + 'A) ' + 'for ' + job_spec.duration + 's';
         }
         return inner_li;
-    }
+    };
 
     cq_util.refresh_queues = function() {
         $.ajax({
@@ -62,14 +60,14 @@ $(document).ready(function(){
                 window.ff.cjqs = data.cjqs;
                 window.ff.cjq_ids = data.cjq_ids;
                 var cjq_list = $('#cjq_list');
-                cjq_list.html('');
                 if (data.cjq_ids.length > 0) {
+                    cjq_list.html('');
                     for (var i in data.cjq_ids) {
                         var queue = data.cjqs[data.cjq_ids[i]];
                         cjq_list.append(cq_util.li_from_queue(queue));
                     }
                 } else {
-                    cjq_list.html('<li>No saved queues.<li>');
+                    cjq_list.html('<li>No saved queues.</li>');
                 }
                 
             },
@@ -78,7 +76,7 @@ $(document).ready(function(){
             },
             dataType: 'json'
         });
-    }
+    };
 
     cq_util.get_queue_array = function() {
         var queue_attrib_array = $('#capture_job_queue').sortable('toArray', {'attribute': 'data-attrib_job_spec'});
@@ -93,7 +91,7 @@ $(document).ready(function(){
         } else {
             return [];
         }
-    }
+    };
 
     cq_util.no_jobs_placeholder = function() {
         if (cq_util.get_queue_array().length == 0) {
@@ -101,7 +99,7 @@ $(document).ready(function(){
                 '<li id="queue_placeholder">No queued jobs.</li>'
             );
         }
-    }
+    };
 
     cq_util.load_queue = function(id) {
         if (window.ff.which_template == 'cq_builder') {
@@ -120,7 +118,7 @@ $(document).ready(function(){
             var job_spec = queue_array[j];
             cjq.append(cq_util.li_from_job_spec(job_spec));
         }
-    }
+    };
 
     cq_util.delete_queue = function(id) {
         if (window.ff.cjq_id == id) {
@@ -141,7 +139,7 @@ $(document).ready(function(){
             },
             dataType: 'json'
         });
-    }
+    };
 
     window.ff.cq_util = cq_util;
 
