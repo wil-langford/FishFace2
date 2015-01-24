@@ -224,7 +224,17 @@ input[type="radio"] {
     text-align: center;
 }
 
-#capturejob_queue {
+#capture_job_queue {
+    min-height: 2em;
+}
+
+#capture_queue_builder_wrapper {
+    background-color: #aaaaaa;
+    text-align: center;
+    padding: 2em;
+}
+
+#capture_queue_builder {
     min-height: 2em;
 }
 
@@ -316,12 +326,13 @@ div#raspi_monitor {
     position: absolute;
     left: 1em;
     background-color: cadetblue;
-    bottom: 1em;
+    bottom: 2em;
     padding: 5px;
     border: 1px solid black;
     line-height: 1.7;
     text-align: center;
     font-size: 10pt;
+    min-width: 10em;
 }
 
 div#raspi_monitor .hover_wrapper .hover_text {
@@ -379,4 +390,38 @@ div#raspi_monitor .hw_monitor_label {
 
 div#raspi_monitor #RASPI {
     background-color: yellow;
+}
+
+#save_queue_button {
+    background-color: lightgreen;
+    font-width: bolder;
+}
+
+#save_queue_button {
+    background-color: lightgreen;
+    font-width: bolder;
+}
+
+#save_queue_button:hover {
+    background-color: green;
+    font-width: bolder;
+}
+
+form#queue_form {
+    text-align: left;
+}
+
+.big_label {
+    font-size: larger;
+    font-width: bolder;
+}
+
+span.queue_deleter {
+    background-color: pink;
+    font-size: 10pt;
+}
+
+span.queue_loader {
+    font-size: 10pt;
+    background-color: lightblue;
 }

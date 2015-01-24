@@ -30,6 +30,7 @@ from djff.models import (
     Researcher,
     ManualTag,
     ManualVerification,
+    CaptureJobQueue,
 )
 
 import djff.utils.telemetry as telemetry
@@ -430,6 +431,7 @@ def verification_submit(request):
 def cq_interface(request):
 
     cjts = CaptureJobTemplate.objects.all()
+    cjt_ids = [cjt.id for cjt in cjts]
     job_specs = dict()
     for cjt in cjts:
         job_specs[cjt.id] = {
@@ -455,14 +457,90 @@ def cq_interface(request):
         'xp_species_json': json.dumps(xp_species),
         'job_specs': job_specs,
         'cjts': cjts,
+        'cjt_ids': cjt_ids,
         'raspi_telemetry_url': settings.TELEMETRY_URL,
     }
     return ds.render(request, 'djff/cq_interface.html', context)
 
 
+def cjqs(request):
+    cjqs = CaptureJobQueue.objects.all()
+    cjq_ids = [cjq.id for cjq in cjqs]
+    queues = dict()
+    for cjq in cjqs:
+        queues[cjq.id] = {
+            'id': cjq.id,
+            'name': cjq.name,
+            'comment': cjq.comment,
+            'queue': cjq.queue,
+        }
+
+    payload = json.dumps({
+        'cjq_ids': cjq_ids,
+        'cjqs': queues
+    })
+
+    return dh.HttpResponse(payload, content_type='application/json')
+
+
+def cq_builder(request):
+    cjts = CaptureJobTemplate.objects.all()
+    cjt_ids = [cjt.id for cjt in cjts]
+
+    job_specs = dict()
+    for cjt in cjts:
+        job_specs[cjt.id] = {
+            'voltage': cjt.voltage,
+            'current': cjt.current,
+            'startup_delay': cjt.startup_delay,
+            'interval': cjt.interval,
+            'duration': cjt.duration
+        }
+    job_specs = json.dumps(job_specs)
+
+    context = {
+        'job_specs': job_specs,
+        'cjts': cjts,
+        'cjt_ids': cjt_ids,
+    }
+    return ds.render(request, 'djff/cq_builder.html', context)
+
+
+def cjq_saver(request):
+    data = json.loads(request.POST.get('payload_json'))
+
+    if data.get('delete', False):
+        cjq = CaptureJobQueue.objects.get(pk=int(data['cjq_id']))
+        cjq.delete()
+
+        payload = json.dumps({
+            'deleted': 1,
+        })
+    else:
+        cjq_id = int(data['cjq_id'])
+
+        if cjq_id:
+            cjq = CaptureJobQueue.objects.get(pk=cjq_id)
+        else:
+            cjq = CaptureJobQueue()
+
+        cjq.name = data['name']
+        cjq.queue = data['queue']
+        cjq.comment = data['comment']
+        cjq.save()
+
+        payload = json.dumps({
+            'cjq_id': cjq.id,
+            'name': cjq.name,
+            'comment': cjq.comment
+        })
+
+    return dh.HttpResponse(payload, content_type='application/json')
+
+
 @csrf_dec.csrf_exempt
 def cjr_new_for_raspi(request):
-    logger.debug("making new CJR with: {}".format(request.POST))
+    logger.info("making new CJR with: {}".format(request.POST))
     cjr = CaptureJobRecord()
 
     cjr.xp_id = int(request.POST['xp_id'])
@@ -482,6 +560,21 @@ def cjr_new_for_raspi(request):
     })
 
     return dh.HttpResponse(data, content_type='application/json')
+
+
+def save_cjq(request):
+    rp = request.POST
+    logger.info("making new CJQ with: {}".format(rp))
+
+    cjq = CaptureJobQueue()
+
+    cjq.name = rp.name
+    cjq.comment = rp.comment
+    cjq.queue = rp.queue
+
+    cjq.save()
+
+    return dh.HttpResponse(status=201)
 
 
 #
