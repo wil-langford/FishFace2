@@ -509,23 +509,31 @@ def cq_builder(request):
 def cjq_saver(request):
     data = json.loads(request.POST.get('payload_json'))
 
-    cjq_id = int(data['cjq_id'])
+    if data.get('delete', False):
+        cjq = CaptureJobQueue.objects.get(pk=int(data['cjq_id']))
+        cjq.delete()
 
-    if cjq_id:
-        cjq = CaptureJobQueue.objects.get(pk=cjq_id)
+        payload = json.dumps({
+            'deleted': 1,
+        })
     else:
-        cjq = CaptureJobQueue()
+        cjq_id = int(data['cjq_id'])
 
-    cjq.name = data['name']
-    cjq.queue = data['queue']
-    cjq.comment = data['comment']
-    cjq.save()
+        if cjq_id:
+            cjq = CaptureJobQueue.objects.get(pk=cjq_id)
+        else:
+            cjq = CaptureJobQueue()
 
-    payload = json.dumps({
-        'cjq_id': cjq.id,
-        'name': cjq.name,
-        'comment': cjq.comment
-    })
+        cjq.name = data['name']
+        cjq.queue = data['queue']
+        cjq.comment = data['comment']
+        cjq.save()
+
+        payload = json.dumps({
+            'cjq_id': cjq.id,
+            'name': cjq.name,
+            'comment': cjq.comment
+        })
 
     return dh.HttpResponse(payload, content_type='application/json')
 

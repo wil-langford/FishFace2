@@ -61,7 +61,6 @@ $(document).ready(function(){
                 if (data.cjq_ids.length > 0) {
                     for (var i in data.cjq_ids) {
                         var queue = data.cjqs[data.cjq_ids[i]];
-                        console.log(queue);
                         cjq_list.append(li_from_queue(queue));
                     }
                 } else {
@@ -109,12 +108,12 @@ $(document).ready(function(){
 
     function load_queue(id) {
         clear_queue();
+        var cjq = $('#capture_queue_builder');
+        cjq.html('');
+
         window.ff.cjq_id = id;
         var queue = window.ff.cjqs[id];
         var queue_array = queue.queue;
-
-        var cjq = $('#capture_queue_builder');
-        cjq.html('');
 
         $('input#queue_name').val(queue.name);
         $('textarea#queue_comment').val(queue.comment);
@@ -123,6 +122,29 @@ $(document).ready(function(){
             cjq.append(li_from_job_spec(job_spec));
         }
     }
+
+    function delete_queue(id) {
+        if (window.ff.cjq_id == id) {
+            window.ff.cjq_id = 0;
+        }
+
+        var payload = {
+            cjq_id: id,
+            delete: 1
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: window.ff.cjq_saver_url,  // set by inline javascript on the main page
+            data: { payload_json: JSON.stringify(payload) },
+            success: function (data, status, jqXHR) {
+                refresh_queues();
+            },
+            dataType: 'json'
+        });
+    }
+
+
 
     /*
      * Add some jQuery UI magic
@@ -186,6 +208,10 @@ $(document).ready(function(){
         load_queue($(this)[0].id.split('_')[1]);
     });
 
+    $('#cjq_list').on('click', '.queue_deleter', function() {
+        delete_queue($(this)[0].id.split('_')[1]);
+    });
+
     $('#clear_queue_button').click(clear_queue);
 
     $("#save_queue_button").click(function() {
@@ -199,7 +225,7 @@ $(document).ready(function(){
             queue_comment = queue_comment == undefined? '': queue_comment;
 
             if (queue_name == '') {
-                console.log('no name!');
+                console.log('tried to save with no name!');
                 return false;
             }
 
