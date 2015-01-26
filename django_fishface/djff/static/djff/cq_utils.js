@@ -120,6 +120,23 @@ $(document).ready(function(){
         }
     };
 
+    window.ff.append_cjt_li_chunk = function(ul_id, cjt_id) {
+        $.ajax({
+            type: 'POST',
+            url: window.ff.cjt_chunk_url + cjt_id + '/',  // set by inline javascript on the main page
+            data: {},
+            success: function (data, status, jqXHR) {
+                console.log(data);
+                $("#" + ul_id).append(data);
+            },
+            error: function(jqXHR, status, error) {
+                console.log(error);
+            },
+            dataType: 'html'
+        });
+    };
+
+
     cq_util.delete_queue = function(id) {
         if (window.ff.cjq_id == id) {
             window.ff.cjq_id = 0;

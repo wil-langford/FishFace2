@@ -287,6 +287,14 @@ class CaptureJobTemplate(models.Model):
     description = models.TextField('a description of this capture job template (optional)',
                                    null=True, blank=True, )
 
+    ordering = ['duration', 'voltage']
+
+    @property
+    def job_spec(self):
+        return '_'.join([str(x) for x in
+            self.voltage, self.current, self.startup_delay, self.interval, self.duration
+        ])
+
     def get_absolute_url(self):
         return dcu.reverse(
             'djff:cjt_update',

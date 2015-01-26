@@ -168,9 +168,15 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
-        r'^cjt_chunk/(?P<cjt_id>\d+)',
+        r'^cjt_chunk/(?P<cjt_id>\d+)/',
         views.cjt_chunk,
         name='cjt_chunk'
+    ),
+
+    dcu.url(
+        r'^cjt_chunked/',
+        views.cjt_chunked,
+        name='cjt_chunked'
     ),
 )
 

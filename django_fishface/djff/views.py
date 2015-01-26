@@ -430,7 +430,7 @@ def verification_submit(request):
 
 def cq_interface(request):
 
-    cjts = CaptureJobTemplate.objects.all()
+    cjts = CaptureJobTemplate.objects.all().order_by()
     cjt_ids = [cjt.id for cjt in cjts]
     job_specs = dict()
     for cjt in cjts:
@@ -439,7 +439,9 @@ def cq_interface(request):
             'current': cjt.current,
             'startup_delay': cjt.startup_delay,
             'interval': cjt.interval,
-            'duration': cjt.duration
+            'duration': cjt.duration,
+            'job_spec': cjt.job_spec,
+            'description': cjt.description,
         }
     job_specs = json.dumps(job_specs)
 
@@ -494,7 +496,9 @@ def cq_builder(request):
             'current': cjt.current,
             'startup_delay': cjt.startup_delay,
             'interval': cjt.interval,
-            'duration': cjt.duration
+            'duration': cjt.duration,
+            'job_spec': cjt.job_spec,
+
         }
     job_specs = json.dumps(job_specs)
 
@@ -783,28 +787,35 @@ def cjt_new(request):
 
 
 def cjt_chunk(request, cjt_id):
-    cjts_raw = CaptureJobTemplate.objects.all()
-    cjts = [{
+    cjt = CaptureJobTemplate.objects.get(pk=cjt_id)
+    cjt_cooked = {
         'voltage': cjt.voltage,
         'current': cjt.current,
         'startup_delay': cjt.startup_delay,
         'interval': cjt.interval,
         'capture': cjt.interval > 0,
         'duration': cjt.duration,
+        'job_spec': cjt.job_spec,
+        'description': cjt.description,
         'pretty_print_duration': str(datetime.timedelta(seconds=cjt.duration))
     }
-    for cjt in cjts_raw
-    ]
 
-
-    payload = {
-        'cjts': cjts,
+    context = {
+        'cjt': cjt_cooked,
     }
 
-    # return dh.HttpResponse(json.dumps(payload), content_type='application/json')
-
-    context = payload
     return ds.render(request, 'djff/cjt_chunk.html', context)
+
+
+def cjt_chunked(request):
+    cjts = CaptureJobTemplate.objects.all().order_by('duration', 'voltage')
+    cjt_ids = [cjt.id for cjt in cjts]
+
+    context = {
+        'cjt_ids': json.dumps(cjt_ids),
+    }
+
+    return ds.render(request, 'djff/cjt_chunked.html', context)
 
 
 def insert_capturejob_into_queue(request):

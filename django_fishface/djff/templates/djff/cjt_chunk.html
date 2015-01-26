@@ -1,34 +1,24 @@
-<!DOCTYPE html>
-{% load staticfiles %}
-{% load djff_filters %}
-
-<html>
-<head>
-    <link rel="stylesheet" type="text/css" href="{% static 'djff/base.css' %}" />
-</head>
-<body>
-<ul>
-    {% for cjt in cjts %}
-        <li class="cjt_grid" id="CJT_{{ cjt.id }}">
-            <div class="col_1">
-                <span class="cjt_voltage">{{ cjt.voltage }}V</span>
-                <br>
-                <span class="cjt_current">{{ cjt.current }}A</span>
-                <span class="cjt_startup_delay">{{ cjt.startup_delay }}s</span>
-            </div>
-            {% if cjt.capture %}
-                <div class="col_2_cap">
-                    <span class="cjt_duration">{{ cjt.pretty_print_duration }}</span>
-                    <br>
-                    <span class="cjt_interval">{{ cjt.interval }}s</span>
-                </div>
-            {% else %}
-                <div class="col_2_nocap">
-                    <span class="cjt_duration">{{ cjt.pretty_print_duration }}</span>
-                </div>
-            {% endif %}
-        </li>
-    {% endfor %}
-</ul>
-</body>
-</html>
+{% spaceless %}
+<li class="cjt_grid" id="CJT_{{ cjt.id }}" data-job_spec="{{ cjt.job_spec }}">
+    <div class="col_1">
+        <span class="cjt_voltage">{{ cjt.voltage }}V</span>
+        <br>
+        <span class="cjt_current">{{ cjt.current }}A</span>
+        <span class="cjt_startup_delay">{{ cjt.startup_delay }}s</span>
+    </div>
+    {% if cjt.capture %}
+        <div class="col_2_cap">
+            <span class="cjt_duration">{{ cjt.pretty_print_duration }}</span>
+            <br>
+            <span class="cjt_interval">{{ cjt.interval }}s</span>
+        </div>
+    {% else %}
+        <div class="col_2_nocap">
+            <span class="cjt_duration">{{ cjt.pretty_print_duration }}</span>
+        </div>
+    {% endif %}
+    {% if cjt.description %}
+        <span class="hover_text">{{ cjt.description }}</span>
+    {% endif %}
+</li>
+{% endspaceless %}

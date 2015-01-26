@@ -429,7 +429,7 @@ span.queue_loader {
 li.cjt_grid {
     font-size: 16pt;
     line-height: 1.1;
-    width: 12.4em;
+    width: 10.4em;
     height: 2.5em;
     font-family: monospace;
     padding: 0;
@@ -439,22 +439,27 @@ li.cjt_grid {
 [class*='col_'] {
     float: left;
     text-align: center;
-    height: 2.3em;
     padding: 0.1em;
 }
 
 li.cjt_grid .col_1 {
+    padding-top: 0.4em;
     width: 4em;
     background-color: lightblue;
+    height: 2.0em;
 }
 
 li.cjt_grid .col_2_cap {
-    width: 8em;
-    background-color: lightgoldenrodyellow;
+    height: 2.2em;
+    padding-top: 0.2em;
+    width: 6.001em;
+    background-color: lightgreen;
 }
 
 li.cjt_grid .col_2_nocap {
-    width: 8em;
+    width: 6.001em;
+    padding-top: 0.725em;
+    height: 1.675em;
     background-color: lightgrey;
 }
 
@@ -472,4 +477,23 @@ li.cjt_grid .cjt_startup_delay {
 
 li.cjt_grid .cjt_duration {
     font-weight: bolder;
+}
+
+.cjt_grid .hover_text {
+    font-size: 10pt;
+    position: absolute;
+    top: 2em;
+    right: 20em;
+    background-color: palegreen;
+    visibility: collapse;
+    min-width: 15em;
+    border: 1px black solid;
+    text-align: justify;
+    padding: 3px;
+    line-height: 1;
+    font-weight: normal;
+}
+
+.cjt_grid:hover .hover_text {
+    visibility: visible;
 }
