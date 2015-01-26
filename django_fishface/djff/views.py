@@ -499,7 +499,8 @@ def cq_builder(request):
             'interval': cjt.interval,
             'duration': cjt.duration,
             'job_spec': cjt.job_spec,
-
+            'capture': cjt.interval > 0,
+            'description': cjt.description,
         }
     job_specs = json.dumps(job_specs)
 

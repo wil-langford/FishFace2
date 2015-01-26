@@ -31,22 +31,8 @@ $(document).ready(function(){
 
     for (var idx in window.ff.cjt_ids) {
         var cjt_id = window.ff.cjt_ids[idx];
-        window.ff.cq_util.append_cjt_li_chunk("cjt_list", cjt_id, '', '');
-
+        window.ff.cq_util.append_cjt_li_chunk("cjt_list", cjt_id, true, '', '');
     }
-
-
-    window.setTimeout(function() {
-        for (var idx in window.ff.cjt_ids) {
-            var cjt_chunk = $('#CJT_' + window.ff.cjt_ids[idx]);
-            cjt_chunk.draggable({
-                connectToSortable: "#capture_job_queue",
-                helper: "clone",
-                revert: "invalid"
-            });
-        }
-    }, 500);
-
 });
 </script>
 
