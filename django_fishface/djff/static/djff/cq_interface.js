@@ -264,15 +264,8 @@ $(document).ready(function(){
         placeholder: "ui_sortable_placeholder"
     });
 
-    $(".fresh_cjt").draggable({
-        connectToSortable: "#capture_job_queue",
-        helper: "clone",
-        revert: "invalid"
-    });
-
     // Executable stuff
     date_format = 'YYYY-MM-DD HH:mm:ss.SSZZ';
-
 
     window.fishface_monitoring = false;
 

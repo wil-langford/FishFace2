@@ -126,7 +126,6 @@ $(document).ready(function(){
             url: window.ff.cjt_chunk_base_url + cjt_id + '/',  // set by inline javascript on the main page
             data: {},
             success: function (data, status, jqXHR) {
-                console.log(data);
                 $("#" + ul_id).append(prefix + data + suffix);
             },
             error: function(jqXHR, status, error) {

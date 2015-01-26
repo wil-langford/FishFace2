@@ -435,6 +435,7 @@ def cq_interface(request):
     job_specs = dict()
     for cjt in cjts:
         job_specs[cjt.id] = {
+            'id': cjt.id,
             'voltage': cjt.voltage,
             'current': cjt.current,
             'startup_delay': cjt.startup_delay,
@@ -795,6 +796,7 @@ def cjt_new(request):
 def cjt_chunk(request, cjt_id):
     cjt = CaptureJobTemplate.objects.get(pk=cjt_id)
     cjt_cooked = {
+        'id': cjt.id,
         'voltage': cjt.voltage,
         'current': cjt.current,
         'startup_delay': cjt.startup_delay,

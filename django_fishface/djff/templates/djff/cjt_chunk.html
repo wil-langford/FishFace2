@@ -1,9 +1,9 @@
 {% spaceless %}
-<li class="cjt_grid" id="CJT_{{ cjt.id }}" data-job_spec="{{ cjt.job_spec }}">
+<li class="cjt_grid fresh_cjt" id="CJT_{{ cjt.id }}" data-attrib_job_spec="{{ cjt.job_spec }}">
     <div class="col_1">
         <span class="cjt_voltage">{{ cjt.voltage }}V</span>
         <br>
-        <span class="cjt_current">{{ cjt.current }}A</span>
+        <span class="cjt_current">{{ cjt.current }}A </span>
         <span class="cjt_startup_delay">{{ cjt.startup_delay }}s</span>
     </div>
     {% if cjt.capture %}

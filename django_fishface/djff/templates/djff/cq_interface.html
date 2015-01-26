@@ -23,6 +23,34 @@
 <script type="text/javascript" src="{% static 'djff/cq_utils.js' %}"></script>
 <script type="text/javascript" src="{% static 'djff/cq_interface.js' %}"></script>
 
+<script type="text/javascript">
+$(document).ready(function(){
+    if (window.ff.cjt_ids.length > 0) {
+        $('#cjt_list_placeholder').remove();
+    }
+
+    for (var idx in window.ff.cjt_ids) {
+        var cjt_id = window.ff.cjt_ids[idx];
+        window.ff.cq_util.append_cjt_li_chunk("cjt_list", cjt_id, '', '');
+
+    }
+
+
+    window.setTimeout(function() {
+        for (var idx in window.ff.cjt_ids) {
+            var cjt_chunk = $('#CJT_' + window.ff.cjt_ids[idx]);
+            cjt_chunk.draggable({
+                connectToSortable: "#capture_job_queue",
+                helper: "clone",
+                revert: "invalid"
+            });
+        }
+    }, 500);
+
+});
+</script>
+
+
 {% endblock %}
 
 {% block subtitle %}Capture Queue Editor{% endblock %}
@@ -123,9 +151,7 @@
 
     <h3>Capturejob Template Palette</h3>
     <ul class="queue_block" id="cjt_list">
-    {% for cjt in cjts %}
-        <li class="fresh_cjt" id="CJT_{{ cjt.id }}"></li>
-    {% endfor %}
+        <li id="cjt_list_placeholder">There are no stored Capture Job Templates.</li>
     </ul>
 
 
