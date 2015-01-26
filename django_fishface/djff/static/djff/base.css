@@ -508,13 +508,6 @@ li.cjt_grid .cjt_duration {
     visibility: visible;
 }
 
-ul.two_cjt_column {
-    columns: 2;
-    -webkit-columns: 2;
-    -moz-columns: 2;
-    width: 35em;
-}
-
 #cjt_list {
-    width: 15em;
+    width: 16em;
 }
