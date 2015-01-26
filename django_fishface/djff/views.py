@@ -782,6 +782,31 @@ def cjt_new(request):
     )
 
 
+def cjt_chunk(request, cjt_id):
+    cjts_raw = CaptureJobTemplate.objects.all()
+    cjts = [{
+        'voltage': cjt.voltage,
+        'current': cjt.current,
+        'startup_delay': cjt.startup_delay,
+        'interval': cjt.interval,
+        'capture': cjt.interval > 0,
+        'duration': cjt.duration,
+        'pretty_print_duration': str(datetime.timedelta(seconds=cjt.duration))
+    }
+    for cjt in cjts_raw
+    ]
+
+
+    payload = {
+        'cjts': cjts,
+    }
+
+    # return dh.HttpResponse(json.dumps(payload), content_type='application/json')
+
+    context = payload
+    return ds.render(request, 'djff/cjt_chunk.html', context)
+
+
 def insert_capturejob_into_queue(request):
     post = request.POST
     xp_id = post['xp_id']

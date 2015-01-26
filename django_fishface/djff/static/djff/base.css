@@ -425,3 +425,51 @@ span.queue_loader {
     font-size: 10pt;
     background-color: lightblue;
 }
+
+li.cjt_grid {
+    font-size: 16pt;
+    line-height: 1.1;
+    width: 12.4em;
+    height: 2.5em;
+    font-family: monospace;
+    padding: 0;
+    margin: 0.5em;
+}
+
+[class*='col_'] {
+    float: left;
+    text-align: center;
+    height: 2.3em;
+    padding: 0.1em;
+}
+
+li.cjt_grid .col_1 {
+    width: 4em;
+    background-color: lightblue;
+}
+
+li.cjt_grid .col_2_cap {
+    width: 8em;
+    background-color: lightgoldenrodyellow;
+}
+
+li.cjt_grid .col_2_nocap {
+    width: 8em;
+    background-color: lightgrey;
+}
+
+li.cjt_grid .cjt_voltage {
+    font-weight: bolder;
+}
+
+li.cjt_grid .cjt_current {
+    font-size: 8pt;
+}
+
+li.cjt_grid .cjt_startup_delay {
+    font-size: 8pt;
+}
+
+li.cjt_grid .cjt_duration {
+    font-weight: bolder;
+}
