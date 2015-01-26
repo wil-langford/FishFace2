@@ -147,13 +147,6 @@ $(document).ready(function(){
     // Executable stuff
     date_format = 'YYYY-MM-DD HH:mm:ss.SSZZ';
 
-    for (idx in window.ff.cjt_ids) {
-        var cjt_id = window.ff.cjt_ids[idx];
-        var cjt = $('#CJT_' + cjt_id);
-        cjt.attr('data-attrib_job_spec', cq_util.data_attrib_from_job_spec(window.ff.job_specs[cjt_id]));
-        cjt.html(cq_util.inner_li_from_job_spec(window.ff.job_specs[cjt_id]));
-    }
-
     cq_util.refresh_queues();
 
     var main_loop = window.setInterval(

@@ -430,16 +430,19 @@ def verification_submit(request):
 
 def cq_interface(request):
 
-    cjts = CaptureJobTemplate.objects.all()
+    cjts = CaptureJobTemplate.objects.all().order_by()
     cjt_ids = [cjt.id for cjt in cjts]
     job_specs = dict()
     for cjt in cjts:
         job_specs[cjt.id] = {
+            'id': cjt.id,
             'voltage': cjt.voltage,
             'current': cjt.current,
             'startup_delay': cjt.startup_delay,
             'interval': cjt.interval,
-            'duration': cjt.duration
+            'duration': cjt.duration,
+            'job_spec': cjt.job_spec,
+            'description': cjt.description,
         }
     job_specs = json.dumps(job_specs)
 
@@ -494,7 +497,10 @@ def cq_builder(request):
             'current': cjt.current,
             'startup_delay': cjt.startup_delay,
             'interval': cjt.interval,
-            'duration': cjt.duration
+            'duration': cjt.duration,
+            'job_spec': cjt.job_spec,
+            'capture': cjt.interval > 0,
+            'description': cjt.description,
         }
     job_specs = json.dumps(job_specs)
 
@@ -753,10 +759,16 @@ def sp_new(request):
 #
 
 
-class CaptureJobTemplateIndex(dvg.ListView):
-    context_object_name = 'context'
-    template_name = 'djff/cjt_index.html'
-    model = CaptureJobTemplate
+def cjt_index(request):
+    cjts = CaptureJobTemplate.objects.all()
+    cjt_ids = [cjt.id for cjt in cjts]
+
+    context = {
+        'cjts': cjts,
+        'cjt_ids': json.dumps(cjt_ids),
+    }
+
+    return ds.render(request, 'djff/cjt_index.html', context)
 
 
 class CaptureJobTemplateUpdate(dvge.UpdateView):
@@ -780,6 +792,28 @@ def cjt_new(request):
         dcu.reverse('djff:cjt_detail',
                     args=(cjt.id,))
     )
+
+
+def cjt_chunk(request, cjt_id):
+    cjt = CaptureJobTemplate.objects.get(pk=cjt_id)
+    cjt_cooked = {
+        'id': cjt.id,
+        'voltage': cjt.voltage,
+        'current': cjt.current,
+        'startup_delay': cjt.startup_delay,
+        'interval': cjt.interval,
+        'capture': cjt.interval > 0,
+        'duration': cjt.duration,
+        'job_spec': cjt.job_spec,
+        'description': cjt.description,
+        'pretty_print_duration': str(datetime.timedelta(seconds=cjt.duration))
+    }
+
+    context = {
+        'cjt': cjt_cooked,
+    }
+
+    return ds.render(request, 'djff/cjt_chunk.html', context)
 
 
 def insert_capturejob_into_queue(request):

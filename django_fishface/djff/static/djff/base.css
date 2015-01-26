@@ -425,3 +425,89 @@ span.queue_loader {
     font-size: 10pt;
     background-color: lightblue;
 }
+
+li.cjt_grid {
+    font-size: 16pt;
+    line-height: 1.1;
+    width: 10.7em;
+    height: 2.5em;
+    font-family: monospace;
+    padding: 0;
+    margin: 0.5em;
+    background-color: lightblue;
+    color: black;
+}
+
+li.cjt_grid a:link{
+    text-decoration: none;
+}
+
+[class*='col_'] {
+    text-align: center;
+    padding: 0.1em;
+}
+
+li.cjt_grid .col_1 {
+    float: right;
+    padding-top: 0.4em;
+    width: 4em;
+    background-color: lightblue;
+    height: 2.0em;
+}
+
+li.cjt_grid .col_2_cap {
+    float: left;
+    height: 2.2em;
+    padding-top: 0.2em;
+    width: 6em;
+    background-color: lightgreen;
+}
+
+li.cjt_grid .col_2_nocap {
+    float: left;
+    width: 6em;
+    padding-top: 0.725em;
+    height: 1.675em;
+    background-color: lightgrey;
+}
+
+li.cjt_grid .cjt_voltage {
+    font-weight: bolder;
+}
+
+li.cjt_grid .cjt_current {
+    font-size: 8pt;
+}
+
+li.cjt_grid .cjt_startup_delay {
+    font-size: 8pt;
+}
+
+li.cjt_grid .cjt_duration {
+    font-weight: bolder;
+}
+
+.cjt_grid .hover_text {
+    font-size: 10pt;
+    position: absolute;
+    top: 10em;
+    right: 30em;
+    background-color: palegreen;
+    visibility: collapse;
+    min-width: 15em;
+    border: 1px black solid;
+    text-align: justify;
+    padding: 3px;
+    line-height: 1;
+    font-weight: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cjt_grid:hover .hover_text {
+    visibility: visible;
+}
+
+#cjt_list {
+    width: 16em;
+}

@@ -43,7 +43,7 @@ urlpatterns = dcu.patterns(
 
     dcu.url(
         r'^cjt/$',
-        views.CaptureJobTemplateIndex.as_view(),
+        views.cjt_index,
         name='cjt_index',
     ),
     dcu.url(
@@ -166,6 +166,13 @@ urlpatterns = dcu.patterns(
         views.manual_tag_verification_image,
         name='manual_tag_verification_image'
     ),
+
+    dcu.url(
+        r'^cjt_chunk/(?P<cjt_id>\d+)/',
+        views.cjt_chunk,
+        name='cjt_chunk'
+    ),
+
 )
 
 

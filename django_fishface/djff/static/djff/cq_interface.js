@@ -62,12 +62,12 @@ $(document).ready(function(){
             }
 
             if (data.queue.length > 0 && repop_xp_id) {
-                $('.job_queue_item').remove();
                 var cjq = $('#capture_job_queue');
+                cjq.empty();
                 var dq = data.queue;
                 for (var i in data.queue) {
-                    var job = dq[i];
-                    cjq.append(cq_util.li_from_job_spec(job, "job_queue_item"))
+                    var job_spec = dq[i];
+                    cjq.append(cq_util.cjt_li_chunk_from_job_spec(job_spec));
                 }
                 $('#queue_placeholder').remove();
             } else {
@@ -264,24 +264,10 @@ $(document).ready(function(){
         placeholder: "ui_sortable_placeholder"
     });
 
-    $(".fresh_cjt").draggable({
-        connectToSortable: "#capture_job_queue",
-        helper: "clone",
-        revert: "invalid"
-    });
-
     // Executable stuff
     date_format = 'YYYY-MM-DD HH:mm:ss.SSZZ';
 
-
     window.fishface_monitoring = false;
-
-    for (idx in window.ff.cjt_ids) {
-        var cjt_id = window.ff.cjt_ids[idx];
-        var cjt = $('#CJT_' + cjt_id);
-        cjt.attr('data-attrib_job_spec', cq_util.data_attrib_from_job_spec(window.ff.job_specs[cjt_id]));
-        cjt.html(cq_util.inner_li_from_job_spec(window.ff.job_specs[cjt_id]));
-    }
 
     $("#xp_select_form input:radio:last").attr('checked', true);
 

@@ -21,6 +21,7 @@
              */
             if (window.ff == undefined) { window.ff = {
                 telemetry_proxy_url: "{% url 'djff:telemetry_proxy' %}",
+                cjt_chunk_base_url: "{% url 'djff:cjt_chunk' 1 %}".slice(0,-2),
                 csrf_token: "{{ csrf_token }}"
             }; }
 
@@ -35,6 +36,35 @@
                     }
                 }
             });
+
+            // from fearphage on StackExchange
+            if (!String.prototype.format) {
+              String.prototype.format = function() {
+                var args = arguments;
+                return this.replace(/{(\d+)}/g, function(match, number) {
+                  return typeof args[number] != 'undefined'
+                    ? args[number]
+                    : match
+                  ;
+                });
+              };
+            }
+
+            // from powtac on StackExchange
+            if (!String.prototype.toHHMMSS) {
+                String.prototype.toHHMMSS = function () {
+                    var sec_num = parseInt(this, 10); // don't forget the second param
+                    var hours   = Math.floor(sec_num / 3600);
+                    var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+                    var seconds = sec_num - (hours * 3600) - (minutes * 60);
+
+                    if (hours   < 10) {hours   = "0"+hours;}
+                    if (minutes < 10) {minutes = "0"+minutes;}
+                    if (seconds < 10) {seconds = "0"+seconds;}
+                    var time    = hours+':'+minutes+':'+seconds;
+                    return time;
+                }
+            }
         });
     </script>
 
@@ -58,10 +88,10 @@
         <li class="non_menu_li">Setup</li>
         <a href="{% url 'djff:xp_index' %}"><li class="menu_li" id="menu_experiments">Experiments</li></a>
         <a href="{% url 'djff:sp_index' %}"><li class="menu_li" id="menu_species">Species</li></a>
-        <li class="non_menu_li">Capturing</li>
+        <a href="{% url 'djff:cjt_index' %}"><li class="menu_li" id="menu_templates">Individual Job Templates</li></a>
         <a href="{% url 'djff:cq_builder' %}"><li class="menu_li" id="menu_cq_builder">Queue Builder</li></a>
-        <a href="{% url 'djff:cjt_index' %}"><li class="menu_li" id="menu_templates">CapJob Templates</li></a>
-        <a href="{% url 'djff:cq_interface' %}"><li class="menu_li" id="menu_job_queue">CapJob Queue</li></a>
+        <li class="non_menu_li">Capturing</li>
+        <a href="{% url 'djff:cq_interface' %}"><li class="menu_li" id="menu_job_queue">Run Capture Jobs</li></a>
         <li class="non_menu_li">Analysis</li>
         <a href="{% url 'djff:tagging_interface' %}"><li class="menu_li" id="menu_tagging">Tag Data</li></a>
         <a href="{% url 'djff:verification_interface' %}"><li class="menu_li" id="menu_verification">Verify Tags</li></a>

@@ -1,6 +1,32 @@
 $(document).ready(function(){
     var cq_util = {};
 
+    cq_util.cjt_li_chunk_from_job_spec = function(job_spec) {
+        var template = '<li class="cjt_grid" data-attrib_job_spec="{0}">' +
+            '<div class="col_1"><span class="cjt_voltage">{1}V</span><br>' +
+            '<span class="cjt_current">{2}A </span><span class="cjt_startup_delay">{3}s</span>' +
+            '</div><div class="col_2_{5}"><span class="cjt_duration">{4}</span>' +
+            '{6}</div></li>';
+
+        var is_capture = Number(job_spec.interval) > 0;
+
+        var cap_or_no = is_capture ? 'cap' : 'nocap';  // {5}
+        var interval_chunk = is_capture ?
+            '<br><span class="cjt_interval">{0}s</span>'.format(job_spec.interval) :
+            '';  // {6}
+        var duration_pretty_print = job_spec.duration.toHHMMSS();
+
+        return template.format(
+            window.ff.cq_util.data_attrib_from_job_spec(job_spec),
+            job_spec.voltage,
+            job_spec.current,
+            job_spec.startup_delay,
+            duration_pretty_print,
+            cap_or_no,
+            interval_chunk
+        );
+    };
+
     cq_util.data_attrib_from_job_spec = function(job_spec) {
         return job_spec.voltage + "_" +
                job_spec.current + "_" +
@@ -30,26 +56,6 @@ $(document).ready(function(){
         }
         output = output + '</li>';
         return output;
-    };
-
-    cq_util.li_from_job_spec = function(job_spec) {
-        return '<li class="job_queue_item" data-attrib_job_spec=' + cq_util.data_attrib_from_job_spec(job_spec) + '>' +
-               cq_util.inner_li_from_job_spec(job_spec) +
-               '</li>';
-    };
-
-    cq_util.inner_li_from_job_spec = function(job_spec) {
-        var inner_li;
-        if (job_spec.interval > 0) {
-            inner_li =
-                'Set (' + job_spec.voltage + 'V, ' + job_spec.current + 'A), ' +
-                'wait ' + job_spec.startup_delay + 's, ' +
-                'then <br /> capture every ' +
-                job_spec.interval + 's for ' + job_spec.duration + 's';
-        } else {
-            inner_li = 'Set (' + job_spec.voltage + 'V, ' + job_spec.current + 'A) ' + 'for ' + job_spec.duration + 's';
-        }
-        return inner_li;
     };
 
     cq_util.refresh_queues = function() {
@@ -109,15 +115,38 @@ $(document).ready(function(){
         cjq.html('');
 
         window.ff.cjq_id = id;
-        var queue = window.ff.cjqs[id];
-        var queue_array = queue.queue;
+        var queue_wrapper = window.ff.cjqs[id];
+        var queue_array = queue_wrapper.queue;
 
-        $('input#queue_name').val(queue.name);
-        $('textarea#queue_comment').val(queue.comment);
+        $('input#queue_name').val(queue_wrapper.name);
+        $('textarea#queue_comment').val(queue_wrapper.comment);
         for (var j in queue_array) {
             var job_spec = queue_array[j];
-            cjq.append(cq_util.li_from_job_spec(job_spec));
+            $('#capture_job_queue').append(window.ff.cq_util.cjt_li_chunk_from_job_spec(job_spec));
         }
+    };
+
+    cq_util.append_cjt_li_chunk = function(ul_id, cjt_id, is_draggable, prefix, suffix) {
+        $.ajax({
+            type: 'POST',
+            url: window.ff.cjt_chunk_base_url + cjt_id + '/',  // set by inline javascript on the main page
+            data: {},
+            success: function (data, status, jqXHR) {
+                $("#" + ul_id).append(prefix + data + suffix);
+                if (is_draggable) {
+                    console.log('making CJT_{0} draggable'.format(cjt_id))
+                    $("#CJT_" + cjt_id).draggable({
+                        connectToSortable: "#capture_job_queue",
+                        helper: "clone",
+                        revert: "invalid"
+                    });
+                }
+            },
+            error: function(jqXHR, status, error) {
+                console.log(error);
+            },
+            dataType: 'html'
+        });
     };
 
     cq_util.delete_queue = function(id) {
