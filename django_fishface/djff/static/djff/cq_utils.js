@@ -120,14 +120,14 @@ $(document).ready(function(){
         }
     };
 
-    window.ff.append_cjt_li_chunk = function(ul_id, cjt_id) {
+    cq_util.append_cjt_li_chunk = function(ul_id, cjt_id, prefix, suffix) {
         $.ajax({
             type: 'POST',
-            url: window.ff.cjt_chunk_url + cjt_id + '/',  // set by inline javascript on the main page
+            url: window.ff.cjt_chunk_base_url + cjt_id + '/',  // set by inline javascript on the main page
             data: {},
             success: function (data, status, jqXHR) {
                 console.log(data);
-                $("#" + ul_id).append(data);
+                $("#" + ul_id).append(prefix + data + suffix);
             },
             error: function(jqXHR, status, error) {
                 console.log(error);
@@ -135,7 +135,6 @@ $(document).ready(function(){
             dataType: 'html'
         });
     };
-
 
     cq_util.delete_queue = function(id) {
         if (window.ff.cjq_id == id) {

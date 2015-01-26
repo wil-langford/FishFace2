@@ -429,20 +429,26 @@ span.queue_loader {
 li.cjt_grid {
     font-size: 16pt;
     line-height: 1.1;
-    width: 10.4em;
+    width: 10.7em;
     height: 2.5em;
     font-family: monospace;
     padding: 0;
     margin: 0.5em;
+    background-color: lightblue;
+    color: black;
+}
+
+li.cjt_grid a:link{
+    text-decoration: none;
 }
 
 [class*='col_'] {
-    float: left;
     text-align: center;
     padding: 0.1em;
 }
 
 li.cjt_grid .col_1 {
+    float: right;
     padding-top: 0.4em;
     width: 4em;
     background-color: lightblue;
@@ -450,14 +456,16 @@ li.cjt_grid .col_1 {
 }
 
 li.cjt_grid .col_2_cap {
+    float: left;
     height: 2.2em;
     padding-top: 0.2em;
-    width: 6.001em;
+    width: 6em;
     background-color: lightgreen;
 }
 
 li.cjt_grid .col_2_nocap {
-    width: 6.001em;
+    float: left;
+    width: 6em;
     padding-top: 0.725em;
     height: 1.675em;
     background-color: lightgrey;
@@ -482,8 +490,8 @@ li.cjt_grid .cjt_duration {
 .cjt_grid .hover_text {
     font-size: 10pt;
     position: absolute;
-    top: 2em;
-    right: 20em;
+    top: 10em;
+    right: 30em;
     background-color: palegreen;
     visibility: collapse;
     min-width: 15em;
@@ -492,8 +500,21 @@ li.cjt_grid .cjt_duration {
     padding: 3px;
     line-height: 1;
     font-weight: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .cjt_grid:hover .hover_text {
     visibility: visible;
+}
+
+ul.two_cjt_column {
+    columns: 2;
+    -webkit-columns: 2;
+    -moz-columns: 2;
+    width: 35em;
+}
+
+#cjt_list {
+    width: 15em;
 }

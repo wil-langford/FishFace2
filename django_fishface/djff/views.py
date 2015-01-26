@@ -757,10 +757,16 @@ def sp_new(request):
 #
 
 
-class CaptureJobTemplateIndex(dvg.ListView):
-    context_object_name = 'context'
-    template_name = 'djff/cjt_index.html'
-    model = CaptureJobTemplate
+def cjt_index(request):
+    cjts = CaptureJobTemplate.objects.all()
+    cjt_ids = [cjt.id for cjt in cjts]
+
+    context = {
+        'cjts': cjts,
+        'cjt_ids': json.dumps(cjt_ids),
+    }
+
+    return ds.render(request, 'djff/cjt_index.html', context)
 
 
 class CaptureJobTemplateUpdate(dvge.UpdateView):
@@ -805,17 +811,6 @@ def cjt_chunk(request, cjt_id):
     }
 
     return ds.render(request, 'djff/cjt_chunk.html', context)
-
-
-def cjt_chunked(request):
-    cjts = CaptureJobTemplate.objects.all().order_by('duration', 'voltage')
-    cjt_ids = [cjt.id for cjt in cjts]
-
-    context = {
-        'cjt_ids': json.dumps(cjt_ids),
-    }
-
-    return ds.render(request, 'djff/cjt_chunked.html', context)
 
 
 def insert_capturejob_into_queue(request):
