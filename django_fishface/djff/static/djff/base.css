@@ -114,7 +114,7 @@ td {
 #content
 {
     padding-top: 6em;
-    margin-left: 12em;
+    margin-left: 15em;
 }
 
 .deleter .warning
@@ -511,4 +511,14 @@ canvas#builder_canvas {
 .angle_bullet {
     margin: 0;
     padding: 0;
+}
+
+.cjr_presentation {
+    width: 50%;
+    min-width: 25em;
+}
+
+.calibration_images_presentation {
+    width: 50%;
+    min-width: 25em;
 }
