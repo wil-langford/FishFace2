@@ -907,6 +907,11 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(payload)
 
+    def log_message(self, format, *args):
+        if 'POST /telemetry/ HTTP/1.1' not in args:
+            logger.warning(format, *args)
+        else:
+            logger.debug(format, *args)
 
 def main():
     logger.info("Starting Raspi unprivileged server.")

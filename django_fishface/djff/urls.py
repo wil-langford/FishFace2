@@ -43,7 +43,7 @@ urlpatterns = dcu.patterns(
 
     dcu.url(
         r'^cjt/$',
-        views.CaptureJobTemplateIndex.as_view(),
+        views.cjt_index,
         name='cjt_index',
     ),
     dcu.url(
@@ -108,6 +108,24 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
+        r'^cq_builder/$',
+        views.cq_builder,
+        name='cq_builder'
+    ),
+
+    dcu.url(
+        r'^cjq_saver/$',
+        views.cjq_saver,
+        name='cjq_saver'
+    ),
+
+    dcu.url(
+        r'^cjqs/$',
+        views.cjqs,
+        name='cjqs'
+    ),
+
+    dcu.url(
         r'^tag/$',
         views.tagging_interface,
         name='tagging_interface'
@@ -148,6 +166,13 @@ urlpatterns = dcu.patterns(
         views.manual_tag_verification_image,
         name='manual_tag_verification_image'
     ),
+
+    dcu.url(
+        r'^cjt_chunk/(?P<cjt_id>\d+)/',
+        views.cjt_chunk,
+        name='cjt_chunk'
+    ),
+
 )
 
 

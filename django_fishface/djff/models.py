@@ -7,6 +7,8 @@ import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
 from django.conf import settings
 
+import jsonfield
+
 import fields
 from utils import djff_imagekit as ffik
 
@@ -300,6 +302,14 @@ class CaptureJobTemplate(models.Model):
     description = models.TextField('a description of this capture job template (optional)',
                                    null=True, blank=True, )
 
+    ordering = ['duration', 'voltage']
+
+    @property
+    def job_spec(self):
+        return '_'.join([str(x) for x in
+            self.voltage, self.current, self.startup_delay, self.interval, self.duration
+        ])
+
     def get_absolute_url(self):
         return dcu.reverse(
             'djff:cjt_update',
@@ -336,6 +346,13 @@ class FishLocale(models.Model):
     tank = models.ForeignKey(Tank)
     datetime_in_tank = models.DateTimeField('the date and time that the fish was in the tank',
                                             auto_now_add=True)
+
+
+class CaptureJobQueue(models.Model):
+    name = models.CharField('name of the queue', max_length=50)
+    timestamp = models.DateTimeField('when this queue was most recently saved', auto_now=True)
+    queue = jsonfield.JSONField('a queue spec object')
+    comment = models.TextField('description of this queue')
 
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
