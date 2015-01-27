@@ -507,3 +507,8 @@ canvas#builder_canvas {
     bottom: 0;
     visibility: hidden;
 }
+
+.angle_bullet {
+    margin: 0;
+    padding: 0;
+}

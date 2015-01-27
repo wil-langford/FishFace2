@@ -59,6 +59,7 @@
     {% if images_by_cjr %}
         <div class="boxed">
         <h3>Capture Job Records</h3>
+        <p>Click on an individual icon or X to see the full-resolution image.</p>
         <hr width="30%" />
 
         {% for cjr, imageset in images_by_cjr %}
@@ -68,7 +69,7 @@
             Captured {{ imageset.count }} images at {{ cjr.voltage }}
             volts (max {{ cjr.current }} amps):<br>
             {% for img in imageset %}
-                {{ img.linked_angle_bullet|mark_safe }}
+                {{ img.linked_angle_bullet|safe }}
             {% endfor %}
             <hr width="30%" />
         {% empty %}

@@ -7,7 +7,7 @@ $(document).ready(function() {
             this.line = new fabric.Line([0,0,0,0], {
                 originX: 'center',
                 originY: 'center',
-                stroke: 'black',
+                stroke: 'blue',
                 strokeWidth: 1
             });
 
@@ -17,7 +17,7 @@ $(document).ready(function() {
                 originX: 'center',
                 originY: 'center',
                 fill: '',
-                stroke: 'black',
+                stroke: 'blue',
                 radius: 1,
                 strokeWidth: 2
             });
@@ -53,8 +53,8 @@ $(document).ready(function() {
         },
 
         update_arrow_with_angle: function (angle) {
-            var x = Math.round(Math.cos(angle)*7);
-            var y = -Math.round(Math.sin(angle)*7);
+            var x = Math.round(Math.cos(-angle)*7);
+            var y = -Math.round(Math.sin(-angle)*7);
 
             this.start_arrow({
                 x: 10-x,
@@ -76,13 +76,12 @@ $(document).ready(function() {
                 top: 0,
                 left: 0,
                 fill: '',
-                stroke: 'black',
+                stroke: 'blue',
                 strokeWidth: 1,
-                height: 20,
-                width: 20,
-                originX: 'center',
-                originY: 'center'
+                height: 19,
+                width: 19
             });
+            this.add(this.border_rectangle);
 
             this.arrow = new fabric.BuilderArrow(this);
         },
@@ -99,10 +98,11 @@ $(document).ready(function() {
 
     $('.angle_bullet').each(function() {
         var bullet = $(this);
-        if (bullet.attr('data-angle') != 'None') {
-            angle = Number(bullet.attr('data-angle'));
-            bullet.html('Y <img src="data:image/png;base64," + ' +
-            window.ff.builder.png_with_angle(angle)+' /> Y');
+        var angle_text = bullet.attr('data-angle');
+        if (angle_text != 'None') {
+            var angle = Number(angle_text)
+            var data_url = window.ff.builder.png_with_angle(angle);
+            bullet.html('<img src="' + data_url + '" />');
         }
     });
 
