@@ -31,7 +31,7 @@ urlpatterns = dcu.patterns(
         name='xp_renamer'
     ),
     dcu.url(
-        r'^xp/capture/(?P<xp_id>\d+)/$',
+        r'^xp/detail/(?P<xp_id>\d+)/$',
         views.xp_detail,
         name='xp_detail'
     ),

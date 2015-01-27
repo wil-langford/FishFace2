@@ -29,7 +29,7 @@
         box below and click on the button.</p>
         </div>
     {% endif %}
-    <div class="boxed">
+    <div class="boxed calibration_images_presentation">
     <h3>Calibration Images</h3>
     <form method="post"
           action="{% url 'djff:xp_capturer' %}">
@@ -57,15 +57,15 @@
     <br>
 
     {% if images_by_cjr %}
-        <div class="boxed">
+        <div class="boxed cjr_presentation">
         <h3>Capture Job Records</h3>
         <p>Click on an individual icon or X to see the full-resolution image.</p>
         <hr width="30%" />
 
         {% for cjr, imageset in images_by_cjr %}
             <div align="center"><strong>XP-{{ xp.id }}_CJR-{{ cjr.id }}</strong><br></div>
-            Started: {{ cjr.job_start }}<br>
-            Completed: {{ cjr.job_stop }}<br>
+            Started: {{ cjr.job_start|date:"Y-m-d H:i:s" }}<br>
+            Completed: {{ cjr.job_stop|date:"Y-m-d H:i:s" }}<br>
             Captured {{ imageset.count }} images at {{ cjr.voltage }}
             volts (max {{ cjr.current }} amps):<br>
             {% for img in imageset %}
