@@ -2,6 +2,13 @@
 {% load staticfiles %}
 {% load djff_filters %}
 
+{% block localscript %}
+    <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'djff/xp_detail.js' %}"></script>
+
+
+{% endblock %}
+
 {% block subtitle %}Experiment Details{% endblock %}
 
 {% block content %}
@@ -52,6 +59,7 @@
     {% if images_by_cjr %}
         <div class="boxed">
         <h3>Capture Job Records</h3>
+        <p>Click on an individual icon or X to see the full-resolution image.</p>
         <hr width="30%" />
 
         {% for cjr, imageset in images_by_cjr %}
@@ -61,7 +69,7 @@
             Captured {{ imageset.count }} images at {{ cjr.voltage }}
             volts (max {{ cjr.current }} amps):<br>
             {% for img in imageset %}
-                {{ img.linked_inline_bullet|mark_safe }}
+                {{ img.linked_angle_bullet|safe }}
             {% endfor %}
             <hr width="30%" />
         {% empty %}
@@ -69,6 +77,8 @@
         {% endfor %}
         </div>
     {% endif %}
+
+    <canvas id="builder_canvas" width="20" height="20"></canvas>
 
 {% endblock %}
 

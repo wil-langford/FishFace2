@@ -632,11 +632,12 @@ def xp_renamer(request, xp_id):
     xp.save()
 
     return dh.HttpResponseRedirect(
-        dcu.reverse('djff:xp_capture', args=(xp.id,))
+        dcu.reverse('djff:xp_detail', args=(xp.id,))
     )
 
 
 def xp_capturer(request):
+    # TODO: All this is used for anymore is calibration images.  Need to adjust it accordingly.
     xp = ds.get_object_or_404(Experiment, pk=int(request.POST['xp_id']))
 
     payload = {
@@ -663,12 +664,12 @@ def xp_capturer(request):
         logger.debug("Post-request response: {}".format(response))
 
     return dh.HttpResponseRedirect(
-        dcu.reverse('djff:xp_capture',
+        dcu.reverse('djff:xp_detail',
                     args=(response['xp_id'],))
     )
 
 
-def xp_capture(request, xp_id):
+def xp_detail(request, xp_id):
     try:
         xp = ds.get_object_or_404(Experiment, pk=xp_id)
     except ds.Http404:
@@ -679,31 +680,20 @@ def xp_capture(request, xp_id):
             )
         )
 
-    xp_images = Image.objects.filter(
-        xp__id=xp_id
-    )
+    xp_images = Image.objects.filter(xp__id=xp_id)
 
-    cal_images = xp_images.filter(
-        is_cal_image=True
-    )
+    cal_images = xp_images.filter(is_cal_image=True)
 
-    data_images = xp_images.filter(
-        is_cal_image=False
-    )
+    data_images = xp_images.filter(is_cal_image=False)
 
     cjts = CaptureJobTemplate.objects.all()
 
-    running_jobs = CaptureJobRecord.objects.filter(
-        running=True
-    )
+    running_jobs = CaptureJobRecord.objects.filter(running=True)
 
     cjrs = CaptureJobRecord.objects.filter(xp__id=xp.id).order_by('job_start')
 
-    images_by_cjr = [
-        (cjr_obj, Image.objects.filter(cjr__id=cjr_obj.id))
-        for cjr_obj in
-        cjrs
-    ]
+    images_by_cjr = [(cjr_obj, Image.objects.filter(cjr__id=cjr_obj.id))
+                     for cjr_obj in cjrs]
 
     return ds.render(
         request,
@@ -856,7 +846,7 @@ def abort_running_job(request):
 
     if xp_id:
         return dh.HttpResponseRedirect(
-            dcu.reverse('djff:xp_capture',
+            dcu.reverse('djff:xp_detail',
                         args=(xp_id,))
         )
 

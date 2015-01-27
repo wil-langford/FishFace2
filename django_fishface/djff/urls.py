@@ -32,8 +32,8 @@ urlpatterns = dcu.patterns(
     ),
     dcu.url(
         r'^xp/capture/(?P<xp_id>\d+)/$',
-        views.xp_capture,
-        name='xp_capture'
+        views.xp_detail,
+        name='xp_detail'
     ),
     dcu.url(
         r'^xp/new/$',

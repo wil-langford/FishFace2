@@ -176,9 +176,19 @@ class Image(models.Model):
         "how many of this image's tags have been deleted during validation",
         default=0)
 
-
     psu_log = models.ForeignKey(PowerSupplyLog,
                                 null=True, blank=True)
+
+    @property
+    def angle(self):
+        my_tags = ManualTag.objects.filter(image=self)
+        if my_tags.count() > 0:
+            angle = sum(tag.angle for tag in my_tags) / float(my_tags.count())
+        else:
+            angle = None
+
+        return angle
+
 
     def inline_image(self):
         return '<img width=200 src="{}{}" />'.format(
@@ -198,6 +208,14 @@ class Image(models.Model):
             self.image_file,
         )
     linked_inline_bullet.allow_tags = True
+
+    def linked_angle_bullet(self):
+        print self.angle
+        return '<a href="/media/{}" class="angle_bullet" target="_newtab" data-angle="{}">X</a>'.format(
+            self.image_file,
+            self.angle
+        )
+    linked_angle_bullet.allow_tags = True
 
 
 class ImageAnalysis(models.Model):
