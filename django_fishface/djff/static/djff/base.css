@@ -516,9 +516,11 @@ canvas#builder_canvas {
 .cjr_presentation {
     width: 50%;
     min-width: 25em;
+    background-color: lightgoldenrodyellow;
 }
 
 .calibration_images_presentation {
     width: 50%;
     min-width: 25em;
+    background-color: lightgoldenrodyellow;
 }
