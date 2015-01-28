@@ -663,6 +663,9 @@ class ImageryServer(object):
         self.power_supply.current = 0
         self.power_supply.voltage = 0
 
+        self.async_pending_image_posts = 0
+        self.async_pending_image_posts_lock = threading.Lock()
+
         self.camera = None
         self.camera_lock = threading.Lock()
 
@@ -686,18 +689,22 @@ class ImageryServer(object):
         }
 
     def open_camera(self, resolution=(2048, 1536), rotation=180):
-        open_camera_start = time.time()
-        self.camera = picamera.PiCamera()
-        self.camera.resolution = resolution
-        self.camera.rotation = rotation
-        logger.info('camera open in {} seconds'.format(time.time() - open_camera_start))
+        with self.camera_lock:
+            if self.camera is None:
+                open_camera_start = time.time()
+                self.camera = picamera.PiCamera()
+                self.camera.resolution = resolution
+                self.camera.rotation = rotation
+                logger.info('camera open in {} seconds'.format(time.time() - open_camera_start))
 
     def close_camera(self):
-        if self.camera is not None:
-            if not self.camera.closed:
-                self.camera.close()
-            self.camera = None
-        logger.debug('camera is closed')
+        if not self.async_pending_image_posts:
+            with self.camera_lock:
+                if self.camera is not None:
+                    if not self.camera.closed:
+                        self.camera.close()
+                    self.camera = None
+                logger.debug('camera is closed')
 
     def post_current_image_to_server(self, payload):
         if self.camera is None or self.camera.closed:
@@ -708,6 +715,10 @@ class ImageryServer(object):
         with self.camera_lock:
             capture_time = float(time.time())
             self.camera.capture(stream, format='jpeg')
+
+        if payload.get('async', False):
+            with self.async_pending_image_posts_lock:
+                self.async_pending_image_posts -= 1
         logger.debug('image took {} seconds to acquire from camera'.format(
             float(time.time()) - capture_time
         ))
@@ -746,7 +757,10 @@ class ImageryServer(object):
                                                            time.time() - image_start_post_time))
 
     def async_image_post(self, payload):
+        with self.async_pending_image_posts_lock:
+            self.async_pending_image_posts += 1
         logger.debug('preparing to post image asynchronously')
+        payload['async'] = True
         async_thread = threading.Thread(
             name="async_image_post_thread",
             target=self.post_current_image_to_server,
