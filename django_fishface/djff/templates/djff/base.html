@@ -25,6 +25,36 @@
                 csrf_token: "{{ csrf_token }}"
             }; }
 
+            window.ff.text_to_seconds = function(text_value) {
+                var values = text_value.split(':');
+                var multipliers = [60, 1]
+
+                switch(values.length) {
+                    case 1:
+                        return text_value;
+                    case 2:
+                        break;
+                    case 3:
+                        multipliers.unshift(60*60);
+                        break;
+                    case 4:
+                        multipliers.unshift(60*60);
+                        multipliers.unshift(24*60*60);
+                        break;
+                    default:
+                        return 0;
+                }
+
+                var total_seconds = 0;
+                for (var idx in values) {
+                    multiplier = multipliers[idx];
+                    total_seconds = total_seconds + (Number(values[idx]) * multiplier);
+                    console.log('' + Number(values[idx]) + ' * ' + multipliers[values.length] + ' ... ' + total_seconds);
+                }
+                return total_seconds;
+            };
+
+
             function csrfSafeMethod(method) {
                 return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
             }

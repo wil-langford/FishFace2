@@ -17,18 +17,32 @@ $(document).ready(function() {
                 },
                 dataType: 'json'
             });
+
         }
     });
+
+    $("input#id_duration, input#id_interval, input#id_startup_delay").on('blur', function() {
+        var element = $(this);
+        element.val(window.ff.text_to_seconds(element.val()));
+    });
+
 });
 </script>
 {% endblock %}
 
 {% block content %}
+{{ context }}
+
     <form action="{% url 'djff:cjt_detail' context.id %}" method="post">
         {% csrf_token %}
-        {{ form.as_p }}
+        <label for="id_voltage">Voltage</label> <input id="id_voltage" name="voltage" step="0.5" type="number" value="0.0" /><br>
+        <label for="id_current">Max current</label> <input id="id_current" name="current" step="1.0" type="number" value="15.0" /><br>
+        <label for="id_duration">Duration to capture</label> <input id="id_duration" name="duration" step="5.0" value="1:00" /><br>
+        <label for="id_interval">Interval between images</label> <input id="id_interval" name="interval" step="1.0" value="0.0" /><br>
+        <label for="id_startup_delay">Delay between power and capture</label> <input id="id_startup_delay" name="startup_delay" step="any" value="0.0" /><br>
+        <label for="id_description">Description (optional):</label><br>
+        <textarea cols="40" id="id_description" name="description" rows="10"></textarea><br><br>
         <input type="submit" value="Save">
-        <br><br><br>
         <span class="padded_boxed">
             <label>Confirm delete
                 <input type="checkbox" id="confirm_delete">
