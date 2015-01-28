@@ -194,12 +194,17 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
                  voltage, current,
                  xp_id, species,
                  thread_registry,
+                 open_camera_method,
+                 close_camera_method,
                  *args, **kwargs):
         super(CaptureJob, self).__init__(thread_registry,
                                          name='capturejob',
                                          *args, **kwargs)
         self.logger = logging.getLogger('raspi.capturejob')
         self.logger.setLevel(logging.DEBUG)
+
+        self.open_camera = open_camera_method
+        self.close_camera = close_camera_method
 
         self.controller = controller
         self.publish_deathcry = self.controller.publish_deathcry
@@ -313,6 +318,14 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
 
         for i, next_capture_time in enumerate(self.capture_times):
             self.beat_heart()
+
+            if time.time() - next_capture_time > 5:
+                self.close_camera()
+                delay_until(next_capture_time - 4)
+                self.open_camera()
+            else:
+                self.open_camera()
+
             delay_until(next_capture_time)
             if not self._keep_looping:
                 break
@@ -472,6 +485,8 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
                 self.logger.info("Current job ends soon; promoting queued job to staged job.")
                 self._staged_job = CaptureJob(self,
                     thread_registry=self.imagery_server.thread_registry,
+                    open_camera_method=self.imagery_server.open_camera,
+                    close_camera_method=self.imagery_server.close_camera,
                     **self._queue.pop(0)
                 )
 
@@ -486,6 +501,8 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
                     self.logger.info('No jobs active or staged, but jobs in queue.')
                     self._current_job = CaptureJob(self,
                         thread_registry=self.imagery_server.thread_registry,
+                        open_camera_method=self.imagery_server.open_camera,
+                        close_camera_method=self.imagery_server.close_camera,
                         **self._queue.pop(0)
                     )
                     self._current_job.start()
@@ -505,7 +522,9 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
             if self.imagery_server.camera is None:
                 self.imagery_server.open_camera()
         else:
-            self.imagery_server.close_camera()
+            if self.imagery_server.camera is not None:
+                logger.info('Shutting down camera until the next job arrives.')
+                self.imagery_server.close_camera()
 
     def get_current_job_status(self):
         return self._current_job.get_status_dict()
@@ -667,15 +686,18 @@ class ImageryServer(object):
         }
 
     def open_camera(self, resolution=(2048, 1536), rotation=180):
+        open_camera_start = time.time()
         self.camera = picamera.PiCamera()
         self.camera.resolution = resolution
         self.camera.rotation = rotation
+        logger.info('camera open in {} seconds'.format(time.time() - open_camera_start))
 
     def close_camera(self):
         if self.camera is not None:
             if not self.camera.closed:
                 self.camera.close()
             self.camera = None
+        logger.debug('camera is closed')
 
     def post_current_image_to_server(self, payload):
         if self.camera is None or self.camera.closed:
