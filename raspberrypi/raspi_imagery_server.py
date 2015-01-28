@@ -453,6 +453,8 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
         # Primary CJC loop handler.
         #
 
+        keep_camera_open = True
+
         if self._current_job is not None:
             self.logger.debug('Reporting on current job.')
             current_status = self.get_current_job_status()
@@ -490,6 +492,7 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
                     self.logger.debug('Started new current job.')
 
                 else:  # queue is empty
+                    keep_camera_open = False
                     if self.imagery_server.power_supply.output:
                         self.logger.info('Shutting down power supply until the next job arrives.')
                         self.set_psu({
@@ -497,6 +500,12 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
                             'current': 0,
                             'enable_output': 0,
                         })
+
+        if keep_camera_open:
+            if self.imagery_server.camera is None:
+                self.imagery_server.open_camera()
+        else:
+            self.imagery_server.close_camera()
 
     def get_current_job_status(self):
         return self._current_job.get_status_dict()
@@ -635,11 +644,9 @@ class ImageryServer(object):
         self.power_supply.current = 0
         self.power_supply.voltage = 0
 
-        self.camera = picamera.PiCamera()
+        self.camera = None
         self.camera_lock = threading.Lock()
 
-        self.camera.resolution = (2048, 1536)
-        self.camera.rotation = 180
 
         self._job_status = None
         self.httpd_server_starting = True
@@ -659,7 +666,22 @@ class ImageryServer(object):
             'raspi_monitor': self.monitor,
         }
 
+    def open_camera(self, resolution=(2048, 1536), rotation=180):
+        self.camera = picamera.PiCamera()
+        self.camera.resolution = resolution
+        self.camera.rotation = rotation
+
+    def close_camera(self):
+        if self.camera is not None:
+            if not self.camera.closed:
+                self.camera.close()
+            self.camera = None
+
     def post_current_image_to_server(self, payload):
+        if self.camera is None or self.camera.closed:
+            logger.warning('Tried to capture with closed camera.  Opening camera on the fly.')
+            self.open_camera()
+
         stream = io.BytesIO()
         with self.camera_lock:
             capture_time = float(time.time())
@@ -700,7 +722,6 @@ class ImageryServer(object):
         self.telemeter.post_to_fishface(payload=payload, files=files)
         logger.info("image {} posted in {} seconds".format(payload['filename'],
                                                            time.time() - image_start_post_time))
-
 
     def async_image_post(self, payload):
         logger.debug('preparing to post image asynchronously')
