@@ -2,11 +2,39 @@
 
 {% block subtitle %}Capture Job Template{% endblock %}
 
+{% block localscript %}
+<script type="text/javascript">
+$(document).ready(function() {
+    $('input#delete_button').on('click', function() {
+        if ($('#confirm_delete').prop('checked')) {
+            console.log('deletion!');
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'djff:cjt_delete' context.id %}",  // set by inline javascript on the main page
+                data: {},
+                complete: function (data, status, jqXHR) {
+                    window.location.href="{% url 'djff:cjt_index' %}";
+                },
+                dataType: 'json'
+            });
+        }
+    });
+});
+</script>
+{% endblock %}
+
 {% block content %}
     <form action="{% url 'djff:cjt_detail' context.id %}" method="post">
         {% csrf_token %}
         {{ form.as_p }}
         <input type="submit" value="Save">
+        <br><br><br>
+        <span class="padded_boxed">
+            <label>Confirm delete
+                <input type="checkbox" id="confirm_delete">
+            </label>
+            <input type="button" class="deleterbutton" value="Delete" id="delete_button">
+        </span>
     </form>
 
     <p>Note: To run the flume for a certain amount of time without capturing any data, use a 0 value for

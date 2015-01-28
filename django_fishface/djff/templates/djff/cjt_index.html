@@ -16,9 +16,11 @@
 
         for (idx in cjt_ids) {
             cjt_id = cjt_ids[idx];
-            window.ff.cq_util.append_cjt_li_chunk("cjt_list", cjt_id,
-            '<a href="' + cjt_base_url + cjt_id + '/">',
-            '</a>'
+            window.ff.cq_util.append_cjt_li_chunk(
+                "cjt_list", cjt_id,
+                false,
+                '<a href="' + cjt_base_url + cjt_id + '/">',
+                '</a>'
             );
         }
     });
