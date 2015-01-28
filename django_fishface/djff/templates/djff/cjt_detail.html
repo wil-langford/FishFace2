@@ -44,6 +44,10 @@ $(document).ready(function() {
 
     $("input#id_interval").on('change', window.ff.enable_disable_startup_delay);
 
+    $("input#id_submit_button").on('click', function() {
+        $('input#id_startup_delay').removeAttr('disabled');
+    });
+
     $("input#id_interval").change();
 
 });
@@ -64,7 +68,7 @@ $(document).ready(function() {
         <label for="id_interval">Interval between images</label> <input id="id_interval" name="interval" step="1.0" value="{{ context.interval }}" /><br>
         <label for="id_description">Description (optional):</label><br>
         <textarea cols="40" id="id_description" name="description" rows="10">{{ context.description }}</textarea><br><br>
-        <input type="submit" value="Save">
+        <input type="submit" id="id_submit_button" value="Save">
         <span class="padded_boxed">
             <label>Confirm delete
                 <input type="checkbox" id="confirm_delete">
