@@ -12,7 +12,6 @@ $(document).ready(function() {
                     $('#RASPI').css('background-color', 'red');
                     $('#CJC').css('background-color', 'gray');
                     $('#DP').css('background-color', 'gray');
-                    $('#CF').css('background-color', 'gray');
             },
             success: function (data, status, jqXHR) {
                 if (data.command=='raspi_monitor') {
@@ -26,7 +25,6 @@ $(document).ready(function() {
 
                     var thr_status_element_id = {
                         capturejob_controller: 'CJC',
-                        current_framer: 'CF',
                         deathcry_publisher: 'DP'
                     }[thr.name];
 
