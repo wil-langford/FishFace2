@@ -6,7 +6,7 @@
     <ul>
     {% for xp in xp_list %}
                 <li class="boxed inline_block">
-                    <a href="{% url 'djff:xp_capture' xp.id %}">
+                    <a href="{% url 'djff:xp_detail' xp.id %}">
                     {{ xp.name }}</a>
                     <br><em>Species</em>: {{ xp.species.shortname }}
                     <br><em>Started</em>: {{ xp.xp_start|date:"Y-M-d H:i:s"  }}

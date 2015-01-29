@@ -7,11 +7,6 @@ urlpatterns = dcu.patterns(
         views.receive_image,
         name='receive_image'
     ),
-    dcu.url(
-        r'^imagery_request/$',
-        views.xp_capturer,
-        name='xp_capturer'
-    ),
 
     dcu.url(r'^$', views.index, name='index'),
 
@@ -31,9 +26,14 @@ urlpatterns = dcu.patterns(
         name='xp_renamer'
     ),
     dcu.url(
-        r'^xp/capture/(?P<xp_id>\d+)/$',
-        views.xp_capture,
-        name='xp_capture'
+        r'^xp/detail/(?P<xp_id>\d+)/$',
+        views.xp_detail,
+        name='xp_detail'
+    ),
+    dcu.url(
+        r'^xp/detail/(?P<xp_id>\d+)/cals/$',
+        views.xp_detail_cals,
+        name='xp_detail_cals'
     ),
     dcu.url(
         r'^xp/new/$',
@@ -43,7 +43,7 @@ urlpatterns = dcu.patterns(
 
     dcu.url(
         r'^cjt/$',
-        views.CaptureJobTemplateIndex.as_view(),
+        views.cjt_index,
         name='cjt_index',
     ),
     dcu.url(
@@ -108,6 +108,24 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
+        r'^cq_builder/$',
+        views.cq_builder,
+        name='cq_builder'
+    ),
+
+    dcu.url(
+        r'^cjq_saver/$',
+        views.cjq_saver,
+        name='cjq_saver'
+    ),
+
+    dcu.url(
+        r'^cjqs/$',
+        views.cjqs,
+        name='cjqs'
+    ),
+
+    dcu.url(
         r'^tag/$',
         views.tagging_interface,
         name='tagging_interface'
@@ -120,10 +138,41 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
+        r'^verification/$',
+        views.verification_interface,
+        name='verification_interface'
+    ),
+
+    dcu.url(
+        r'^verification_submit/$',
+        views.verification_submit,
+        name='verification_submit'
+    ),
+
+    dcu.url(
         r'^cjr/new_for_raspi/$',
         views.cjr_new_for_raspi,
         name='cjr_new_for_raspi'
     ),
+
+    dcu.url(
+        r'^stats/$',
+        views.stats,
+        name='stats'
+    ),
+
+    dcu.url(
+        r'^verification_image/manual_tag_(?P<tag_id>\d+).jpg',
+        views.manual_tag_verification_image,
+        name='manual_tag_verification_image'
+    ),
+
+    dcu.url(
+        r'^cjt_chunk/(?P<cjt_id>\d+)/',
+        views.cjt_chunk,
+        name='cjt_chunk'
+    ),
+
 )
 
 

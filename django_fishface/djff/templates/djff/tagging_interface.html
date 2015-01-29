@@ -5,6 +5,7 @@
     <script type="text/javascript">
         if (window.ff == undefined) { window.ff = {}; }
         window.ff.tag_submit_url = "{% url 'djff:tag_submit' %}";
+        window.ff.researchers = {{ researchers_json|safe }};
     </script>
     <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'djff/tagging_interface.js' %}" canvas="tag_canvas"></script>
@@ -24,8 +25,6 @@
 {% endblock %}
 
 {% block preview_area %}
-    <div id="eph_output" class="boxed">EPH OUTPUT</div>
-
     <div id="researcher_selection_wrapper">
         <form id="researcher_selection_form">
             <select id="researcher_dropdown">
@@ -59,6 +58,16 @@
             <input type="hidden" id="form_start" name="start">
             <input type="hidden" id="form_end" name="end">
         </form>
+    </div>
+
+    <p />
+
+    <div id="researcher_score">
+        <p>You've tagged <span class="boxed" id="researcher_all_tags">a specific number of</span> images so far.</p>
+        <p>You've had <span class="boxed" id="researcher_good_tags">a specific number of</span> tags verified good.</p>
+        <p>You've had <span class="boxed bad" id="researcher_bad_tags">a specific number of</span> tags verified bad.</p>
+        <p>Of your verified tags, <span class="boxed" id="researcher_good_rate">???</span>% are good and
+            <span class="boxed bad" id="researcher_bad_rate">???</span>% are bad.</p>
     </div>
 
     <div class="debug_output"></div>

@@ -203,6 +203,8 @@ $(document).ready(function() {
             if (this.zoom_update_pane) {
                 this.zoom_update_pane.echo_zoom_move(this);
             }
+
+            this.renderAll();
         },
         zoom_reset: function() {
             var reset = new fabric.Point(this.zoom_border.width/2 , this.zoom_border.height/2);
@@ -375,7 +377,9 @@ $(document).ready(function() {
             url: window.ff.tag_submit_url,  // set by inline javascript on the main page
             data: data,
             success: function (data, status, jqXHR) {
-                if (data != 0) {
+                console.log('data validity:');
+                console.log(data.valid);
+                if (data.valid) {
                     $('input#image_id').attr('value', data.id);
 
                     over.arrow.vis(false);
@@ -386,11 +390,23 @@ $(document).ready(function() {
                     $('input#form_start').val('NONE');
                     $('input#form_end').val('NONE');
 
+                    $('span#researcher_all_tags').html(data.researcher_all_tags);
+                    $('span#researcher_bad_tags').html(data.researcher_bad_tags);
+                    $('span#researcher_good_tags').html(data.researcher_good_tags);
+                    $('span#researcher_good_rate').html(data.researcher_good_rate * 100);
+                    $('span#researcher_bad_rate').html(data.researcher_bad_rate * 100);
+
+                    if (data.untagged_images_count) {
+                        $('span#researcher_tags_remaining').html(data.untagged_images_count);
+                    }
+
                     console.log("got new image: " + data.url);
                 }
             },
             dataType: 'json'
         });
+
+        over.zoom_reset();
 
         tagger.renderAll();
         over.renderAll();
@@ -404,18 +420,34 @@ $(document).ready(function() {
     $('#researcher_dropdown').change(function (event) {
         var researcher_id = $(this).val();
         if (researcher_id != 'NONE') {
-            var researcher_name = $('#researcher_dropdown option:selected').text();
+            var researcher = {
+                id: '0',
+                name: 'RESEARCHER NOT FOUND',
+                tag_score: 0
+            }
+
+            for (var i in window.ff.researchers) {
+                if (window.ff.researchers[i].id == researcher_id) {
+                    researcher = window.ff.researchers[i];
+                }
+            }
+
+            console.log('researcher:')
+            console.log(researcher);
 
             $('input#researcher_id').attr('value', researcher_id);
 
-            $('#res_name').html(researcher_name);
-            $('#res_name2').html(researcher_name);
+            $('#res_name').html(researcher.name);
+            $('#res_name2').html(researcher.name);
 
             $('#researcher_selection_wrapper').css('display', 'none');
             $('#select_researcher_text').css('display', 'none');
             $('#greet_researcher').css('display', 'block');
             $('#canvas_wrapper').css('display', 'block');
             $('#tag_form_wrapper').css('display', 'block');
+
+            $('div#researcher_score').css('display', 'block');
+            $('span#researcher_tag_score').html(researcher.tag_score);
 
             get_new_image(false);
             over.zoom_reset();

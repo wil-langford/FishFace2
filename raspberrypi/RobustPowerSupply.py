@@ -11,6 +11,7 @@ The only *real* functional improvement is that the output status (enabled or dis
 here, whereas it's write-only on the actual instrument.
 """
 import logging
+import threading
 
 import instruments as ik
 from serial.serialutil import SerialException
@@ -51,6 +52,7 @@ MAX_ATTEMPTS = 10
 class RobustPowerSupply(object):
     def __init__(self):
         self.psu = POWER_SUPPLY_CLASS.open_gpibusb('/dev/ttyUSB0', 2)
+        self.psu_lock = threading.RLock()
 
         self._last_commanded_output_state = None
 
@@ -72,53 +74,60 @@ class RobustPowerSupply(object):
     @output.setter
     def output(self, enable_output):
         self._last_commanded_output_state = bool(enable_output)
-        self.psu.output = self._last_commanded_output_state
+        with self.psu_lock:
+            self.psu.output = self._last_commanded_output_state
 
     @property
     def voltage(self):
         logger.info("Getting voltage setting from PSU.")
         read_voltage = None
-        for attempt in range(MAX_ATTEMPTS):
-            logger.debug("Attempt {} to read voltage setting from PSU.".format(attempt))
+        with self.psu_lock:
+            for attempt in range(MAX_ATTEMPTS):
+                logger.debug("Attempt {} to read voltage setting from PSU.".format(attempt))
 
-            try:
-                read_voltage = self.psu.voltage
-                break
-            except SerialException, ValueError:
-                pass
+                try:
+                    read_voltage = self.psu.voltage
+                    break
+                except (SerialException, ValueError):
+                    pass
 
-            if attempt == MAX_ATTEMPTS:
-                logger.error("Maximum attempts to read voltage setting reached.")
+                if attempt == MAX_ATTEMPTS:
+                    logger.error("Maximum attempts to read voltage setting reached.")
 
         return read_voltage
 
     @voltage.setter
     def voltage(self, value):
-        for attempt in range(MAX_ATTEMPTS):
-            logger.debug("Attempt {} to set voltage.".format(attempt))
+        with self.psu_lock:
+            for attempt in range(MAX_ATTEMPTS):
+                logger.debug("Attempt {} to set voltage.".format(attempt))
 
-            self.psu.voltage = value
+                try:
+                    self.psu.voltage = value
+                except (SerialException, ValueError):
+                    pass
 
-            if abs(float(self.voltage) - value) < VOLTAGE_TOLERANCE:
-                break
+                if abs(float(self.voltage) - value) < VOLTAGE_TOLERANCE:
+                    break
 
-            if attempt == MAX_ATTEMPTS:
-                logger.error("Maximum attempts to set voltage reached.")
+                if attempt == MAX_ATTEMPTS:
+                    logger.error("Maximum attempts to set voltage reached.")
 
     @property
     def voltage_sense(self):
         sensed_voltage = None
-        for attempt in range(MAX_ATTEMPTS):
-            logger.debug("Attempt {} to sense voltage from PSU.".format(attempt))
+        with self.psu_lock:
+            for attempt in range(MAX_ATTEMPTS):
+                logger.debug("Attempt {} to sense voltage from PSU.".format(attempt))
 
-            try:
-                sensed_voltage = self.psu.voltage_sense
-                break
-            except SerialException, ValueError:
-                pass
+                try:
+                    sensed_voltage = self.psu.voltage_sense
+                    break
+                except (SerialException, ValueError):
+                    pass
 
-            if attempt == MAX_ATTEMPTS:
-                logger.error("Maximum attempts to sense voltage reached.")
+                if attempt == MAX_ATTEMPTS:
+                    logger.error("Maximum attempts to sense voltage reached.")
 
         return sensed_voltage
 
@@ -126,47 +135,53 @@ class RobustPowerSupply(object):
     def current(self):
         logger.info("Getting current setting from PSU.")
         read_current = None
-        for attempt in range(MAX_ATTEMPTS):
-            logger.debug("Attempt {} to read current setting from PSU.".format(attempt))
+        with self.psu_lock:
+            for attempt in range(MAX_ATTEMPTS):
+                logger.debug("Attempt {} to read current setting from PSU.".format(attempt))
 
-            try:
-                read_current = self.psu.current
-                break
-            except SerialException, ValueError:
-                pass
+                try:
+                    read_current = self.psu.current
+                    break
+                except (SerialException, ValueError):
+                    pass
 
-            if attempt == MAX_ATTEMPTS:
-                logger.error("Maximum attempts to read current setting reached.")
+                if attempt == MAX_ATTEMPTS:
+                    logger.error("Maximum attempts to read current setting reached.")
 
         return read_current
 
     @current.setter
     def current(self, value):
-        for attempt in range(MAX_ATTEMPTS):
-            logger.debug("Attempt {} to set current.".format(attempt))
+        with self.psu_lock:
+            for attempt in range(MAX_ATTEMPTS):
+                logger.debug("Attempt {} to set current.".format(attempt))
 
-            self.psu.current = value
+                try:
+                    self.psu.current = value
+                except (SerialException, ValueError):
+                    pass
 
-            if abs(float(self.current) - value) < CURRENT_TOLERANCE:
-                break
+                if abs(float(self.current) - value) < CURRENT_TOLERANCE:
+                    break
 
-            if attempt == MAX_ATTEMPTS:
-                logger.error("Maximum attempts to set current reached.")
+                if attempt == MAX_ATTEMPTS:
+                    logger.error("Maximum attempts to set current reached.")
 
     @property
     def current_sense(self):
         sensed_current = None
-        for attempt in range(MAX_ATTEMPTS):
-            logger.debug("Attempt {} to sense current from PSU.".format(attempt))
+        with self.psu_lock:
+            for attempt in range(MAX_ATTEMPTS):
+                logger.debug("Attempt {} to sense current from PSU.".format(attempt))
 
-            try:
-                sensed_current = self.psu.current_sense
-                break
-            except SerialException, ValueError:
-                pass
+                try:
+                    sensed_current = self.psu.current_sense
+                    break
+                except (SerialException, ValueError):
+                    pass
 
-            if attempt == MAX_ATTEMPTS:
-                logger.error("Maximum attempts to sense current reached.")
+                if attempt == MAX_ATTEMPTS:
+                    logger.error("Maximum attempts to sense current reached.")
 
         return sensed_current
 

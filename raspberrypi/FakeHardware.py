@@ -17,6 +17,8 @@ class PiCamera(object):
         self.resolution = (2048, 1536)
         self.rotation = 180
 
+        self._closed = False
+
         with open(os.path.join(HOME_DIR, PROJECT_DIR,"sample-DATA.jpg"), 'rb') as f:
             self._fake_image = f.read()
 
@@ -25,6 +27,9 @@ class PiCamera(object):
         # of the use of it by picamera's capture().
         # plus, isn't Python's 'format' only used on
         # strings?
+        if self._closed:
+            raise NotImplementedError("Proper errors aren't implemented on fake hardware.")
+
         if format != 'jpeg':
             raise NotImplementedError("Can only fake jpegs currently.")
 
@@ -35,7 +40,11 @@ class PiCamera(object):
             raise Exception("Can only write to io.BytesIO streams.")
 
     def close(self):
-        pass
+        self._closed = True
+
+    @property
+    def closed(self):
+        return self._closed
 
 
 class HP6652a(object):

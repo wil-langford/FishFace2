@@ -54,6 +54,7 @@ class ImageAdmin(admin.ModelAdmin):
             'fields': [
                 'capture_timestamp',
                 'voltage',
+                'current',
                 'is_cal_image',
                 'psu_log',
                 'image_file',
@@ -64,6 +65,7 @@ class ImageAdmin(admin.ModelAdmin):
     # inlines = [PowerSupplyLogInline]
     list_display = (
         'voltage',
+        'current',
         'capture_timestamp',
         'is_cal_image',
         'xp',
@@ -124,13 +126,11 @@ class CaptureJobRecordAdmin(admin.ModelAdmin):
         (
             'Parameters', {
                 'fields': [
-                    'full_slug'
                     'voltage',
                     'current',
                     'job_start',
                     'job_stop',
                     'running',
-                    'image_count',
                 ]
             }
         ),
@@ -143,7 +143,6 @@ class CaptureJobRecordAdmin(admin.ModelAdmin):
         'running',
         'job_start',
         'job_stop',
-        'image_count',
     )
 
 admin.site.register(models.CaptureJobRecord, CaptureJobRecordAdmin)

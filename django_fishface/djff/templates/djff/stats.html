@@ -1,0 +1,85 @@
+{% extends "djff/base.html" %}
+{% load staticfiles %}
+
+{% block localscript %}
+    <script type="text/javascript">
+        if (window.ff == undefined) { window.ff = {}; }
+    </script>
+
+{% endblock %}
+
+{% block subtitle %}Stats and Aggregate Data{% endblock %}
+
+{% block content %}
+
+<div class="shift_right">
+    <h2 class="boxed">Researchers</h2>
+    <table>
+        <tr>
+            <th>name</th>
+            <th>total tags</th>
+            <th>good tags</th>
+            <th class="bad">bad tags</th>
+            <th>accuracy rate</th>
+            <th class="bad">antiaccuracy rate</th>
+        </tr>
+        {% for researcher in researchers %}
+            <tr>
+                <td>{{ researcher.name }}</td>
+                <td>{{ researcher.all_tags_count }}</td>
+                <td>{{ researcher.verified_tags }}</td>
+                <td class="bad">{{ researcher.bad_tags }}</td>
+                <td>{{ researcher.accuracy_score }}</td>
+                <td class="bad">{{ researcher.antiaccuracy_score }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h2 class="boxed">Experiments</h2>
+    <table>
+        <tr>
+            <th>name</th>
+            <th>species</th>
+            <th>capture jobs</th>
+            <th>comment</th>
+        </tr>
+        {% for xp_id, xp in xps.items %}
+            <tr>
+                <td>{{ xp.name }} ({{ xp.slug }})</td>
+                <td>{{ xp.actual_xp.species.common_name }}</td>
+                <td>{{ xp.cjrs.count }}</td>
+                <td>{{ xp.comment }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h2 class="boxed">Capture Jobs by Experiment</h2>
+    {% for xp_id, xp in xps.items %}
+        <h3>{{ xp.name }} ({{ xp.slug }})</h3>
+
+        <table>
+            <tr>
+                <th>capture job record</th>
+                <th>voltage</th>
+                <th>current</th>
+                <th>images</th>
+            </tr>
+            {% for cjr in xp.cjrs %}
+                <tr>
+                    <td>{{ cjr.slug }}</td>
+                    <td>{{ cjr.voltage }}</td>
+                    <td>{{ cjr.current }}</td>
+                    <td>{{ cjr.image_set.count }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+
+    {% endfor %}
+
+</div>
+
+
+{% endblock %}
+
+{% block preview_area %}
+{% endblock %}
