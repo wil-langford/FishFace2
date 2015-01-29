@@ -8,6 +8,17 @@ $(document).ready(function() {
             type: 'POST',
             url: window.ff.telemetry_proxy_url,  // set by inline javascript on the main page
             data: payload,
+            timeout: 2000,
+            error: function (jqXHR, status, error) {
+                $('#RASPI').css('background-color', 'red');
+                $('#CJC').css('background-color', 'gray');
+                $('#DP').css('background-color', 'gray');
+                if (status != 'timeout') {
+                    console.log('non-timeout error on hardware monitor request: ' + status);
+                    console.log(jqXHR);
+                    console.log(error);
+                }
+            },
             success: function (data, status, jqXHR) {
                 if (data.command=='raspi_monitor') {
                     $('#RASPI').css('background-color', 'lightgreen');
@@ -20,7 +31,6 @@ $(document).ready(function() {
 
                     var thr_status_element_id = {
                         capturejob_controller: 'CJC',
-                        current_framer: 'CF',
                         deathcry_publisher: 'DP'
                     }[thr.name];
 
