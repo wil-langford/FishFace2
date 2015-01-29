@@ -1,14 +1,9 @@
 $(document).ready(function(){
-    if (window.ff == undefined) { window.ff = {
-        telemetry_proxy_url: "{% url 'djff:telemetry_proxy' %}",
-        cjt_chunk_base_url: "{% url 'djff:cjt_chunk' 1 %}".slice(0,-2),
-        csrf_token: "{{ csrf_token }}"
-    }; }
 
     window.ff.send_to_raspi = function (obj_to_send, success_function) {
         $.ajax({
         type: 'POST',
-        url: window.ff.telemetry_proxy_url,  // set by inline javascript on the main page
+        url: window.ff.telemetry_proxy_url,
         data: obj_to_send,
         success: success_function,
         error: function (jqXHR, textStatus, errorThrown) {

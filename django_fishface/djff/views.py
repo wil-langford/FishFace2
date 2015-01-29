@@ -636,37 +636,17 @@ def xp_renamer(request, xp_id):
     )
 
 
-def xp_capturer(request):
-    # TODO: All this is used for anymore is calibration images.  Need to adjust it accordingly.
-    xp = ds.get_object_or_404(Experiment, pk=int(request.POST['xp_id']))
+def xp_detail_cals(request, xp_id):
+    cal_image_objs = Image.objects.filter(xp=xp_id)
+    cal_images_chunk = ''.join([image.linked_inline_image(thumb=True) for image in cal_image_objs])
 
-    payload = {
-        'command': 'post_image',
-        'xp_id': xp.id,
-        'current': request.POST['current'],
-        'voltage': request.POST['voltage'],
-        'species': xp.species.shortname,
-        'no_reply': 1,
-        'is_cal_image': request.POST.get('is_cal_image', False),
-        'cjr_id': request.POST.get('cjr_id', 0),
-    }
+    payload = json.dumps({
+        'cal_images_chunk': cal_images_chunk,
+    })
 
-    response = {
-        'xp_id': xp.id
-    }
+    logger.warning(cal_images_chunk)
 
-    # if it's not a cal image OR if it's a cal image and the user
-    # checked the "ready to capture cal image" box...
-    if not request.POST['is_cal_image'] == 'True' or request.POST.get('cal_ready', '') == 'True':
-        telemeter = telemetry.Telemeter()
-        response = telemeter.post_to_raspi(payload)
-
-        logger.debug("Post-request response: {}".format(response))
-
-    return dh.HttpResponseRedirect(
-        dcu.reverse('djff:xp_detail',
-                    args=(response['xp_id'],))
-    )
+    return dh.HttpResponse(payload, content_type='application/json')
 
 
 def xp_detail(request, xp_id):

@@ -531,3 +531,7 @@ canvas#builder_canvas {
     min-width: 25em;
     background-color: lightgoldenrodyellow;
 }
+
+.inline_image {
+    margin: 2px;
+}
