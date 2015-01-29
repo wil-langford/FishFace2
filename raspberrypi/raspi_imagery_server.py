@@ -93,7 +93,7 @@ class RegisteredThreadWithHeartbeat(threading.Thread):
     """
 
     def __init__(self,
-                 thread_registry, heartbeat_interval=1,
+                 thread_registry, heartbeat_interval=1.0,
                  heartbeat_publish_interval=None,
                  *args, **kwargs):
         super(RegisteredThreadWithHeartbeat, self).__init__(*args, **kwargs)
@@ -522,7 +522,7 @@ class CaptureJobController(RegisteredThreadWithHeartbeat):
             if self.imagery_server.camera is None:
                 self.imagery_server.open_camera()
         else:
-            if self.imagery_server.camera is not None:
+            if self.imagery_server.camera is not None and not self.imagery_server.pending_image_acquisitions:
                 logger.info('Shutting down camera until the next job arrives.')
                 self.imagery_server.close_camera()
 
@@ -663,8 +663,8 @@ class ImageryServer(object):
         self.power_supply.current = 0
         self.power_supply.voltage = 0
 
-        self.async_pending_image_posts = 0
-        self.async_pending_image_posts_lock = threading.Lock()
+        self.pending_image_acquisitions = 0
+        self.pending_image_acquisitions_lock = threading.Lock()
 
         self.camera = None
         self.camera_lock = threading.Lock()
@@ -699,7 +699,7 @@ class ImageryServer(object):
                 logger.info('camera open in {} seconds'.format(time.time() - open_camera_start))
 
     def close_camera(self):
-        if not self.async_pending_image_posts:
+        if not self.pending_image_acquisitions:
             with self.camera_lock:
                 if self.camera is not None:
                     if not self.camera.closed:
@@ -708,6 +708,9 @@ class ImageryServer(object):
                 logger.debug('camera is closed')
 
     def post_image_to_server(self, payload):
+        with self.pending_image_acquisitions_lock:
+            self.pending_image_acquisitions += 1
+
         if self.camera is None or self.camera.closed:
             logger.warning('Tried to capture with closed camera.  Opening camera on the fly.')
             self.open_camera()
@@ -717,9 +720,9 @@ class ImageryServer(object):
             capture_time = float(time.time())
             self.camera.capture(stream, format='jpeg')
 
-        if payload.get('async', False):
-            with self.async_pending_image_posts_lock:
-                self.async_pending_image_posts -= 1
+        with self.pending_image_acquisitions_lock:
+            self.pending_image_acquisitions -= 1
+
         logger.debug('image took {} seconds to acquire from camera'.format(
             float(time.time()) - capture_time
         ))
@@ -775,10 +778,7 @@ class ImageryServer(object):
 
         return reply
 
-
     def async_image_post(self, payload):
-        with self.async_pending_image_posts_lock:
-            self.async_pending_image_posts += 1
         logger.debug('preparing to post image asynchronously')
         payload['async'] = True
         async_thread = threading.Thread(
@@ -921,11 +921,12 @@ class CommandHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(payload)
 
-    def log_message(self, format, *args):
+    def log_message(self, format_string, *args):
         if 'POST /telemetry/ HTTP/1.1' not in args:
-            logger.warning(format, *args)
+            logger.warning(format_string, *args)
         else:
-            logger.debug(format, *args)
+            logger.debug(format_string, *args)
+
 
 def main():
     logger.info("Starting Raspi unprivileged server.")
@@ -949,6 +950,7 @@ def main():
             [thr.name for thr in threading.enumerate()]
         ))
         sys.exit()
+
 
 if __name__ == '__main__':
     main()
