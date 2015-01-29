@@ -66,6 +66,11 @@ eph*
 
 migrations
 
+# Secrets don't belong in the repository
 secret_keys.py
+fishface_db_password
 
 django_fishface/djff/static/admin/
+
+# Log backups don't belong in the repository
+*.log.*
