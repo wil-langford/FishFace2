@@ -72,7 +72,7 @@ class ImageAdmin(admin.ModelAdmin):
         'cjr',
         'inline_image'
     )
-    list_filter = ('capture_timestamp',)
+    list_filter = ('capture_timestamp', 'xp', 'cjr')
 
 admin.site.register(models.Image, ImageAdmin)
 
