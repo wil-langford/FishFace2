@@ -23,16 +23,18 @@ class Species(models.Model):
     image = models.ImageField('a sample image of the fish species',
                               blank=True, null=True, upload_to="species_sample_images")
 
-    def inline_image(self):
-        return '<img width=200 src="/media/{}" />'.format(
+    def inline_image(self, thumb=False):
+        width = [200, 30][thumb]
+        return '<img width={} class="inline_image" src="/media/{}" />'.format(
+            width,
             self.image
         )
     inline_image.allow_tags = True
 
-    def linked_inline_image(self):
+    def linked_inline_image(self, thumb=False):
         return '<a href="/media/{}" target="_newtab">{}</a>'.format(
             self.image,
-            self.inline_image(),
+            self.inline_image(thumb=thumb),
         )
     linked_inline_image.allow_tags = True
 
@@ -190,16 +192,17 @@ class Image(models.Model):
         return angle
 
 
-    def inline_image(self):
-        return '<img width=200 src="{}{}" />'.format(
-            settings.MEDIA_URL, self.image_file
+    def inline_image(self, thumb=False):
+        width = [200, 40][thumb]
+        return '<img width={} class="inline_image" src="{}{}" />'.format(
+            width, settings.MEDIA_URL, self.image_file
         )
     inline_image.allow_tags = True
 
-    def linked_inline_image(self):
+    def linked_inline_image(self, thumb=False):
         return '<a href="/media/{}" target="_newtab">{}</a>'.format(
             self.image_file,
-            self.inline_image(),
+            self.inline_image(thumb),
         )
     linked_inline_image.allow_tags = True
 
@@ -210,7 +213,6 @@ class Image(models.Model):
     linked_inline_bullet.allow_tags = True
 
     def linked_angle_bullet(self):
-        print self.angle
         return '<a href="/media/{}" class="angle_bullet" target="_newtab" data-angle="{}">X</a>'.format(
             self.image_file,
             self.angle

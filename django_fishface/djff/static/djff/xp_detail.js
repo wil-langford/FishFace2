@@ -96,6 +96,37 @@ $(document).ready(function() {
 
     window.ff.builder = new fabric.BuilderPane('builder_canvas', window.ff.ZOOM_BORDER_COLOR);
 
+    window.ff.refresh_cal_images = function() {
+        $('#cal_images_wrapper').empty();
+        $.ajax({
+            type: 'POST',
+            url: window.ff.xp_detail_cals_url,
+            data: {},
+            success: function(data, status, jqXHR) {
+                $('#cal_images_wrapper').html(data.cal_images_chunk);
+            },
+            error: function(jqXHR, status, error) {
+                console.log(error);
+            },
+            dataType: 'json'
+        });
+    };
+    window.ff.refresh_cal_images();
+
+    $('#cal_button').on('click', function(event) {
+        event.preventDefault();
+        if ($('#cal_ready').prop('checked')) {
+            $('#cal_ready').prop('checked', false);
+            window.ff.send_to_raspi({
+                command: 'post_calibration_image',
+                species: $('#species').val(),
+                xp_id: $('#xp_id').val()
+            }, function(data, status, jqXHR) {
+                window.ff.refresh_cal_images();
+            });
+        }
+    });
+
     $('.angle_bullet').each(function() {
         var bullet = $(this);
         var angle_text = bullet.attr('data-angle');
@@ -105,5 +136,6 @@ $(document).ready(function() {
             bullet.html('<img src="' + data_url + '" />');
         }
     });
+
 
 });  // end $(document).ready()

@@ -332,7 +332,7 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
 
             logger.debug('telling server to post XP_{}_CJR_{} data image'.format(
                 self.xp_id, self.cjr_id))
-            self.controller.imagery_server.post_current_image_to_server({
+            self.controller.imagery_server.post_image_to_server({
                 'command': 'post_image',
                 'xp_id': self.xp_id,
                 'is_cal_image': 0,
@@ -675,7 +675,8 @@ class ImageryServer(object):
 
         self.command_dispatch = {
             'set_psu': self.set_psu,
-            'post_image': self.post_current_image_to_server,
+            'post_image': self.post_image_to_server,
+            'post_calibration_image': self.post_calibration_image,
 
             'insert_job': self.capturejob_controller.insert_job,
             'job_status': self.capturejob_controller.complete_status,
@@ -706,7 +707,7 @@ class ImageryServer(object):
                     self.camera = None
                 logger.debug('camera is closed')
 
-    def post_current_image_to_server(self, payload):
+    def post_image_to_server(self, payload):
         if self.camera is None or self.camera.closed:
             logger.warning('Tried to capture with closed camera.  Opening camera on the fly.')
             self.open_camera()
@@ -752,9 +753,28 @@ class ImageryServer(object):
         files = {image_filename: stream}
 
         image_start_post_time = time.time()
-        self.telemeter.post_to_fishface(payload=payload, files=files)
+        result = self.telemeter.post_to_fishface(payload=payload, files=files)
+        logger.info(result)
         logger.info("image {} posted in {} seconds".format(payload['filename'],
                                                            time.time() - image_start_post_time))
+
+        return payload
+
+    def post_calibration_image(self, payload):
+        if self.power_supply.output:
+            self.power_supply.output = False
+            delay_for_seconds(5)
+
+        payload.update({
+            'command': "post_image",
+            'is_cal_image': 1,
+            'cjr_id': 0,
+        })
+
+        reply = self.post_image_to_server(payload)
+
+        return reply
+
 
     def async_image_post(self, payload):
         with self.async_pending_image_posts_lock:
@@ -763,7 +783,7 @@ class ImageryServer(object):
         payload['async'] = True
         async_thread = threading.Thread(
             name="async_image_post_thread",
-            target=self.post_current_image_to_server,
+            target=self.post_image_to_server,
             args=(payload,)
         )
         async_thread.start()

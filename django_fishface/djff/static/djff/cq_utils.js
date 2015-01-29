@@ -14,9 +14,9 @@ $(document).ready(function(){
         var interval_chunk = is_capture ?
             '<br><span class="cjt_interval">{0}s</span>'.format(job_spec.interval) :
             '';  // {6}
-        var duration_pretty_print = duration < 86400 ?
+        var duration_pretty_print = job_spec.duration < 86400 ?
                 job_spec.duration.toHHMMSS() :
-                duration.toFixed(3);
+                (duration/86400).toFixed(3);
 
         return template.format(
             window.ff.cq_util.data_attrib_from_job_spec(job_spec),

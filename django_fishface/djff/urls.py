@@ -7,11 +7,6 @@ urlpatterns = dcu.patterns(
         views.receive_image,
         name='receive_image'
     ),
-    dcu.url(
-        r'^imagery_request/$',
-        views.xp_capturer,
-        name='xp_capturer'
-    ),
 
     dcu.url(r'^$', views.index, name='index'),
 
@@ -34,6 +29,11 @@ urlpatterns = dcu.patterns(
         r'^xp/detail/(?P<xp_id>\d+)/$',
         views.xp_detail,
         name='xp_detail'
+    ),
+    dcu.url(
+        r'^xp/detail/(?P<xp_id>\d+)/cals/$',
+        views.xp_detail_cals,
+        name='xp_detail_cals'
     ),
     dcu.url(
         r'^xp/new/$',

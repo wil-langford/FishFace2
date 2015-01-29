@@ -1,22 +1,6 @@
 $(document).ready(function(){
     var cq_util = window.ff.cq_util;
 
-    function send_to_raspi(obj_to_send, success_function) {
-        $.post(
-            window.ff.telemetry_proxy_url,
-            obj_to_send,
-            success_function,
-            'json'
-        ).fail(function (jqXHR, textStatus, errorThrown) {
-            console.log(
-                "ERROR:\n  textStatus: " + textStatus +
-                "\n  text: " + jqXHR.text +
-                "\n  errorThrown: " + errorThrown
-            );
-            return false;
-        });
-    }
-
     function repopulate_fields(data, textStatus, jqXHR) {
         var temp_xp_id = data.xp_id;
         if (temp_xp_id != undefined && data.current_job != undefined) {
@@ -124,7 +108,7 @@ $(document).ready(function(){
         queue_array = cq_util.get_queue_array();
         if (queue_array != []) {
             xp_id = get_xp_id();
-            send_to_raspi({
+            window.ff.send_to_raspi({
                 'command': 'set_queue',
                 'queue': JSON.stringify(queue_array),
                 'xp_id': xp_id,
@@ -134,8 +118,8 @@ $(document).ready(function(){
     }
 
     window.ff.cq_util.clear_queue = function() {
-        xp_id = get_xp_id();
-        send_to_raspi({
+        var xp_id = get_xp_id();
+        window.ff.send_to_raspi({
             'command': 'set_queue',
             'queue': JSON.stringify([]),
             'xp_id': xp_id,
@@ -144,7 +128,7 @@ $(document).ready(function(){
     }
 
     function repop() {
-        send_to_raspi({'command': 'job_status'}, repopulate_fields);
+        window.ff.send_to_raspi({'command': 'job_status'}, repopulate_fields);
     }
 
     function repop_in_milliseconds(msec) {
@@ -153,11 +137,11 @@ $(document).ready(function(){
     }
 
     function pause_queue() {
-        send_to_raspi({'command': 'pause_queue'}, repop_in_milliseconds(1000))
+        window.ff.send_to_raspi({'command': 'pause_queue'}, repop_in_milliseconds(1000))
     }
 
     function abort_all() {
-        send_to_raspi({'command': 'abort_all'}, repop_in_milliseconds(2000))
+        window.ff.send_to_raspi({'command': 'abort_all'}, repop_in_milliseconds(2000))
     }
 
     function start_periodic_monitor() {
