@@ -14,24 +14,23 @@
     <script type="text/javascript" src="{% static 'djff/moment-timezone.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'djff/moment-timezone-with-data-2010-2020.min.js' %}"></script>
 
-    <script type="text/javascript" src="{% static 'djff/remote_hardware_monitor.js' %}"></script>
+    <script type="text/javascript">
+        $(document).ready(function() {
+            if (window.ff == undefined) {
+                window.ff = {
+                    telemetry_proxy_url: "{% url 'djff:telemetry_proxy' %}",
+                    cjt_chunk_base_url: "{% url 'djff:cjt_chunk' 1 %}".slice(0,-2),
+                    csrf_token: "{{ csrf_token }}"
+                };
+            }
+        });
+    </script>
+
+    <script type="text/javascript" src="{% static 'djff/base.js' %}"></script>
 
     {% block localscript %}{% endblock %}
 
     <title>FishFace{% block pagetitle %}{% endblock %}</title>
-
-    <script type="text/javascript">
-        $(document).ready(function(){
-            if (window.ff == undefined) { window.ff = {}; }
-
-            window.ff.telemetry_proxy_url = "{% url 'djff:telemetry_proxy' %}";
-
-            /*
-             * Global FishFace javascript goes here.
-             */
-        });
-    </script>
-
 </head>
 
 <body>
@@ -48,9 +47,10 @@
         <li class="non_menu_li">Setup</li>
         <a href="{% url 'djff:xp_index' %}"><li class="menu_li" id="menu_experiments">Experiments</li></a>
         <a href="{% url 'djff:sp_index' %}"><li class="menu_li" id="menu_species">Species</li></a>
+        <a href="{% url 'djff:cjt_index' %}"><li class="menu_li" id="menu_templates">Individual Job Templates</li></a>
+        <a href="{% url 'djff:cq_builder' %}"><li class="menu_li" id="menu_cq_builder">Queue Builder</li></a>
         <li class="non_menu_li">Capturing</li>
-        <a href="{% url 'djff:cjt_index' %}"><li class="menu_li" id="menu_templates">CapJob Templates</li></a>
-        <a href="{% url 'djff:cq_interface' %}"><li class="menu_li" id="menu_job_queue">CapJob Queue</li></a>
+        <a href="{% url 'djff:cq_interface' %}"><li class="menu_li" id="menu_job_queue">Run Capture Jobs</li></a>
         <li class="non_menu_li">Analysis</li>
         <a href="{% url 'djff:tagging_interface' %}"><li class="menu_li" id="menu_tagging">Tag Data</li></a>
         <a href="{% url 'djff:verification_interface' %}"><li class="menu_li" id="menu_verification">Verify Tags</li></a>
@@ -62,37 +62,6 @@
 </div>
 
 <div id="preview_area">
-    <div id="raspi_monitor">
-        <p class="hw_monitor_label">Remote<br>Hardware<br>Monitor</p>
-        <span id="RASPI" class="hover_wrapper monitor_status_box">
-            RASPI<span class="hover_text">Green means that the Raspberry Pi's master server reports
-            that it is running properly. (imagery_server)</span>
-        </span>
-        <br>
-        <span id="CF" class="hover_wrapper monitor_status_box">
-            CF<span class="hover_text">Green means that the thread that refreshes the image from
-            the camera is running. (current_framer)</span>
-        </span>
-        <span id="CJC" class="hover_wrapper monitor_status_box">
-            CJC<span class="hover_text">Green means that the raspi is ready to process queued
-            capture jobs. (capturejob_controller)</span>
-        </span>
-        <span id="DP" class="hover_wrapper monitor_status_box">
-            DP<span class="hover_text">Green means that the thread that publishes the final status
-            of completed jobs back to the database is running. (deathcry_publisher)</span>
-        </span>
-        <br>
-        <span class="hover_wrapper monitor_status_box psu_monitor_box">
-            <span id="psu_monitor_voltage">0</span> V<span class="hover_text">
-            The delivered voltage as measured by the power supply.</span>
-        </span>
-        <span class="hover_wrapper monitor_status_box psu_monitor_box">
-            <span id="psu_monitor_current">0</span> A<span class="hover_text">
-            The delivered current as measured by the power supply.</span>
-        </span>
-    </div>
-
-
     {% block preview_area %}
     {% endblock %}
 </div>

@@ -7,6 +7,8 @@ import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
 from django.conf import settings
 
+import jsonfield
+
 import fields
 from utils import djff_imagekit as ffik
 
@@ -21,16 +23,18 @@ class Species(models.Model):
     image = models.ImageField('a sample image of the fish species',
                               blank=True, null=True, upload_to="species_sample_images")
 
-    def inline_image(self):
-        return '<img width=200 src="/media/{}" />'.format(
+    def inline_image(self, thumb=False):
+        width = [200, 30][thumb]
+        return '<img width={} class="inline_image" src="/media/{}" />'.format(
+            width,
             self.image
         )
     inline_image.allow_tags = True
 
-    def linked_inline_image(self):
+    def linked_inline_image(self, thumb=False):
         return '<a href="/media/{}" target="_newtab">{}</a>'.format(
             self.image,
-            self.inline_image(),
+            self.inline_image(thumb=thumb),
         )
     linked_inline_image.allow_tags = True
 
@@ -174,20 +178,31 @@ class Image(models.Model):
         "how many of this image's tags have been deleted during validation",
         default=0)
 
-
     psu_log = models.ForeignKey(PowerSupplyLog,
                                 null=True, blank=True)
 
-    def inline_image(self):
-        return '<img width=200 src="{}{}" />'.format(
-            settings.MEDIA_URL, self.image_file
+    @property
+    def angle(self):
+        my_tags = ManualTag.objects.filter(image=self)
+        if my_tags.count() > 0:
+            angle = sum(tag.angle for tag in my_tags) / float(my_tags.count())
+        else:
+            angle = None
+
+        return angle
+
+
+    def inline_image(self, thumb=False):
+        width = [200, 40][thumb]
+        return '<img width={} class="inline_image" src="{}{}" />'.format(
+            width, settings.MEDIA_URL, self.image_file
         )
     inline_image.allow_tags = True
 
-    def linked_inline_image(self):
+    def linked_inline_image(self, thumb=False):
         return '<a href="/media/{}" target="_newtab">{}</a>'.format(
             self.image_file,
-            self.inline_image(),
+            self.inline_image(thumb),
         )
     linked_inline_image.allow_tags = True
 
@@ -196,6 +211,13 @@ class Image(models.Model):
             self.image_file,
         )
     linked_inline_bullet.allow_tags = True
+
+    def linked_angle_bullet(self):
+        return '<a href="/media/{}" class="angle_bullet" target="_newtab" data-angle="{}">X</a>'.format(
+            self.image_file,
+            self.angle
+        )
+    linked_angle_bullet.allow_tags = True
 
 
 class ImageAnalysis(models.Model):
@@ -285,6 +307,14 @@ class CaptureJobTemplate(models.Model):
     description = models.TextField('a description of this capture job template (optional)',
                                    null=True, blank=True, )
 
+    ordering = ['duration', 'voltage']
+
+    @property
+    def job_spec(self):
+        return '_'.join([str(x) for x in
+            self.voltage, self.current, self.startup_delay, self.interval, self.duration
+        ])
+
     def get_absolute_url(self):
         return dcu.reverse(
             'djff:cjt_update',
@@ -321,6 +351,13 @@ class FishLocale(models.Model):
     tank = models.ForeignKey(Tank)
     datetime_in_tank = models.DateTimeField('the date and time that the fish was in the tank',
                                             auto_now_add=True)
+
+
+class CaptureJobQueue(models.Model):
+    name = models.CharField('name of the queue', max_length=50)
+    timestamp = models.DateTimeField('when this queue was most recently saved', auto_now=True)
+    queue = jsonfield.JSONField('a queue spec object')
+    comment = models.TextField('description of this queue')
 
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
