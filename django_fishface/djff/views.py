@@ -637,7 +637,7 @@ def xp_renamer(request, xp_id):
 
 
 def xp_detail_cals(request, xp_id):
-    cal_image_objs = Image.objects.filter(xp=xp_id)
+    cal_image_objs = Image.objects.filter(xp=xp_id, is_cal_image=True)
     cal_images_chunk = ''.join([image.linked_inline_image(thumb=True) for image in cal_image_objs])
 
     payload = json.dumps({
