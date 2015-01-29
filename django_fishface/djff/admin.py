@@ -119,6 +119,8 @@ class CaptureJobTemplateAdmin(admin.ModelAdmin):
         'startup_delay'
     )
 
+    list_filter = ['duration', 'voltage']
+
 admin.site.register(models.CaptureJobTemplate, CaptureJobTemplateAdmin)
 
 class CaptureJobRecordAdmin(admin.ModelAdmin):
@@ -126,6 +128,7 @@ class CaptureJobRecordAdmin(admin.ModelAdmin):
         (
             'Parameters', {
                 'fields': [
+                    'xp',
                     'voltage',
                     'current',
                     'job_start',
@@ -144,6 +147,8 @@ class CaptureJobRecordAdmin(admin.ModelAdmin):
         'job_start',
         'job_stop',
     )
+
+    list_filter = ['xp']
 
 admin.site.register(models.CaptureJobRecord, CaptureJobRecordAdmin)
 
