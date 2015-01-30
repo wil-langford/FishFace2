@@ -11,6 +11,8 @@ import jsonfield
 
 import fields
 from utils import djff_imagekit as ffik
+import imagekit.models as ikm
+import imagekit.processors as ikp
 
 
 class Species(models.Model):
@@ -167,19 +169,25 @@ class Image(models.Model):
     cjr = models.ForeignKey(CaptureJobRecord, null=True, editable=False, )
 
     # Data available at capture time.
-    capture_timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
+    capture_timestamp = models.DateTimeField('DTG of image capture', default=0)
     voltage = models.FloatField('voltage at power supply', default=0)
     current = models.FloatField('current at power supply', default=0)
     image_file = models.ImageField('path of image file',
-                                   upload_to="experiment_imagery/stills/%Y.%m.%d")
+                                   upload_to="experiment_imagery/stills/%Y.%m.%d", null=True)
     is_cal_image = models.BooleanField('is this image a calibration image?', default=False)
+
+    normalized_image = ikm.ProcessedImageField(upload_to="experiment_imagery/normalized/%Y.%m.%d",
+                                               processors=[
+                                                   ffik.ConvertToGrayscale,
+                                                   ikp.ResizeToFill(width=512, height=384)
+                                               ],
+                                               format='JPEG',
+                                               options={'quality': 90},
+                                               null=True, blank=True)
 
     bad_tags = models.IntegerField(
         "how many of this image's tags have been deleted during validation",
         default=0)
-
-    psu_log = models.ForeignKey(PowerSupplyLog,
-                                null=True, blank=True)
 
     @property
     def angle(self):
@@ -190,7 +198,6 @@ class Image(models.Model):
             angle = None
 
         return angle
-
 
     def inline_image(self, thumb=False):
         width = [200, 40][thumb]
@@ -311,9 +318,12 @@ class CaptureJobTemplate(models.Model):
 
     @property
     def job_spec(self):
-        return '_'.join([str(x) for x in
-            self.voltage, self.current, self.startup_delay, self.interval, self.duration
-        ])
+        return '_'.join(
+            [
+                str(x) for x in
+                self.voltage, self.current, self.startup_delay, self.interval, self.duration
+            ]
+        )
 
     def get_absolute_url(self):
         return dcu.reverse(
@@ -364,6 +374,7 @@ class CaptureJobQueue(models.Model):
 def image_delete(sender, instance, **kwargs):
     # pass False so ImageField won't save the model
     instance.image_file.delete(False)
+
 
 @django.dispatch.dispatcher.receiver(ddms.pre_delete, sender=ManualTag)
 def tag_delete(sender, instance, **kwargs):
