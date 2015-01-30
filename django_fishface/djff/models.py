@@ -176,7 +176,7 @@ class Image(models.Model):
                                    upload_to="experiment_imagery/stills/%Y.%m.%d", null=True)
     is_cal_image = models.BooleanField('is this image a calibration image?', default=False)
 
-    normalized_image = ikm.ProcessedImageField(upload_to="experiment_imagery/normalized/%Y.%m.%d",
+    normalized_image_file = ikm.ProcessedImageField(upload_to="experiment_imagery/normalized/%Y.%m.%d",
                                                processors=[
                                                    ffik.ConvertToGrayscale,
                                                    ikp.ResizeToFill(width=512, height=384)
@@ -226,6 +226,17 @@ class Image(models.Model):
         )
     linked_angle_bullet.allow_tags = True
 
+    @property
+    def normalized_image(self):
+        print 'Checking to see if normalized image file exists.'
+        try:
+            self.normalized_image_file.file
+        except ValueError:
+            print 'Generating normalized image file on the fly.'
+            self.normalized_image_file = self.image_file.file
+            self.save()
+
+        return self.normalized_image_file
 
 class ImageAnalysis(models.Model):
     # link to a specific image
