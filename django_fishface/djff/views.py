@@ -4,6 +4,7 @@ import datetime
 import json
 import random
 import math
+import copy
 
 import cv2
 import pytz
@@ -30,6 +31,7 @@ from djff.models import (
     Researcher,
     ManualTag,
     ManualVerification,
+    CaptureJobQueue,
 )
 
 import djff.utils.telemetry as telemetry
@@ -110,7 +112,7 @@ def stats(request):
             'id': xp.id,
             'name': xp.name,
             'slug': xp.slug,
-            'cjrs': xp.capturejobrecord_set.all(),
+            'cjrs': xp.capturejobrecord_set.all().order_by('id'),
             'actual_xp': xp,
         }
 
@@ -144,6 +146,7 @@ def receive_telemetry(request):
         is_cal_image = (str(payload['is_cal_image']).lower()
                         in ['true', 't', 'yes', 'y', '1'])
         voltage = float(payload['voltage'])
+        current = float(payload['current'])
 
         capture_timestamp = datetime.datetime.utcfromtimestamp(
             float(payload['capture_time'])).replace(tzinfo=dut.utc)
@@ -153,17 +156,19 @@ def receive_telemetry(request):
         except dh.Http404:
             cjr = None
 
+        image_uploaded_file = request.FILES[payload['filename']]
+
         logger.info("storing image")
 
         captured_image = Image(
             xp=xp,
             capture_timestamp=capture_timestamp,
             voltage=voltage,
+            current=current,
             is_cal_image=is_cal_image,
             cjr=cjr,
-            image_file=request.FILES[
-                payload['filename']
-            ],
+            image_file=image_uploaded_file,
+            normalized_image=image_uploaded_file,
         )
         captured_image.save()
 
@@ -231,7 +236,13 @@ def telemetry_proxy(request):
 def tagging_interface(request):
 
     all_researchers = Researcher.objects.all()
-    researchers = [{'id': researcher.id, 'name': researcher.name, 'tag_score': researcher.tag_score}
+    researchers = [{
+                       'id': researcher.id,
+                       'name': researcher.name,
+                       'tag_score': researcher.tag_score,
+                       'bad_tags': researcher.bad_tags,
+                       'good_tags': researcher.verified_tags
+                   }
                    for researcher in all_researchers]
 
     context = {
@@ -265,7 +276,13 @@ def tag_submit(request):
 
             manual_tag.save()
 
-        return_value['researcher_score'] = researcher.tag_score
+        return_value['researcher_all_tags'] = researcher.all_tags_count
+        return_value['researcher_bad_tags'] = researcher.bad_tags
+        return_value['researcher_good_tags'] = researcher.verified_tags
+        return_value['researcher_unverified_tags'] = researcher.unverified_tags
+        return_value['researcher_tags_undergone_verification'] = researcher.all_tags_count - researcher.unverified_tags
+        return_value['researcher_good_rate'] = researcher.accuracy_score
+        return_value['researcher_bad_rate'] = researcher.antiaccuracy_score
 
         untagged_images = Image.objects.filter(is_cal_image=False).exclude(
             xp__name__contains='TEST_DATA').exclude(
@@ -415,15 +432,19 @@ def verification_submit(request):
 
 def cq_interface(request):
 
-    cjts = CaptureJobTemplate.objects.all()
+    cjts = CaptureJobTemplate.objects.all().order_by()
+    cjt_ids = [cjt.id for cjt in cjts]
     job_specs = dict()
     for cjt in cjts:
         job_specs[cjt.id] = {
+            'id': cjt.id,
             'voltage': cjt.voltage,
             'current': cjt.current,
             'startup_delay': cjt.startup_delay,
             'interval': cjt.interval,
-            'duration': cjt.duration
+            'duration': cjt.duration,
+            'job_spec': cjt.job_spec,
+            'description': cjt.description,
         }
     job_specs = json.dumps(job_specs)
 
@@ -441,14 +462,93 @@ def cq_interface(request):
         'xp_species_json': json.dumps(xp_species),
         'job_specs': job_specs,
         'cjts': cjts,
+        'cjt_ids': cjt_ids,
         'raspi_telemetry_url': settings.TELEMETRY_URL,
     }
     return ds.render(request, 'djff/cq_interface.html', context)
 
 
+def cjqs(request):
+    cjqs = CaptureJobQueue.objects.all()
+    cjq_ids = [cjq.id for cjq in cjqs]
+    queues = dict()
+    for cjq in cjqs:
+        queues[cjq.id] = {
+            'id': cjq.id,
+            'name': cjq.name,
+            'comment': cjq.comment,
+            'queue': cjq.queue,
+        }
+
+    payload = json.dumps({
+        'cjq_ids': cjq_ids,
+        'cjqs': queues
+    })
+
+    return dh.HttpResponse(payload, content_type='application/json')
+
+
+def cq_builder(request):
+    cjts = CaptureJobTemplate.objects.all()
+    cjt_ids = [cjt.id for cjt in cjts]
+
+    job_specs = dict()
+    for cjt in cjts:
+        job_specs[cjt.id] = {
+            'voltage': cjt.voltage,
+            'current': cjt.current,
+            'startup_delay': cjt.startup_delay,
+            'interval': cjt.interval,
+            'duration': cjt.duration,
+            'job_spec': cjt.job_spec,
+            'capture': cjt.interval > 0,
+            'description': cjt.description,
+        }
+    job_specs = json.dumps(job_specs)
+
+    context = {
+        'job_specs': job_specs,
+        'cjts': cjts,
+        'cjt_ids': cjt_ids,
+    }
+    return ds.render(request, 'djff/cq_builder.html', context)
+
+
+def cjq_saver(request):
+    data = json.loads(request.POST.get('payload_json'))
+
+    if data.get('delete', False):
+        cjq = CaptureJobQueue.objects.get(pk=int(data['cjq_id']))
+        cjq.delete()
+
+        payload = json.dumps({
+            'deleted': 1,
+        })
+    else:
+        cjq_id = int(data['cjq_id'])
+
+        if cjq_id:
+            cjq = CaptureJobQueue.objects.get(pk=cjq_id)
+        else:
+            cjq = CaptureJobQueue()
+
+        cjq.name = data['name']
+        cjq.queue = data['queue']
+        cjq.comment = data['comment']
+        cjq.save()
+
+        payload = json.dumps({
+            'cjq_id': cjq.id,
+            'name': cjq.name,
+            'comment': cjq.comment
+        })
+
+    return dh.HttpResponse(payload, content_type='application/json')
+
+
 @csrf_dec.csrf_exempt
 def cjr_new_for_raspi(request):
-    logger.debug("making new CJR with: {}".format(request.POST))
+    logger.info("making new CJR with: {}".format(request.POST))
     cjr = CaptureJobRecord()
 
     cjr.xp_id = int(request.POST['xp_id'])
@@ -468,6 +568,21 @@ def cjr_new_for_raspi(request):
     })
 
     return dh.HttpResponse(data, content_type='application/json')
+
+
+def save_cjq(request):
+    rp = request.POST
+    logger.info("making new CJQ with: {}".format(rp))
+
+    cjq = CaptureJobQueue()
+
+    cjq.name = rp.name
+    cjq.comment = rp.comment
+    cjq.queue = rp.queue
+
+    cjq.save()
+
+    return dh.HttpResponse(status=201)
 
 
 #
@@ -519,43 +634,22 @@ def xp_renamer(request, xp_id):
     xp.save()
 
     return dh.HttpResponseRedirect(
-        dcu.reverse('djff:xp_capture', args=(xp.id,))
+        dcu.reverse('djff:xp_detail', args=(xp.id,))
     )
 
 
-def xp_capturer(request):
-    xp = ds.get_object_or_404(Experiment, pk=int(request.POST['xp_id']))
+def xp_detail_cals(request, xp_id):
+    cal_image_objs = Image.objects.filter(xp=xp_id, is_cal_image=True)
+    cal_images_chunk = ''.join([image.linked_inline_image(thumb=True) for image in cal_image_objs])
 
-    payload = {
-        'command': 'post_image',
-        'xp_id': xp.id,
-        'current': request.POST['current'],
-        'voltage': request.POST['voltage'],
-        'species': xp.species.shortname,
-        'no_reply': 1,
-        'is_cal_image': request.POST.get('is_cal_image', False),
-        'cjr_id': request.POST.get('cjr_id', 0),
-    }
+    payload = json.dumps({
+        'cal_images_chunk': cal_images_chunk,
+    })
 
-    response = {
-        'xp_id': xp.id
-    }
-
-    # if it's not a cal image OR if it's a cal image and the user
-    # checked the "ready to capture cal image" box...
-    if not request.POST['is_cal_image'] == 'True' or request.POST.get('cal_ready', '') == 'True':
-        telemeter = telemetry.Telemeter()
-        response = telemeter.post_to_raspi(payload)
-
-        logger.debug("Post-request response: {}".format(response))
-
-    return dh.HttpResponseRedirect(
-        dcu.reverse('djff:xp_capture',
-                    args=(response['xp_id'],))
-    )
+    return dh.HttpResponse(payload, content_type='application/json')
 
 
-def xp_capture(request, xp_id):
+def xp_detail(request, xp_id):
     try:
         xp = ds.get_object_or_404(Experiment, pk=xp_id)
     except ds.Http404:
@@ -566,31 +660,20 @@ def xp_capture(request, xp_id):
             )
         )
 
-    xp_images = Image.objects.filter(
-        xp__id=xp_id
-    )
+    xp_images = Image.objects.filter(xp__id=xp_id)
 
-    cal_images = xp_images.filter(
-        is_cal_image=True
-    )
+    cal_images = xp_images.filter(is_cal_image=True)
 
-    data_images = xp_images.filter(
-        is_cal_image=False
-    )
+    data_images = xp_images.filter(is_cal_image=False)
 
     cjts = CaptureJobTemplate.objects.all()
 
-    running_jobs = CaptureJobRecord.objects.filter(
-        running=True
-    )
+    running_jobs = CaptureJobRecord.objects.filter(running=True)
 
     cjrs = CaptureJobRecord.objects.filter(xp__id=xp.id).order_by('job_start')
 
-    images_by_cjr = [
-        (cjr_obj, Image.objects.filter(cjr__id=cjr_obj.id))
-        for cjr_obj in
-        cjrs
-    ]
+    images_by_cjr = [(cjr_obj, Image.objects.filter(cjr__id=cjr_obj.id))
+                     for cjr_obj in cjrs]
 
     return ds.render(
         request,
@@ -646,10 +729,16 @@ def sp_new(request):
 #
 
 
-class CaptureJobTemplateIndex(dvg.ListView):
-    context_object_name = 'context'
-    template_name = 'djff/cjt_index.html'
-    model = CaptureJobTemplate
+def cjt_index(request):
+    cjts = CaptureJobTemplate.objects.all()
+    cjt_ids = [cjt.id for cjt in cjts]
+
+    context = {
+        'cjts': cjts,
+        'cjt_ids': json.dumps(cjt_ids),
+    }
+
+    return ds.render(request, 'djff/cjt_index.html', context)
 
 
 class CaptureJobTemplateUpdate(dvge.UpdateView):
@@ -673,6 +762,28 @@ def cjt_new(request):
         dcu.reverse('djff:cjt_detail',
                     args=(cjt.id,))
     )
+
+
+def cjt_chunk(request, cjt_id):
+    cjt = CaptureJobTemplate.objects.get(pk=cjt_id)
+    cjt_cooked = {
+        'id': cjt.id,
+        'voltage': cjt.voltage,
+        'current': cjt.current,
+        'startup_delay': cjt.startup_delay,
+        'interval': cjt.interval,
+        'capture': cjt.interval > 0,
+        'duration': cjt.duration,
+        'job_spec': cjt.job_spec,
+        'description': cjt.description,
+        'pretty_print_duration': str(datetime.timedelta(seconds=cjt.duration))
+    }
+
+    context = {
+        'cjt': cjt_cooked,
+    }
+
+    return ds.render(request, 'djff/cjt_chunk.html', context)
 
 
 def insert_capturejob_into_queue(request):
@@ -715,7 +826,7 @@ def abort_running_job(request):
 
     if xp_id:
         return dh.HttpResponseRedirect(
-            dcu.reverse('djff:xp_capture',
+            dcu.reverse('djff:xp_detail',
                         args=(xp_id,))
         )
 
@@ -749,6 +860,7 @@ def receive_image(request):
             is_cal_image = (str(request.POST['is_cal_image']).lower()
                             in ['true', 't', 'yes', 'y', '1'])
             voltage = float(request.POST['voltage'])
+            current = float(request.POST['current'])
 
             capture_timestamp = datetime.datetime.utcfromtimestamp(
                 float(request.POST['capture_time'])
@@ -768,6 +880,7 @@ def receive_image(request):
                 xp=xp,
                 capture_timestamp=capture_timestamp,
                 voltage=voltage,
+                current=current,
                 is_cal_image=is_cal_image,
                 cjr=cjr,
                 image_file=request.FILES[
@@ -792,4 +905,4 @@ def receive_image(request):
 
 def manual_tag_verification_image(request, tag_id):
     tag = ManualTag.objects.get(pk=tag_id)
-    return _image_response_from_bytes_io(tag.verification_image(), 'jpg')
+    return _image_response_from_bytes_io(tag.verification_image, 'jpg')

@@ -1,11 +1,8 @@
-import PIL.Image
-
 import imagekit as ik
 import imagekit.processors as ikp
-import imagekit.utils as iku
-import imagekit.models as ikm
 
 import djff_math as ffm
+
 
 class RotateImage(object):
     def __init__(self, angle):
@@ -13,6 +10,16 @@ class RotateImage(object):
 
     def process(self, image):
         return image.rotate(self.angle)
+
+
+class ConvertToGrayscale(object):
+    @staticmethod
+    def process(image):
+        im_mode = image.mode
+        new_image = image.convert('L')
+        print "image mode changed from {} to {}".format(im_mode, new_image.mode)
+
+        return new_image
 
 
 class ManualTagVerificationThumbnail(ik.ImageSpec):

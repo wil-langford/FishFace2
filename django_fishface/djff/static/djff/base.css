@@ -34,7 +34,6 @@
 
 .body-background { color: #FFDDAA }
 
-
 html, body
 {
     margin: 0;
@@ -87,6 +86,13 @@ td {
     padding: 2px;
 }
 
+.padded_boxed
+{
+    border: 1px solid black;
+    margin: 1em;
+    padding: 1em;
+}
+
 .bad
 {
     background-color: rgba(250,120,135,1);
@@ -115,7 +121,7 @@ td {
 #content
 {
     padding-top: 6em;
-    margin-left: 12em;
+    margin-left: 15em;
 }
 
 .deleter .warning
@@ -311,4 +317,221 @@ div.shift_right {
 
 div#zero_unverified {
     display: none;
+}
+
+div#raspi_monitor {
+    position: absolute;
+    left: 1em;
+    background-color: cadetblue;
+    bottom: 1em;
+    padding: 5px;
+    border: 1px solid black;
+    line-height: 1.7;
+    text-align: center;
+    font-size: 10pt;
+}
+
+div#raspi_monitor .hover_wrapper .hover_text {
+    position: absolute;
+    bottom: 2em;
+    left: 16em;
+    background-color: palegreen;
+    visibility: collapse;
+    min-width: 15em;
+    border: 1px black solid;
+    text-align: justify;
+    padding: 3px;
+    line-height: 1;
+    font-weight: normal;
+}
+
+div#raspi_monitor .hover_wrapper:hover .hover_text {
+    visibility: visible;
+}
+
+div#raspi_monitor .monitor_status_box
+{
+    display: inline;
+    text-align: center;
+    border: 1px solid black;
+    padding: 2px;
+    width: 2em;
+    font-weight: bolder;
+}
+
+div#raspi_monitor .monitor_status_box
+{
+    display: inline;
+    text-align: center;
+    border: 1px solid black;
+    padding: 2px;
+    width: 2em;
+    font-weight: bolder;
+}
+
+div#raspi_monitor .psu_monitor_box
+{
+    background-color: #FFDDAA;
+}
+
+div#raspi_monitor .hw_monitor_label {
+    margin: 0;
+    padding: 2px;
+    line-height: 1;
+    font-size: 10pt;
+    border: 1px solid gray;
+    margin-bottom: 5px;
+    background-color: navajowhite;
+}
+
+div#raspi_monitor #RASPI {
+    background-color: yellow;
+}
+
+#save_queue_button {
+    background-color: lightgreen;
+    font-width: bolder;
+}
+
+#save_queue_button {
+    background-color: lightgreen;
+    font-width: bolder;
+}
+
+#save_queue_button:hover {
+    background-color: green;
+    font-width: bolder;
+}
+
+form#queue_form {
+    text-align: left;
+}
+
+.big_label {
+    font-size: larger;
+    font-width: bolder;
+}
+
+span.queue_deleter {
+    background-color: pink;
+    font-size: 10pt;
+}
+
+span.queue_loader {
+    font-size: 10pt;
+    background-color: lightblue;
+}
+
+li.cjt_grid {
+    font-size: 16pt;
+    line-height: 1.1;
+    width: 10.7em;
+    height: 2.5em;
+    font-family: monospace;
+    padding: 0;
+    margin: 0.5em;
+    background-color: lightblue;
+    color: black;
+}
+
+li.cjt_grid a:link{
+    text-decoration: none;
+}
+
+[class*='col_'] {
+    text-align: center;
+    padding: 0.1em;
+}
+
+li.cjt_grid .col_1 {
+    float: right;
+    padding-top: 0.4em;
+    width: 4em;
+    background-color: lightblue;
+    height: 2.0em;
+}
+
+li.cjt_grid .col_2_cap {
+    float: left;
+    height: 2.2em;
+    padding-top: 0.2em;
+    width: 6em;
+    background-color: lightgreen;
+}
+
+li.cjt_grid .col_2_nocap {
+    float: left;
+    width: 6em;
+    padding-top: 0.725em;
+    height: 1.675em;
+    background-color: lightgrey;
+}
+
+li.cjt_grid .cjt_voltage {
+    font-weight: bolder;
+}
+
+li.cjt_grid .cjt_current {
+    font-size: 8pt;
+}
+
+li.cjt_grid .cjt_startup_delay {
+    font-size: 8pt;
+}
+
+li.cjt_grid .cjt_duration {
+    font-weight: bolder;
+}
+
+.cjt_grid .hover_text {
+    font-size: 10pt;
+    position: absolute;
+    top: 10em;
+    right: 30em;
+    background-color: palegreen;
+    visibility: collapse;
+    min-width: 15em;
+    border: 1px black solid;
+    text-align: justify;
+    padding: 3px;
+    line-height: 1;
+    font-weight: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cjt_grid:hover .hover_text {
+    visibility: visible;
+}
+
+#cjt_list {
+    width: 16em;
+}
+
+canvas#builder_canvas {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    visibility: hidden;
+}
+
+.angle_bullet {
+    margin: 0;
+    padding: 0;
+}
+
+.cjr_presentation {
+    width: 50%;
+    min-width: 25em;
+    background-color: lightgoldenrodyellow;
+}
+
+.calibration_images_presentation {
+    width: 50%;
+    min-width: 25em;
+    background-color: lightgoldenrodyellow;
+}
+
+.inline_image {
+    margin: 2px;
 }

@@ -2,6 +2,18 @@
 {% load staticfiles %}
 {% load djff_filters %}
 
+{% block localscript %}
+    <script type="text/javascript">
+        $(document).ready(function() {
+            window.ff.xp_detail_cals_url = "{% url 'djff:xp_detail_cals' xp.id %}";
+        });
+    </script>
+    <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'djff/xp_detail.js' %}"></script>
+
+
+{% endblock %}
+
 {% block subtitle %}Experiment Details{% endblock %}
 
 {% block content %}
@@ -22,46 +34,38 @@
         box below and click on the button.</p>
         </div>
     {% endif %}
-    <div class="boxed">
+    <div class="boxed calibration_images_presentation">
     <h3>Calibration Images</h3>
-    <form method="post"
-          action="{% url 'djff:xp_capturer' %}">
-        {% csrf_token %}
-
-        <input type="hidden" value="0" name="voltage">
-{# TODO: make current default not hard coded       #}
-        <input type="hidden" value="15" name="current">
-        <input type="hidden" value="True" name="is_cal_image">
-        <input type="checkbox" value="True" name="cal_ready">
+    <form>
+        <input type="checkbox" value="True" name="cal_ready" id="cal_ready">
         Ready to capture calibration image (no fish):
-        <input type="hidden" value="{{ xp.id }}" name="xp_id">
-        <input type="hidden" value="post_image" name="command">
-        <input type="submit" value="Capture a {% if cal_images %}new {% endif %}calibration image" />
+        <input type="hidden" value="{{ xp.id }}" name="xp_id" id="xp_id">
+        <input type="hidden" value="{{ xp.species.shortname }}" name="species" id="species">
+        <input type="submit" value="Capture a {% if cal_images %}new {% endif %}calibration image" id="cal_button"/>
     </form>
 
     {% if cal_images %}
         <p>Calibration images for this experiment:</p>
-        {% for img in cal_images %}
-            {{ img.linked_inline_image|replace_width:"20"|mark_safe }}
-        {% endfor %}
+        <p id="cal_images_wrapper">blah</p>
     {% endif %}
     </div>
 
     <br>
 
     {% if images_by_cjr %}
-        <div class="boxed">
+        <div class="boxed cjr_presentation">
         <h3>Capture Job Records</h3>
+        <p>Click on an individual icon or X to see the full-resolution image.</p>
         <hr width="30%" />
 
         {% for cjr, imageset in images_by_cjr %}
             <div align="center"><strong>XP-{{ xp.id }}_CJR-{{ cjr.id }}</strong><br></div>
-            Started: {{ cjr.job_start }}<br>
-            Completed: {{ cjr.job_stop }}<br>
+            Started: {{ cjr.job_start|date:"Y-m-d H:i:s" }}<br>
+            Completed: {{ cjr.job_stop|date:"Y-m-d H:i:s" }}<br>
             Captured {{ imageset.count }} images at {{ cjr.voltage }}
             volts (max {{ cjr.current }} amps):<br>
             {% for img in imageset %}
-                {{ img.linked_inline_bullet|mark_safe }}
+                {{ img.linked_angle_bullet|safe }}
             {% endfor %}
             <hr width="30%" />
         {% empty %}
@@ -69,6 +73,8 @@
         {% endfor %}
         </div>
     {% endif %}
+
+    <canvas id="builder_canvas" width="20" height="20"></canvas>
 
 {% endblock %}
 

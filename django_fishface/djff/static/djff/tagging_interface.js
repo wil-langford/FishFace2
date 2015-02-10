@@ -203,6 +203,8 @@ $(document).ready(function() {
             if (this.zoom_update_pane) {
                 this.zoom_update_pane.echo_zoom_move(this);
             }
+
+            this.renderAll();
         },
         zoom_reset: function() {
             var reset = new fabric.Point(this.zoom_border.width/2 , this.zoom_border.height/2);
@@ -388,7 +390,11 @@ $(document).ready(function() {
                     $('input#form_start').val('NONE');
                     $('input#form_end').val('NONE');
 
-                    $('span#researcher_tag_score').html(data.researcher_score);
+                    $('span#researcher_all_tags').html(data.researcher_all_tags);
+                    $('span#researcher_bad_tags').html(data.researcher_bad_tags);
+                    $('span#researcher_good_tags').html(data.researcher_good_tags);
+                    $('span#researcher_good_rate').html(data.researcher_good_rate * 100);
+                    $('span#researcher_bad_rate').html(data.researcher_bad_rate * 100);
 
                     if (data.untagged_images_count) {
                         $('span#researcher_tags_remaining').html(data.untagged_images_count);
@@ -399,6 +405,8 @@ $(document).ready(function() {
             },
             dataType: 'json'
         });
+
+        over.zoom_reset();
 
         tagger.renderAll();
         over.renderAll();

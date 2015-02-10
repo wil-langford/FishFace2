@@ -1,4 +1,5 @@
 django
+jsonfield
 numpy
 requests
 south
@@ -7,3 +8,4 @@ Pillow
 pytz
 mpi4py
 django-imagekit
+picamera

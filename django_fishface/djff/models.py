@@ -2,12 +2,17 @@ import math
 
 from django.db import models
 import django.dispatch.dispatcher
+import django.db.models as ddm
 import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
 from django.conf import settings
 
+import jsonfield
+
 import fields
 from utils import djff_imagekit as ffik
+import imagekit.models as ikm
+import imagekit.processors as ikp
 
 
 class Species(models.Model):
@@ -20,16 +25,18 @@ class Species(models.Model):
     image = models.ImageField('a sample image of the fish species',
                               blank=True, null=True, upload_to="species_sample_images")
 
-    def inline_image(self):
-        return '<img width=200 src="/media/{}" />'.format(
+    def inline_image(self, thumb=False):
+        width = [200, 30][thumb]
+        return '<img width={} class="inline_image" src="/media/{}" />'.format(
+            width,
             self.image
         )
     inline_image.allow_tags = True
 
-    def linked_inline_image(self):
+    def linked_inline_image(self, thumb=False):
         return '<a href="/media/{}" target="_newtab">{}</a>'.format(
             self.image,
-            self.inline_image(),
+            self.inline_image(thumb=thumb),
         )
     linked_inline_image.allow_tags = True
 
@@ -49,6 +56,9 @@ class Species(models.Model):
 class Researcher(models.Model):
     name = models.CharField('name of the researcher', max_length=200)
     email = models.EmailField('email address of the researcher (optional)', null=True, blank=True, )
+    bad_tags = models.IntegerField(
+        "how many of this researcher's tags have been deleted during validation",
+        default=0)
 
     def __unicode__(self):
         return u'{}'.format(self.name)
@@ -56,6 +66,34 @@ class Researcher(models.Model):
     @property
     def tag_score(self):
         return self.manualtag_set.count()
+
+    @property
+    def all_tags_count(self):
+        return self.tag_score + self.bad_tags
+
+    @property
+    def unverified_tags(self):
+        tags = self.manualtag_set.filter(researcher=self.id).annotate(ver_count=ddm.Count('manualverification'))
+        return tags.filter(ver_count=0).count()
+
+    @property
+    def verified_tags(self):
+        tags = self.manualtag_set.filter(researcher=self.id).annotate(ver_count=ddm.Count('manualverification'))
+        return tags.filter(ver_count__gt=0).count()
+
+    @property
+    def accuracy_score(self):
+        try:
+            return round(float(self.verified_tags) / (self.all_tags_count - self.unverified_tags), 3)
+        except ZeroDivisionError:
+            return None
+
+    @property
+    def antiaccuracy_score(self):
+        try:
+            return round(float(self.bad_tags) / (self.all_tags_count - self.unverified_tags), 3)
+        except ZeroDivisionError:
+            return None
 
 
 class PowerSupplyLog(models.Model):
@@ -131,25 +169,47 @@ class Image(models.Model):
     cjr = models.ForeignKey(CaptureJobRecord, null=True, editable=False, )
 
     # Data available at capture time.
-    capture_timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
+    capture_timestamp = models.DateTimeField('DTG of image capture', default=0)
     voltage = models.FloatField('voltage at power supply', default=0)
+    current = models.FloatField('current at power supply', default=0)
     image_file = models.ImageField('path of image file',
-                                   upload_to="experiment_imagery/stills/%Y.%m.%d")
+                                   upload_to="experiment_imagery/stills/%Y.%m.%d", null=True)
     is_cal_image = models.BooleanField('is this image a calibration image?', default=False)
 
-    psu_log = models.ForeignKey(PowerSupplyLog,
-                                null=True, blank=True)
+    normalized_image_file = ikm.ProcessedImageField(upload_to="experiment_imagery/normalized/%Y.%m.%d",
+                                               processors=[
+                                                   ffik.ConvertToGrayscale,
+                                                   ikp.ResizeToFill(width=512, height=384)
+                                               ],
+                                               format='JPEG',
+                                               options={'quality': 90},
+                                               null=True, blank=True)
 
-    def inline_image(self):
-        return '<img width=200 src="{}{}" />'.format(
-            settings.MEDIA_URL, self.image_file
+    bad_tags = models.IntegerField(
+        "how many of this image's tags have been deleted during validation",
+        default=0)
+
+    @property
+    def angle(self):
+        my_tags = ManualTag.objects.filter(image=self)
+        if my_tags.count() > 0:
+            angle = sum(tag.angle for tag in my_tags) / float(my_tags.count())
+        else:
+            angle = None
+
+        return angle
+
+    def inline_image(self, thumb=False):
+        width = [200, 40][thumb]
+        return '<img width={} class="inline_image" src="{}{}" />'.format(
+            width, settings.MEDIA_URL, self.image_file
         )
     inline_image.allow_tags = True
 
-    def linked_inline_image(self):
+    def linked_inline_image(self, thumb=False):
         return '<a href="/media/{}" target="_newtab">{}</a>'.format(
             self.image_file,
-            self.inline_image(),
+            self.inline_image(thumb),
         )
     linked_inline_image.allow_tags = True
 
@@ -157,8 +217,26 @@ class Image(models.Model):
         return '<a href="/media/{}" target="_newtab">X</a>'.format(
             self.image_file,
         )
-    linked_inline_image.allow_tags = True
+    linked_inline_bullet.allow_tags = True
 
+    def linked_angle_bullet(self):
+        return '<a href="/media/{}" class="angle_bullet" target="_newtab" data-angle="{}">X</a>'.format(
+            self.image_file,
+            self.angle
+        )
+    linked_angle_bullet.allow_tags = True
+
+    @property
+    def normalized_image(self):
+        print 'Checking to see if normalized image file exists.'
+        try:
+            self.normalized_image_file.file
+        except ValueError:
+            print 'Generating normalized image file on the fly.'
+            self.normalized_image_file = self.image_file.file
+            self.save()
+
+        return self.normalized_image_file
 
 class ImageAnalysis(models.Model):
     # link to a specific image
@@ -218,6 +296,7 @@ class ManualTag(models.Model):
     def degrees(self):
         return math.degrees(self.angle)
 
+    @property
     def verification_image(self):
         generator = ffik.ManualTagVerificationThumbnail(
             tag=self,
@@ -245,6 +324,17 @@ class CaptureJobTemplate(models.Model):
     )
     description = models.TextField('a description of this capture job template (optional)',
                                    null=True, blank=True, )
+
+    ordering = ['duration', 'voltage']
+
+    @property
+    def job_spec(self):
+        return '_'.join(
+            [
+                str(x) for x in
+                self.voltage, self.current, self.startup_delay, self.interval, self.duration
+            ]
+        )
 
     def get_absolute_url(self):
         return dcu.reverse(
@@ -284,7 +374,23 @@ class FishLocale(models.Model):
                                             auto_now_add=True)
 
 
+class CaptureJobQueue(models.Model):
+    name = models.CharField('name of the queue', max_length=50)
+    timestamp = models.DateTimeField('when this queue was most recently saved', auto_now=True)
+    queue = jsonfield.JSONField('a queue spec object')
+    comment = models.TextField('description of this queue')
+
+
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
 def image_delete(sender, instance, **kwargs):
     # pass False so ImageField won't save the model
     instance.image_file.delete(False)
+
+
+@django.dispatch.dispatcher.receiver(ddms.pre_delete, sender=ManualTag)
+def tag_delete(sender, instance, **kwargs):
+    instance.researcher.bad_tags += 1
+    instance.researcher.save()
+
+    instance.image.bad_tags += 1
+    instance.image.save()
