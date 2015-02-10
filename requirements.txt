@@ -9,3 +9,4 @@ pytz
 mpi4py
 django-imagekit
 picamera
+celery
