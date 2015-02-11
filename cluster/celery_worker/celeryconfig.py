@@ -1,0 +1,2 @@
+CELERY_ACCEPT_CONTENT = ['pickle']
+CELERY_TASK_SERIALIZER = ['pickle']
