@@ -28,6 +28,11 @@
 ALT_ROOT=/home/wsl
 
 SLUG=${HOSTNAME}_${SLURM_JOB_ID}_${SLURM_LOCALID}_${SLURM_TASK_PID}
-echo ${SLUG} > ${ALT_ROOT}/var/run/redis.meta
+VARRUN="${ALT_ROOT}/var/run"
+echo ${SLUG} > "${VARRUN}"/redis.meta
+
+JIDFILE=${VARRUN}/redis.jid
+
+echo ${SLURM_JOB_ID} > ${JIDFILE}
 
 mpiexec $ALT_ROOT/bin/redis-server $ALT_ROOT/etc/redis/redis.conf

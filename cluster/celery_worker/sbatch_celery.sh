@@ -19,13 +19,16 @@
 # sufficient resources. The default is one task per node, but note
 # that the --cpus-per-task option will change this default.
 
-#SBATCH -n 100
+#SBATCH -n 50
 
 #SBATCH --partition CLUSTER
 
 # command(s) to run
 
 ALT_ROOT=/home/wsl
+
+cd "${ALT_ROOT}/celery_worker/"
+
 VARRUN=${ALT_ROOT}/var/run
 #VARLOG=${ALT_ROOT}/var/log
 

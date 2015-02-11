@@ -4,7 +4,7 @@ ALT_ROOT=$HOME
 VARRUN=${ALT_ROOT}/var/run
 #VARLOG=${ALT_ROOT}/var/log
 
-JIDFILE=${VARRUN}/celery.jid
+JIDFILE=${VARRUN}/redis.jid
 
 if [ "$1" == "" ]; then
     echo "$0" '[start|stop|status]'
@@ -22,6 +22,7 @@ if [ -f "${JIDFILE}" ]; then
         stop)
             /usr/bin/scancel ${JID}
             rm "${JIDFILE}"
+            rm "${VARRUN}/redis.meta"
             ;;
         status)
             /usr/bin/scontrol show job ${JID}
@@ -29,13 +30,14 @@ if [ -f "${JIDFILE}" ]; then
         remove_jidfile)
             echo Removing jidfile.  I HOPE YOU KNOW WHAT YOU ARE DOING.
             rm "${JIDFILE}"
+            rm "${VARRUN}/redis.meta"
             ;;
     esac
 
 else
     case "$1" in
         start)
-            /usr/bin/sbatch "${ALT_ROOT}"/celery_worker/sbatch_celery.sh
+            /usr/bin/sbatch "${ALT_ROOT}"/redis/sbatch_redis.sh
             ;;
         stop)
             echo Not running.
