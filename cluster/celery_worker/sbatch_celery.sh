@@ -3,7 +3,7 @@
 #SBATCH --job-name=celery_workers
 #SBATCH --time=12:00:00
 #SBATCH -n 50
-#SBATCH --shared
+#SBATCH --share
 #SBATCH --mail-type=FAIL
 
 #SBATCH --nice=5000
