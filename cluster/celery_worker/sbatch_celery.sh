@@ -1,44 +1,31 @@
 #!/bin/sh
 
-# See http://slurm.schedmd.com/sbatch.html for all options
-# The SBATCH lines are commented out but are still read by the scheduler
-# ***Leave them commented out!***
-
 #SBATCH --job-name=celery_workers
-
-# max run time HH:MM:SS
-#SBATCH --time=1:00:00
-
-# -N, --nodes=<minnodes[-maxnodes]>
-# Request that a minimum of minnodes nodes (servers) be allocated to this job.
-# A maximum node count may also be specified with maxnodes.
-
-# -n, --ntasks=<number>
-# This option advises the SLURM controller that job steps run within the
-# allocation will launch a maximum of number tasks and to provide for
-# sufficient resources. The default is one task per node, but note
-# that the --cpus-per-task option will change this default.
-
+#SBATCH --time=12:00:00
 #SBATCH -n 50
+#SBATCH --shared
+#SBATCH --mail-type=FAIL
 
-#SBATCH --partition CLUSTER
+#SBATCH --nice=5000
 
-# command(s) to run
+#SBATCH --open-mode=append
+#SBATCH --output=/home/wsl/var/log/celery.log
 
 ALT_ROOT=/home/wsl
 
 cd "${ALT_ROOT}/celery_worker/"
 
-VARRUN=${ALT_ROOT}/var/run
-#VARLOG=${ALT_ROOT}/var/log
+VARRUN="${ALT_ROOT}/var/run"
+JIDFILE="${VARRUN}/celery.jid"
+echo "${SLURM_JOB_ID}" > "${JIDFILE}"
 
-#SLUG=${HOSTNAME}_${SLURM_JOB_ID}_${SLURM_LOCALID}_${SLURM_TASK_PID}
+VARLOG="${ALT_ROOT}/var/log"
+LOGFILE="${VARLOG}/celery.log"
+SLUG="${HOSTNAME}_${SLURM_JOB_ID}_${SLURM_LOCALID}_${SLURM_TASK_PID}"
+echo "${SLUG}" >> "${LOGFILE}"
 
-JIDFILE=${VARRUN}/celery.jid
 
-echo ${SLURM_JOB_ID} > ${JIDFILE}
-
-. ${ALT_ROOT}/.pyenv.sh
+. "${ALT_ROOT}/.pyenv.sh"
 pyenv activate FishFace2
 
 srun celery -A tasks worker -l warning

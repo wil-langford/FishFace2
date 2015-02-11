@@ -4,10 +4,9 @@ import os.path as os_path
 
 from PIL import Image
 
-with open(os_path.join(os.environ['HOME'], 'var', 'run', 'redis.meta'), 'rt') as f:
-    line = f.read()
+with open(os_path.join(os.environ['HOME'], 'var', 'run', 'redis.hostname'), 'rt') as f:
+    hostname = f.read().strip()
 
-(hostname, slurm_job_id, slurm_localid, slurm_task_pid) = line.split('_')
 redis_url = 'redis://{}'.format(hostname)
 
 app = Celery('tasks', backend=redis_url, broker=redis_url)

@@ -1,10 +1,11 @@
 #!/bin/bash
 
-ALT_ROOT=$HOME
-VARRUN=${ALT_ROOT}/var/run
-#VARLOG=${ALT_ROOT}/var/log
+ALT_ROOT="$HOME"
+VARRUN="${ALT_ROOT}/var/run"
+#VARLOG="${ALT_ROOT}/var/log"
 
-JIDFILE=${VARRUN}/redis.jid
+JIDFILE="${VARRUN}/redis.jid"
+HOSTNAMEFILE="${VARRUN}/redis.hostname"
 
 if [ "$1" == "" ]; then
     echo "$0" '[start|stop|status]'
@@ -22,7 +23,7 @@ if [ -f "${JIDFILE}" ]; then
         stop)
             /usr/bin/scancel ${JID}
             rm "${JIDFILE}"
-            rm "${VARRUN}/redis.meta"
+            rm "${HOSTNAMEFILE}"
             ;;
         status)
             /usr/bin/scontrol show job ${JID}
@@ -30,14 +31,17 @@ if [ -f "${JIDFILE}" ]; then
         remove_jidfile)
             echo Removing jidfile.  I HOPE YOU KNOW WHAT YOU ARE DOING.
             rm "${JIDFILE}"
-            rm "${VARRUN}/redis.meta"
+            ## On second thought, let's not remove the hostname file.  Its presence won't
+            ## interfere with a restart and  it may help to recover from whatever created
+            ## the need to remove the jidfile manually.
+            # rm "${HOSTNAMEFILE}"
             ;;
     esac
 
 else
     case "$1" in
         start)
-            /usr/bin/sbatch "${ALT_ROOT}"/redis/sbatch_redis.sh
+            /usr/bin/sbatch "${ALT_ROOT}/redis/sbatch_redis.sh"
             ;;
         stop)
             echo Not running.
