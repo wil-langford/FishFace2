@@ -2,6 +2,7 @@ from celery import Celery
 import os
 import os.path as os_path
 
+from PIL import Image
 
 with open(os_path.join(os.environ['HOME'], 'var', 'run', 'redis.meta'), 'rt') as f:
     line = f.read()
@@ -26,3 +27,9 @@ def add(x, y):
 @app.task
 def tsum(numbers):
     return sum(numbers)
+
+@app.task
+def normalize_jpeg_file(jpeg_filename):
+    image = Image.open(jpeg_filename)
+    image.convert('L')
+    return image.mode
