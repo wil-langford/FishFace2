@@ -19,18 +19,23 @@
 # sufficient resources. The default is one task per node, but note
 # that the --cpus-per-task option will change this default.
 
-#SBATCH -n 30
+#SBATCH -n 100
 
 #SBATCH --partition CLUSTER
 
 # command(s) to run
 
 ALT_ROOT=/home/wsl
-SLUG=${HOSTNAME}_${SLURM_JOB_ID}_${SLURM_LOCALID}_${SLURM_TASK_PID}
 VARRUN=${ALT_ROOT}/var/run
-VARLOG=${ALT_ROOT}/var/log
+#VARLOG=${ALT_ROOT}/var/log
 
-. $ALT_ROOT/.pyenv.sh
+#SLUG=${HOSTNAME}_${SLURM_JOB_ID}_${SLURM_LOCALID}_${SLURM_TASK_PID}
+
+JIDFILE=${VARRUN}/celery.jid
+
+echo ${SLURM_JOB_ID} > ${JIDFILE}
+
+. ${ALT_ROOT}/.pyenv.sh
 pyenv activate FishFace2
 
-srun celery -A tasks worker -l info
+srun celery -A tasks worker -l warning
