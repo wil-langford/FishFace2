@@ -1,2 +1,2 @@
-import fishface_array
+import fishface_image
 import tasks
