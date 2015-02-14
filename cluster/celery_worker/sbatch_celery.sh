@@ -12,12 +12,12 @@
 
 
 ### DEVELOPMENT
-#SBATCH --time=1:00:00
+#SBATCH --time=12:00:00
 #SBATCH -n 2
 #SBATCH -N 2-4
 
 ### PRODUCTION
-##SBATCH --time=6:23:59:00
+##SBATCH --time=6:23:59:50
 ##SBATCH -n 16
 ##SBATCH -N 16-20
 
