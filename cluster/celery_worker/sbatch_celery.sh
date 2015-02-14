@@ -1,8 +1,7 @@
 #!/bin/sh
 
 #SBATCH --job-name=celery_workers
-#SBATCH --time=12:00:00
-#SBATCH -n 50
+#SBATCH -c 8
 #SBATCH --share
 #SBATCH --mail-type=FAIL
 
@@ -11,9 +10,21 @@
 #SBATCH --open-mode=append
 #SBATCH --output=/home/wsl/var/log/celery.log
 
+
+### DEVELOPMENT
+#SBATCH --time=1:00:00
+#SBATCH -n 2
+#SBATCH -N 2-4
+
+### PRODUCTION
+##SBATCH --time=6:23:59:00
+##SBATCH -n 16
+##SBATCH -N 16-20
+
 ALT_ROOT=/home/wsl
 
-cd "${ALT_ROOT}/celery_worker/"
+DRONE_DIR="${ALT_ROOT}/celery_worker"
+cd "${DRONE_DIR}"
 
 VARRUN="${ALT_ROOT}/var/run"
 JIDFILE="${VARRUN}/celery.jid"
@@ -24,8 +35,11 @@ LOGFILE="${VARLOG}/celery.log"
 SLUG="${HOSTNAME}_${SLURM_JOB_ID}_${SLURM_LOCALID}_${SLURM_TASK_PID}"
 echo "${SLUG}" >> "${LOGFILE}"
 
-
 . "${ALT_ROOT}/.pyenv.sh"
-pyenv activate FishFace2
 
-srun celery -A tasks worker -l warning
+
+### DEVELOPMENT
+srun celery -A tasks worker --loglevel=WARNING --concurrency=16 --autoreload
+
+### PRODUCTION
+#srun celery -A tasks worker --loglevel=WARNING --concurrency=16
