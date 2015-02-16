@@ -1,8 +1,10 @@
 #!/bin/bash
 
-ALT_ROOT=$HOME
-VARRUN=${ALT_ROOT}/var/run
-#VARLOG=${ALT_ROOT}/var/log
+ALT_ROOT="${HOME}"
+WORKDIR="${ALT_ROOT}"
+VARRUN="${ALT_ROOT}/var/run"
+#VARLOG="${ALT_ROOT}/var/log"
+
 
 JIDFILE=${VARRUN}/celery.jid
 
@@ -40,7 +42,7 @@ if [ -f "${JIDFILE}" ]; then
 else
     case "$1" in
         start)
-            /usr/bin/sbatch "${ALT_ROOT}"/celery_worker/sbatch_celery.sh
+            /usr/bin/sbatch -D "${WORKDIR}" "${ALT_ROOT}"/celery_worker/sbatch_celery.sh
             ;;
         stop)
             echo Not running.

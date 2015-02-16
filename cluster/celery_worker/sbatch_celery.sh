@@ -8,7 +8,7 @@
 #SBATCH --nice=5000
 
 #SBATCH --open-mode=append
-#SBATCH --output=/home/wsl/var/log/celery.log
+#SBATCH --output=var/log/celery.log
 
 
 ### DEVELOPMENT
@@ -21,7 +21,7 @@
 ##SBATCH -n 16
 ##SBATCH -N 16-20
 
-ALT_ROOT=/home/wsl
+ALT_ROOT="${HOME}"
 
 DRONE_DIR="${ALT_ROOT}/celery_worker"
 cd "${DRONE_DIR}"

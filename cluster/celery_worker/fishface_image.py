@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import cv2
 import cv2.cv as cv
@@ -7,16 +9,31 @@ NORMALIZED_SHAPE = (384, 512)
 NORMALIZED_DTYPE = np.uint8
 
 
-def ff_image_wrapper(func):
+def ff_operation(func):
+    @functools.wraps(func)
+    def wrapper(ff_image, *args, **kwargs):
+        fname = func.__name__
+        ff_image.log = 'OP: {}'.format(fname)
+
+        if not isinstance(ff_image, FFImage):
+            raise TypeError('{} requires an FFImage object as its first argument.'.format(fname))
+
+        ff_image.array = func(ff_image.array, *args, ff_image=ff_image, **kwargs)
+        return ff_image
+
+    return wrapper
+
+
+def ff_annotation(func):
     @functools.wraps(func)
     def wrapper(ffimage, *args, **kwargs):
         fname = func.__name__
-        ffimage.log = 'OP: {}'.format(fname)
+        ffimage.log = 'AN: {}'.format(fname)
 
         if not isinstance(ffimage, FFImage):
             raise TypeError('{} requires an FFImage object as its first argument.'.format(fname))
 
-        ffimage.array = func(ffimage.array, *args, ffimage=ffimage, **kwargs)
+        func(ffimage.array, *args, ffimage=ffimage, **kwargs)
         return ffimage
 
     return wrapper
@@ -46,9 +63,16 @@ def normalize(image):
 
 
 class FFImage(object):
-    def __init__(self, input_array=None, meta=None, log=None, normalize_image=True):
+    def __init__(self, input_array=None, from_path=None, meta=None, log=None, normalize_image=True):
         if input_array is None:
-            self.array = np.zeros(NORMALIZED_SHAPE, dtype=NORMALIZED_DTYPE)
+            if from_path is None:
+                self.array = np.zeros(NORMALIZED_SHAPE, dtype=NORMALIZED_DTYPE)
+
+            if from_path is not None:
+                with open(from_path, 'rb') as jpeg_file:
+                    jpeg_string = jpeg_file.read()
+                jpeg_array = np.fromstring(jpeg_string, dtype=np.uint8)
+                input_array = cv2.imdecode(jpeg_array, 0)
 
         elif not isinstance(input_array, np.ndarray):
             raise InvalidSourceArray('If specified, input_array must be a numpy array.')
@@ -88,6 +112,10 @@ class FFImage(object):
     @property
     def width(self):
         return self.array.shape[1]
+
+    def write_file_to_dir(self, dir_path):
+        full_path = os.path.join(dir_path, self.meta['filename'])
+        cv2.imwrite(full_path, self.array)
 
 
 class InvalidSourceArray(Exception):
