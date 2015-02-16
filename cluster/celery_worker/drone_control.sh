@@ -11,6 +11,11 @@ if [ "$1" == "" ]; then
     exit 0
 fi
 
+if [ "$(squeue -h -o '%all' | grep -c celery_worker)" -eq "0" -a -f "${JIDFILE}" ]; then
+    echo WARNING: The jidfile exists, but no celery_worker jobs are running.  Removing jidfile.
+    rm "${JIDFILE}"
+fi
+
 if [ -f "${JIDFILE}" ]; then
     JID=$(cat "${JIDFILE}")
 
