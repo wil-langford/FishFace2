@@ -26,15 +26,15 @@ def ff_operation(func):
 
 def ff_annotation(func):
     @functools.wraps(func)
-    def wrapper(ffimage, *args, **kwargs):
+    def wrapper(ff_image, *args, **kwargs):
         fname = func.__name__
-        ffimage.log = 'AN: {}'.format(fname)
+        ff_image.log = 'AN: {}'.format(fname)
 
-        if not isinstance(ffimage, FFImage):
+        if not isinstance(ff_image, FFImage):
             raise TypeError('{} requires an FFImage object as its first argument.'.format(fname))
 
-        func(ffimage.array, *args, ffimage=ffimage, **kwargs)
-        return ffimage
+        func(ff_image.array, *args, ff_image=ff_image, **kwargs)
+        return ff_image
 
     return wrapper
 

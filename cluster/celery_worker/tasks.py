@@ -123,7 +123,7 @@ def opening(image, **kwargs):
 
 
 @ff_operation
-def canny(image, threshold1=50, threshold2=100, aperture_size=3):
+def canny(image, threshold1=50, threshold2=100, aperture_size=3, ff_image=None):
     return cv2.Canny(image,
                      threshold1=threshold1,
                      threshold2=threshold2,
@@ -233,8 +233,8 @@ def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
 def get_single_fish_silhouette(data, cal):
     delta_image(data, cal)
     threshold_band_pass(data, max_thresh=100, max_otsu=False)
-    # canny(data)
-    # annotate_largest_contour(data)
+    canny(data)
+    annotate_largest_contour(data)
     return data
 
 
