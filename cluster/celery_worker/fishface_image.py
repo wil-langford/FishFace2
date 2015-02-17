@@ -1,4 +1,5 @@
 import os
+import sys
 
 import numpy as np
 import cv2
@@ -38,7 +39,23 @@ def ff_annotation(func):
 
     return wrapper
 
-def normalize(image):
+
+def array_to_jpeg_string(arr, quality=90):
+    retval, jpeg_string = cv2.imencode('.jpg', arr, (cv2.IMWRITE_JPEG_QUALITY, quality))
+    return jpeg_string.tostring()
+
+
+def jpeg_string_to_array(jpeg_string):
+    if isinstance(jpeg_string, basestring):
+        jpeg_array = np.fromstring(jpeg_string, dtype=np.uint8)
+    elif isinstance(jpeg_string, np.ndarray):
+        jpeg_array = jpeg_string
+    else:
+        raise InvalidSource('Need string or numpy array, not {}'.format(jpeg_string.__class__))
+    return cv2.imdecode(jpeg_array, 0)
+
+
+def normalize_array(image):
     if image.shape == NORMALIZED_SHAPE:
         return image
 
@@ -62,31 +79,43 @@ def normalize(image):
     return image
 
 
+def normalize_jpeg(jpeg_string):
+    return array_to_jpeg_string(normalize_array(jpeg_string_to_array(jpeg_string)))
+
+
 class FFImage(object):
-    def __init__(self, input_array=None, from_path=None, meta=None, log=None, normalize_image=True):
-        if input_array is None:
-            if from_path is None:
-                self.array = np.zeros(NORMALIZED_SHAPE, dtype=NORMALIZED_DTYPE)
+    def __init__(self, source=None, source_filename=None,
+                 meta=None, log=None, normalize_image=True):
+        jpeg_string = None
 
-            if from_path is not None:
-                with open(from_path, 'rb') as jpeg_file:
+        if isinstance(source, basestring):
+            jpeg_string = source
+
+        if jpeg_string is None and source_filename is not None:
+            if os.path.isfile(source_filename):
+                with open(source, 'rb') as jpeg_file:
                     jpeg_string = jpeg_file.read()
-                jpeg_array = np.fromstring(jpeg_string, dtype=np.uint8)
-                input_array = cv2.imdecode(jpeg_array, 0)
 
-        elif not isinstance(input_array, np.ndarray):
-            raise InvalidSourceArray('If specified, input_array must be a numpy array.')
+        if jpeg_string is None and isinstance(source, np.ndarray):
+            if not normalize_image and (source.shape != NORMALIZED_SHAPE or
+                                        source.dtype != NORMALIZED_DTYPE):
+                raise InvalidSource('input_array must have shape {} and dtype {}.'.format(
+                    NORMALIZED_SHAPE, NORMALIZED_DTYPE))
 
-        elif not normalize_image and (input_array.shape != NORMALIZED_SHAPE or
-                                      input_array.dtype != NORMALIZED_DTYPE):
-            raise InvalidSourceArray('input_array must have shape {} and dtype {}.'.format(
-                NORMALIZED_SHAPE, NORMALIZED_DTYPE))
+            jpeg_string = array_to_jpeg_string(source)
 
-        elif normalize_image:
-            self.array = normalize(input_array)
+        if jpeg_string is None and source is not None:
+            raise Exception('None of the provided sources were usable.  Need a jpeg filename' +
+                            'string, a raw jpeg as a string, or a numpy array image.')
 
-        else:
-            self.array = input_array
+        if jpeg_string is None:
+            jpeg_string = array_to_jpeg_string(np.zeros(NORMALIZED_SHAPE, dtype=NORMALIZED_DTYPE))
+
+        if normalize_image and jpeg_string is not None:
+            jpeg_string = normalize_jpeg(jpeg_string)
+
+        self.jpeg_string = jpeg_string
+        self._array = None
 
         self.meta = meta
         self._log = log
@@ -115,8 +144,37 @@ class FFImage(object):
 
     def write_file_to_dir(self, dir_path):
         full_path = os.path.join(dir_path, self.meta['filename'])
-        cv2.imwrite(full_path, self.array)
+        with open(full_path, 'wb') as write_file:
+            write_file.write(self.jpeg_string)
 
+    @property
+    def array(self):
+        if self._array is None:
+            self._array = jpeg_string_to_array(self.jpeg_string)
+        return self._array
 
-class InvalidSourceArray(Exception):
+    @array.setter
+    def array(self, arr):
+        self.jpeg_string = array_to_jpeg_string(arr)
+        self._array = arr
+
+    def sanitize(self):
+        self._array = None
+        del self.meta['all_contours']
+
+    @property
+    def approximate_memory_usage(self):
+        """
+        Quick and super extra really dirty.
+        """
+        total = dict()
+        if self._array is not None:
+            total['array'] = self._array.nbytes
+        total['jpeg_string'] = sys.getsizeof(self.jpeg_string)
+        total['meta'] = sum(sys.getsizeof(k)+sys.getsizeof(v) for k,v in self.meta.iteritems())
+        total['log'] = sum(sys.getsizeof(v) for v in self._log)
+
+        return sum(total.itervalues()), total
+
+class InvalidSource(Exception):
     pass

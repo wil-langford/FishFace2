@@ -44,11 +44,6 @@ def image_from_file(file_path):
     return FFImage(cv2.imread(file_path, 0))
 
 
-def decode_jpeg_string(jpeg_string):
-    jpeg_array = np.fromstring(jpeg_string, dtype=np.uint8)
-    return FFImage(cv2.imdecode(jpeg_array, 0))
-
-
 @ff_operation
 def delta_image(image, cal_image, ff_image=None):
     if isinstance(cal_image, FFImage):
@@ -108,18 +103,23 @@ def adaptive_threshold(image, block_size=7, constant_adjustment=0):
 
 
 @ff_operation
-def erode(image, kernel_radius=3, kernel_shape='circle', iterations=1):
+def erode(image, kernel_radius=1, kernel_shape='circle', iterations=1, ff_image=None):
     return cv2.erode(src=image, kernel=kernel(kernel_radius, kernel_shape), iterations=iterations)
 
 
 @ff_operation
-def dilate(image, kernel_radius=3, kernel_shape='circle', iterations=1):
+def dilate(image, kernel_radius=1, kernel_shape='circle', iterations=1, ff_image=None):
     return cv2.dilate(src=image, kernel=kernel(kernel_radius, kernel_shape), iterations=iterations)
 
 
-@ff_operation
-def opening(image, **kwargs):
-    return dilate(erode(image, **kwargs), **kwargs)
+def opening(ff_image, **kwargs):
+    erode(ff_image, **kwargs)
+    dilate(ff_image, **kwargs)
+
+
+def closing(ff_image, **kwargs):
+    dilate(ff_image, **kwargs)
+    erode(ff_image, **kwargs)
 
 
 @ff_operation
@@ -128,11 +128,6 @@ def canny(image, threshold1=50, threshold2=100, aperture_size=3, ff_image=None):
                      threshold1=threshold1,
                      threshold2=threshold2,
                      apertureSize=aperture_size)
-
-
-@ff_operation
-def closing(image, **kwargs):
-    return erode(dilate(image, **kwargs), **kwargs)
 
 
 def return_cropped(ff_image, box):
@@ -192,7 +187,7 @@ def bounding_box_from_contour(ff_image, contour, border=1):
 
 
 @ff_operation
-def draw_contours(image, contours, line_color=(255, 0, 255), line_thickness=3, filled=True,
+def draw_contours(image, contours, line_color=255, line_thickness=3, filled=True,
                   ff_image=None):
     """Actually draws the provided contours onto the image."""
 
@@ -214,7 +209,7 @@ def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
     def ff_jpeg_loader(data_filename):
         with open(os.path.join(data_dir, data_filename), 'rb') as jpeg_file:
             jpeg = jpeg_file.read()
-            jpeg_image = decode_jpeg_string(jpeg)
+            jpeg_image = FFImage(jpeg)
             jpeg_image.meta['filename'] = data_filename
         return jpeg_image
 
@@ -232,9 +227,10 @@ def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
 @celery_app.task
 def get_single_fish_silhouette(data, cal):
     delta_image(data, cal)
-    threshold_band_pass(data, max_thresh=100, max_otsu=False)
-    canny(data)
+    threshold_by_type(data, thresh_type=cv2.THRESH_BINARY)
+    opening(data)
     annotate_largest_contour(data)
+    data.sanitize()
     return data
 
 
@@ -253,4 +249,3 @@ def test_normalize_test_data(test_data_dir='test_data_dir'):
         ff_image = FFImage(input_array=image)
         ff_image.meta['filename'] = jpeg_filename
         test_write_image(ff_image)
-
