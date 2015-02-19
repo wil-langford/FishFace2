@@ -88,12 +88,21 @@ class FFImage(object):
                  meta=None, log=None, normalize_image=True):
         jpeg_string = None
 
+        self.meta = meta
+        self._log = log
+
+        if self.meta is None:
+            self.meta = dict()
+
+        if self._log is None:
+            self._log = list()
+
         if isinstance(source, basestring):
             jpeg_string = source
 
         if jpeg_string is None and source_filename is not None:
             if os.path.isfile(source_filename):
-                with open(source, 'rb') as jpeg_file:
+                with open(source_filename, 'rb') as jpeg_file:
                     jpeg_string = jpeg_file.read()
                 self.meta['filename'] = source_filename
 
@@ -117,15 +126,6 @@ class FFImage(object):
 
         self.jpeg_string = jpeg_string
         self._array = None
-
-        self.meta = meta
-        self._log = log
-
-        if self.meta is None:
-            self.meta = dict()
-
-        if self._log is None:
-            self._log = list()
 
     @property
     def log(self):

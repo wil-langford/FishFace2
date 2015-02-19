@@ -154,6 +154,7 @@ def annotate_largest_contour(image, ff_image=None):
     ff_image.meta['largest_contour_bounding_box'] = bounding_box_from_contour(ff_image,
                                                                              max_contour)
 
+    del ff_image.meta['all_contours']
 
 def bounding_box_from_contour(ff_image, contour, border=1):
     """Convenience method to find the bounding box of a contour. Output is a tuple
@@ -200,7 +201,8 @@ def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
                                                       os.path.isfile(os.path.join(data_dir, name)))
     ]
 
-    return celery.chord(get_fish_contour.s(FFImage(source_filename=datum), cal_image)
+    return celery.chord(get_fish_contour.s(FFImage(source_filename=os.path.join(data_dir, datum)),
+                                           cal_image)
                         for datum in data)(return_passthrough.s())
 
 
