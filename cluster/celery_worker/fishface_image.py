@@ -95,6 +95,7 @@ class FFImage(object):
             if os.path.isfile(source_filename):
                 with open(source, 'rb') as jpeg_file:
                     jpeg_string = jpeg_file.read()
+                self.meta['filename'] = source_filename
 
         if jpeg_string is None and isinstance(source, np.ndarray):
             if not normalize_image and (source.shape != NORMALIZED_SHAPE or

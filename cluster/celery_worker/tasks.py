@@ -8,6 +8,7 @@ import fishface_image
 from fishface_image import FFImage, ff_operation, ff_annotation
 import celery
 import fishface_celery
+from scipy import ndimage
 
 celery_app = fishface_celery.app
 
@@ -67,29 +68,9 @@ def threshold_by_type(image, thresh=None, otsu=True, ff_image=None, thresh_type=
                                maxval=255,
                                type=thresh_type + (cv2.THRESH_OTSU * int(otsu)))
 
-    ff_image.log = 'threshed with {}'.format(thresh)
+    ff_image.log = 'thresh:{}'.format(thresh)
 
     return im
-
-
-def threshold_band_pass(ff_image, min_thresh=None, max_thresh=None, min_otsu=True, max_otsu=True):
-    if min_thresh is not None or min_otsu:
-        min_thresh = 0
-    else:
-        raise TypeError('Either otsu must be true or min_thresh must be specified.')
-
-    if max_thresh is not None or max_otsu:
-        max_thresh = 255
-    else:
-        raise TypeError('Either otsu must be true or max_thresh must be specified.')
-
-    threshold_by_type(ff_image, thresh=min_thresh, otsu=min_otsu, thresh_type=cv2.THRESH_TRUNC)
-    threshold_by_type(ff_image, thresh=max_thresh, otsu=max_otsu, thresh_type=cv2.THRESH_TOZERO_INV)
-    threshold_by_type(ff_image, thresh=min_thresh, otsu=min_otsu, thresh_type=cv2.THRESH_BINARY)
-
-    ff_image.log = 'threshed with {}'.format((min_thresh, max_thresh))
-
-    return ff_image
 
 
 @ff_operation
@@ -103,12 +84,12 @@ def adaptive_threshold(image, block_size=7, constant_adjustment=0):
 
 
 @ff_operation
-def erode(image, kernel_radius=1, kernel_shape='circle', iterations=1, ff_image=None):
+def erode(image, kernel_radius=3, kernel_shape='circle', iterations=1, ff_image=None):
     return cv2.erode(src=image, kernel=kernel(kernel_radius, kernel_shape), iterations=iterations)
 
 
 @ff_operation
-def dilate(image, kernel_radius=1, kernel_shape='circle', iterations=1, ff_image=None):
+def dilate(image, kernel_radius=3, kernel_shape='circle', iterations=1, ff_image=None):
     return cv2.dilate(src=image, kernel=kernel(kernel_radius, kernel_shape), iterations=iterations)
 
 
@@ -120,6 +101,11 @@ def opening(ff_image, **kwargs):
 def closing(ff_image, **kwargs):
     dilate(ff_image, **kwargs)
     erode(ff_image, **kwargs)
+
+
+@ff_operation
+def distance_transform(image, ff_image=None):
+    return cv2.distanceTransform(image, cv2.cv.CV_DIFF_L2, cv2.cv.CV_DIST_MASK_PRECISE)
 
 
 @ff_operation
@@ -203,35 +189,54 @@ def draw_contours(image, contours, line_color=255, line_thickness=3, filled=True
     return image
 
 
+@celery_app.task
 def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
     data_dir = os.path.join(ALT_ROOT, test_data_dir)
 
-    def ff_jpeg_loader(data_filename):
-        with open(os.path.join(data_dir, data_filename), 'rb') as jpeg_file:
-            jpeg = jpeg_file.read()
-            jpeg_image = FFImage(jpeg)
-            jpeg_image.meta['filename'] = data_filename
-        return jpeg_image
-
-    cal_image = ff_jpeg_loader('XP-23_CJR-0_HP_2015-01-20-221120_1421791881.65.jpg')
+    cal_image = FFImage(source_filename='XP-23_CJR-0_HP_2015-01-20-221120_1421791881.65.jpg')
 
     data = [name for name in os.listdir(data_dir) if ('XP-23_CJR' in name and
                                                       'CJR-0' not in name and
                                                       os.path.isfile(os.path.join(data_dir, name)))
     ]
 
-    return celery.chord(get_single_fish_silhouette.s(ff_jpeg_loader(datum), cal_image)
+    return celery.chord(get_fish_contour.s(FFImage(source_filename=datum), cal_image)
                         for datum in data)(return_passthrough.s())
 
 
 @celery_app.task
-def get_single_fish_silhouette(data, cal):
+def get_fish_contour(data, cal):
+    orig_data = FFImage()
+    orig_data.array = data.array.copy()
+
     delta_image(data, cal)
-    threshold_by_type(data, thresh_type=cv2.THRESH_BINARY)
-    opening(data)
-    annotate_largest_contour(data)
-    data.sanitize()
-    return data
+    color_delta = cv2.cvtColor(data.array, cv2.COLOR_GRAY2BGR)
+
+    threshold_by_type(data)
+    distance_transform(data)
+    threshold_by_type(data, otsu=False, thresh=6)
+
+    label = data.array.copy()
+    label, num_blobs = ndimage.measurements.label(label)
+
+    dilate(data, iterations=7)
+    border = data.array.copy()
+    border = border - cv2.erode(border, None)
+
+    label[border == 255] = num_blobs + 1
+    label = label.astype(np.int32)
+
+    cv2.watershed(color_delta, label)
+
+    label[label == -1] = 255
+    label = label.astype(np.uint8)
+
+    image = FFImage(label, meta=data.meta, log=data.log)
+    annotate_largest_contour(image)
+
+    return image.meta, image.log
+
+
 
 
 class ImageProcessingException(Exception):

@@ -11,3 +11,4 @@ django-imagekit
 picamera
 celery
 redis
+scipy
