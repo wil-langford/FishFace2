@@ -9,6 +9,7 @@ from fishface_image import FFImage, ff_operation, ff_annotation
 import celery
 import fishface_celery
 from scipy import ndimage
+from scipy import stats
 
 celery_app = fishface_celery.app
 
@@ -53,7 +54,11 @@ def delta_image(image, cal_image, ff_image=None):
     if not isinstance(cal_image, np.ndarray):
         raise TypeError('cal_image must be an FFImage or numpy array')
 
-    return cv2.absdiff(cal_image, image)
+    # adjustment for overall brightness delta
+    delta_mode = stats.mstats.mode(image.astype(np.int16) - cal_image.astype(np.int16), axis=None)
+    almost_there = cv2.absdiff(cal_image, image).astype(np.int16) + delta_mode[0][0]
+    almost_there[almost_there < 0] = 0
+    return almost_there.astype(np.uint8)
 
 
 @ff_operation
@@ -131,30 +136,67 @@ def annotate_all_contours(image, ff_image=None):
                                     method=cv2.CHAIN_APPROX_SIMPLE
                                     )[0]
     if all_contours is None or len(all_contours) == 0:
-        ff_image.meta['all_contours'] = 'NO_CONTOURS'
-    else:
-        ff_image.meta['all_contours'] = all_contours
+        all_contours = False
+
+    ff_image.meta['all_contours'] = all_contours
+
+    return all_contours
 
 
 @ff_annotation
 def annotate_largest_contour(image, ff_image=None):
     all_contours = getattr(ff_image.meta, 'all_contours', None)
     if all_contours is None:
-        annotate_all_contours(ff_image)
-        all_contours = ff_image.meta['all_contours']
+        all_contours = annotate_all_contours(ff_image)
 
-    if all_contours == 'NO_CONTOURS':
-        raise ImageProcessingException("No contours found in image.")
+    if all_contours is False:
+        ff_image.meta['largest_contour'] = False
+        return
 
+    print type(all_contours), all_contours.__class__
     areas = [cv2.contourArea(ctr) for ctr in all_contours]
 
     max_contour = all_contours[areas.index(max(areas))]
 
     ff_image.meta['largest_contour'] = max_contour
     ff_image.meta['largest_contour_bounding_box'] = bounding_box_from_contour(ff_image,
-                                                                             max_contour)
-
+                                                                              max_contour)
     del ff_image.meta['all_contours']
+
+    return max_contour
+
+
+@ff_annotation
+def annotate_moments(image, ff_image=None):
+    largest_contour = getattr(ff_image.meta, 'largest_contour', None)
+    if largest_contour is None:
+        largest_contour = annotate_largest_contour(ff_image)
+
+    if largest_contour is not False:
+        moments = cv2.moments(largest_contour)
+    else:
+        moments = False
+
+    ff_image.meta['moments'] = moments
+
+    return moments
+
+
+@ff_annotation
+def annotate_hu_moments(image, ff_image=None):
+    moments = getattr(ff_image.meta, 'moments', None)
+    if moments is None:
+        moments = annotate_moments(ff_image)
+
+    if moments is not False:
+        hu_moments = cv2.HuMoments(moments)
+    else:
+        hu_moments = False
+
+    ff_image.meta['hu_moments'] = hu_moments
+
+    return hu_moments
+
 
 def bounding_box_from_contour(ff_image, contour, border=1):
     """Convenience method to find the bounding box of a contour. Output is a tuple
@@ -194,55 +236,49 @@ def draw_contours(image, contours, line_color=255, line_thickness=3, filled=True
 def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
     data_dir = os.path.join(ALT_ROOT, test_data_dir)
 
-    cal_image = FFImage(source_filename='XP-23_CJR-0_HP_2015-01-20-221120_1421791881.65.jpg')
+    cal_image = FFImage(source_filename='XP-23_CJR-0_HP_2015-01-20-221120_1421791881.65.jpg',
+                        source_dir=data_dir)
 
-    data = [name for name in os.listdir(data_dir) if ('XP-23_CJR' in name and
-                                                      'CJR-0' not in name and
-                                                      os.path.isfile(os.path.join(data_dir, name)))
-    ]
+    files = [name for name in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir,name))]
+    data = [name for name in files if ('XP-23_CJR' in name and 'CJR-0' not in name)]
 
-    return celery.chord(get_fish_contour.s(FFImage(source_filename=os.path.join(data_dir, datum)),
+    return celery.chord(get_fish_contour.s(FFImage(source_filename=datum,
+                                                   source_dir=data_dir,
+                                                   store_source_image_as='jpg'),
                                            cal_image)
                         for datum in data)(return_passthrough.s())
 
 
 @celery_app.task
 def get_fish_contour(data, cal):
-    orig_data = FFImage()
-    orig_data.array = data.array.copy()
+
+    color_image = cv2.cvtColor(data.array, cv2.COLOR_GRAY2BGR)
 
     delta_image(data, cal)
-    color_delta = cv2.cvtColor(data.array, cv2.COLOR_GRAY2BGR)
-
     threshold_by_type(data)
+    erode(data)
     distance_transform(data)
-    threshold_by_type(data, otsu=False, thresh=6)
+    threshold_by_type(data, otsu=False, thresh=5)
 
-    label = data.array.copy()
-    label, num_blobs = ndimage.measurements.label(label)
-
+    markers = data.array.copy()
     dilate(data, iterations=7)
     border = data.array.copy()
     border = border - cv2.erode(border, None)
 
-    label[border == 255] = num_blobs + 1
-    label = label.astype(np.int32)
+    markers, num_blobs = ndimage.measurements.label(markers)
+    markers[border == 255] = 255
 
-    cv2.watershed(color_delta, label)
+    markers = markers.astype(np.int32)
+    cv2.watershed(image=color_image, markers=markers)
+    markers[markers == -1] = 0
+    markers = 255 - markers.astype(np.uint8)
 
-    label[label == -1] = 255
-    label = label.astype(np.uint8)
+    image = FFImage(markers, meta=data.meta, log=data.log)
 
-    image = FFImage(label, meta=data.meta, log=data.log)
-    annotate_largest_contour(image)
+    annotate_hu_moments(image)
 
     return image.meta, image.log
 
-
-
-
-class ImageProcessingException(Exception):
-    pass
 
 
 def test_normalize_test_data(test_data_dir='test_data_dir'):
@@ -253,6 +289,10 @@ def test_normalize_test_data(test_data_dir='test_data_dir'):
 
     for jpeg_filename in data:
         image = cv2.imread(os.path.join(data_dir, jpeg_filename))
-        ff_image = FFImage(input_array=image)
+        ff_image = FFImage(image)
         ff_image.meta['filename'] = jpeg_filename
         test_write_image(ff_image)
+
+
+class ImageProcessingException(Exception):
+    pass
