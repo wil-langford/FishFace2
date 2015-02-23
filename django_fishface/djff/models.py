@@ -10,8 +10,6 @@ from django.conf import settings
 import jsonfield
 
 from utils import djff_imagekit as ffik
-import imagekit.models as ikm
-import imagekit.processors as ikp
 
 
 class Species(models.Model):
@@ -175,15 +173,6 @@ class Image(models.Model):
                                    upload_to="experiment_imagery/stills/%Y.%m.%d", null=True)
     is_cal_image = models.BooleanField('is this image a calibration image?', default=False)
 
-    normalized_image_file = ikm.ProcessedImageField(upload_to="experiment_imagery/normalized/%Y.%m.%d",
-                                               processors=[
-                                                   ffik.ConvertToGrayscale,
-                                                   ikp.ResizeToFill(width=512, height=384)
-                                               ],
-                                               format='JPEG',
-                                               options={'quality': 90},
-                                               null=True, blank=True)
-
     bad_tags = models.IntegerField(
         "how many of this image's tags have been deleted during validation",
         default=0)
@@ -237,6 +226,7 @@ class Image(models.Model):
 
         return self.normalized_image_file
 
+
 class ImageAnalysis(models.Model):
     # link to a specific image
     image = models.ForeignKey(Image)
@@ -249,10 +239,6 @@ class ImageAnalysis(models.Model):
     hu_moments = jsonfield.JSONField('The Hu moments derived from the moments')
 
     meta_data = jsonfield.JSONField('Any metadata other than what gets its own field')
-
-    verified_dtg = models.DateTimeField('the dtg at which verification took place',
-                                        blank=True, null=True)
-    verified_by = models.ForeignKey(Researcher)
 
 
 class AutomaticTag(models.Model):
@@ -312,6 +298,12 @@ class ManualTag(models.Model):
 class ManualVerification(models.Model):
     tag = models.ForeignKey(ManualTag)
     timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
+    researcher = models.ForeignKey(Researcher)
+
+
+class AnalysisVerification(models.Model):
+    image_analysis = models.ForeignKey(ImageAnalysis)
+    timestamp = models.DateTimeField('DTG of analysis verification', auto_now_add=True)
     researcher = models.ForeignKey(Researcher)
 
 
