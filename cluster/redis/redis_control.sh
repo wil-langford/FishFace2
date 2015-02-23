@@ -2,7 +2,7 @@
 
 ALT_ROOT="$HOME"
 VARRUN="${ALT_ROOT}/var/run"
-ETC="${ALT_ROOT}/etc"
+ETC="${ALT_ROOT}/etc/redis"
 #VARLOG="${ALT_ROOT}/var/log"
 
 JID_FILE="${VARRUN}/redis.jid"

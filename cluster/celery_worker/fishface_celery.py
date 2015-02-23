@@ -3,7 +3,7 @@ import celery
 
 ALT_ROOT = os.environ['HOME']
 
-with open(os.path.join(ALT_ROOT, 'etc', 'redis_password'), 'rt') as f:
+with open(os.path.join(ALT_ROOT, 'etc', 'redis', 'redis_password'), 'rt') as f:
     password = f.read().strip()
 
 with open(os.path.join(ALT_ROOT, 'var', 'run', 'redis.hostname'), 'rt') as f:
