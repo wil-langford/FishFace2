@@ -69,6 +69,7 @@ migrations
 # Secrets don't belong in the repository
 secret_keys.py
 fishface_db_password
+redis_password
 
 django_fishface/djff/static/admin/
 

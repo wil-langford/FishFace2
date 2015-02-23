@@ -153,7 +153,6 @@ def annotate_largest_contour(image, ff_image=None):
         ff_image.meta['largest_contour'] = False
         return
 
-    print type(all_contours), all_contours.__class__
     areas = [cv2.contourArea(ctr) for ctr in all_contours]
 
     max_contour = all_contours[areas.index(max(areas))]

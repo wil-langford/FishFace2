@@ -2,18 +2,22 @@
 
 ALT_ROOT="$HOME"
 VARRUN="${ALT_ROOT}/var/run"
+ETC="${ALT_ROOT}/etc"
 #VARLOG="${ALT_ROOT}/var/log"
 
-JIDFILE="${VARRUN}/redis.jid"
-HOSTNAMEFILE="${VARRUN}/redis.hostname"
+JID_FILE="${VARRUN}/redis.jid"
+HOSTNAME_FILE="${VARRUN}/redis.hostname"
+CONF_FILE="${VARRUN}/redis.conf"
+SBATCH_FILE="${ALT_ROOT}/redis/sbatch_redis.sh"
+PASSWORD_FILE="${ETC}/redis_password"
 
 if [ "$1" == "" ]; then
     echo "$0" '[start|stop|status]'
     exit 0
 fi
 
-if [ -f "${JIDFILE}" ]; then
-    JID=$(cat "${JIDFILE}")
+if [ -f "${JID_FILE}" ]; then
+    JID=$(cat "${JID_FILE}")
 
     case "$1" in
         start)
@@ -22,26 +26,29 @@ if [ -f "${JIDFILE}" ]; then
             ;;
         stop)
             /usr/bin/scancel ${JID}
-            rm "${JIDFILE}"
-            rm "${HOSTNAMEFILE}"
+            rm "${JID_FILE}"
+            rm "${HOSTNAME_FILE}"
+            rm
             ;;
         status)
             /usr/bin/scontrol show job ${JID}
             ;;
         remove_jidfile)
             echo Removing jidfile.  I HOPE YOU KNOW WHAT YOU ARE DOING.
-            rm "${JIDFILE}"
+            rm "${JID_FILE}"
             ## On second thought, let's not remove the hostname file.  Its presence won't
             ## interfere with a restart and  it may help to recover from whatever created
             ## the need to remove the jidfile manually.
-            # rm "${HOSTNAMEFILE}"
+            # rm "${HOSTNAME_FILE}"
             ;;
     esac
 
 else
     case "$1" in
         start)
-            /usr/bin/sbatch "${ALT_ROOT}/redis/sbatch_redis.sh"
+            cp "${CONF_FILE}.base" "${CONF_FILE}"
+            echo requirepass $(cat "${PASSWORD_FILE}") >> "${CONF_FILE}"
+            /usr/bin/sbatch "${SBATCH_FILE}"
             ;;
         stop)
             echo Not running.
