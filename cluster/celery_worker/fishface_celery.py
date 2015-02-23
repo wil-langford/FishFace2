@@ -17,8 +17,8 @@ result_url = broker_url
 # result_url = u'redis://{}'.format(hostname)
 
 app = celery.Celery('tasks')
+app.conf.BROKER_URL = broker_url
 app.conf.CELERY_RESULT_BACKEND = result_url
-app.conf.CELERY_BROKER_URL = broker_url
 app.conf.CELERY_ACCEPT_CONTENT = ['pickle', 'json']
 app.conf.CELERY_TASK_SERIALIZER = 'pickle'
 app.conf.CELERY_RESULT_SERIALIZER = 'pickle'
