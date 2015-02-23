@@ -9,7 +9,6 @@ from django.conf import settings
 
 import jsonfield
 
-import fields
 from utils import djff_imagekit as ffik
 import imagekit.models as ikm
 import imagekit.processors as ikp
@@ -244,21 +243,25 @@ class ImageAnalysis(models.Model):
 
     # Data available after processing.
     analysis_datetime = models.DateTimeField('the time/date that this analysis was performed')
-    orientation = models.SmallIntegerField('angle between the water flow source and the fish',
-                                           default=None)
-    location = fields.LocationField('the x,y coordinates of the fish in the image')
-    silhouette = fields.ContourField('The OpenCV contour of the outline of the fish')
+    silhouette = jsonfield.JSONField('The OpenCV contour of the outline of the fish')
+
+    moments = jsonfield.JSONField('The image moments of the silhouette')
+    hu_moments = jsonfield.JSONField('The Hu moments derived from the moments')
+
+    meta_data = jsonfield.JSONField('Any metadata other than what gets its own field')
 
     verified_dtg = models.DateTimeField('the dtg at which verification took place',
                                         blank=True, null=True)
     verified_by = models.ForeignKey(Researcher)
 
 
-class ManualMeasurement(models.Model):
-    orientation = models.SmallIntegerField('angle between the water flow source and the fish',
-                                           default=None)
-    analysis_datetime = models.DateTimeField('the time/date that this analysis was performed')
-    researcher = models.ForeignKey(Researcher)
+class AutomaticTag(models.Model):
+    image = models.ForeignKey(Image)
+    timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
+    image_analysis = models.ForeignKey(ImageAnalysis)
+
+    centroid = jsonfield.JSONField('The center of mass of the fish')
+    orientation = jsonfield.JSONField("Angle of the fish referenced against oncoming water flow")
 
 
 class ManualTag(models.Model):

@@ -15,9 +15,9 @@ class RotateImage(object):
 class ConvertToGrayscale(object):
     @staticmethod
     def process(image):
-        im_mode = image.mode
+        # im_mode = image.mode
         new_image = image.convert('L')
-        print "image mode changed from {} to {}".format(im_mode, new_image.mode)
+        # print "image mode changed from {} to {}".format(im_mode, new_image.mode)
 
         return new_image
 

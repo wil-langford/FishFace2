@@ -3,7 +3,6 @@ import sys
 
 import numpy as np
 import cv2
-import cv2.cv as cv
 import functools
 
 NORMALIZED_SHAPE = (384, 512)
@@ -67,9 +66,9 @@ def normalize_array(image):
     if len(image.shape) == 3:
         channels = image.shape[2]
         if channels == 3:
-            conversion = cv.CV_BGR2GRAY
+            conversion = cv2.COLOR_BGR2GRAY
         elif channels == 4:
-            conversion = cv.CV_BGRA2GRAY
+            conversion = cv2.COLOR_BGRA2GRAY
         else:
             raise Exception("Why do I see {} color channels? ".format(channels) +
                             "I can only handle 1, 3, or 4 (with alpha).")
@@ -79,7 +78,7 @@ def normalize_array(image):
     if image.shape != NORMALIZED_SHAPE:
         image = cv2.resize(image,
                            dsize=tuple(reversed(NORMALIZED_SHAPE)),
-                           interpolation=cv.CV_INTER_AREA)
+                           interpolation=cv2.INTER_AREA)
     return image
 
 
@@ -148,7 +147,6 @@ class FFImage(object):
 
         if source_filename is None:
             self.meta['source_filename'] = 'IMAGE_NOT_FROM_A_FILE.jpg'
-
 
     @property
     def log(self):
