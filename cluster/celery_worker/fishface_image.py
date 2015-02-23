@@ -147,7 +147,7 @@ class FFImage(object):
         self._array_clean = True
 
         if source_filename is None:
-            self.meta['source_filename'] = 'no_filename.jpg'
+            self.meta['source_filename'] = 'IMAGE_NOT_FROM_A_FILE.jpg'
 
 
     @property
@@ -220,6 +220,23 @@ class FFImage(object):
 
         return sum(total.itervalues()), total
 
+
+    @property
+    def details(self):
+        return_value = list()
+        for key, item in self.meta.iteritems():
+            if isinstance(item, np.ndarray):
+                item_value = "{}: numpy array with shape {}".format(key, item.shape)
+            elif key == 'moments':
+                item_value = "{}: moments dict with {} entries".format(key, len(item))
+            elif key == 'log':
+                log_list = ['LOG:']
+                log_list.extend(["   " + repr(line) for line in item])
+                item_value = '\n'.join(log_list)
+            else:
+                item_value = "{}: {}".format(key, item)
+            return_value.append(item_value)
+        return '\n'.join(return_value)
 
 class InvalidSource(Exception):
     pass

@@ -147,6 +147,7 @@ def annotate_all_contours(image, ff_image=None):
 def annotate_largest_contour(image, ff_image=None):
     all_contours = getattr(ff_image.meta, 'all_contours', None)
     if all_contours is None:
+        ff_image.log = "lazy all contours annotation"
         all_contours = annotate_all_contours(ff_image)
 
     if all_contours is False:
@@ -169,6 +170,7 @@ def annotate_largest_contour(image, ff_image=None):
 def annotate_moments(image, ff_image=None):
     largest_contour = getattr(ff_image.meta, 'largest_contour', None)
     if largest_contour is None:
+        ff_image.log = "lazy largest contour annotation"
         largest_contour = annotate_largest_contour(ff_image)
 
     if largest_contour is not False:
@@ -185,6 +187,7 @@ def annotate_moments(image, ff_image=None):
 def annotate_hu_moments(image, ff_image=None):
     moments = getattr(ff_image.meta, 'moments', None)
     if moments is None:
+        ff_image.log = "lazy moment annotation"
         moments = annotate_moments(ff_image)
 
     if moments is not False:

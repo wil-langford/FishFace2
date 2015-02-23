@@ -17,7 +17,8 @@ from django.utils.crypto import get_random_string
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 # TODO: change for full production
-DB_PASSWD_FILE = 'fishface_db_password'
+DB_PASSWD_FILE = os.path.join(BASE_DIR, 'fishface_db_password')
+REDIS_PASSWORD_FILE = os.path.join(os.environ['HOME'], 'etc', 'redis', 'redis_password')
 
 # These get imported/generated later.
 DB_PASSWD = None
@@ -29,15 +30,26 @@ def generate_and_collect_secret_keys():
     chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
     django_key = get_random_string(length, chars)
 
-    with open(DB_PASSWD_FILE, 'r') as f:
-        db_key = f.read().strip()
+    if os.path.isfile(DB_PASSWD_FILE):
+        with open(DB_PASSWD_FILE, 'r') as f:
+            db_key = f.read().strip()
+    else:
+        logging.warning('No database key file found during generation of secret_keys.py!')
+        db_key = ''
+
+    if os.path.isfile(REDIS_PASSWORD_FILE):
+        with open(REDIS_PASSWORD_FILE, 'r') as f:
+            redis_key = f.read().strip()
+    else:
+        logging.warning('No redis key file found during generation of secret_keys.py!')
+        redis_key = ''
 
     with open(os.path.join(
             os.path.abspath(os.path.dirname(__file__)),
             'secret_keys.py'), 'w') as f:
         f.write(
-            """SECRET_KEY = '{}'\nDB_PASSWD = '{}'""".format(
-                django_key, db_key)
+            """SECRET_KEY = '{}'\nDB_PASSWD = '{}'\nREDIS_PASSWORD='{}'""".format(
+                django_key, db_key, redis_key)
         )
 
 try:
