@@ -16,8 +16,6 @@ with open(os.path.join(ALT_ROOT, 'var', 'run', 'redis.hostname'), 'rt') as f:
 
 app = celery.Celery('tasks')
 
-app.config_from_object('celeryconfig')
-
 app.conf.BROKER_TRANSPORT = app.conf.CELERY_RESULT_BACKEND = 'redis'
 app.conf.BROKER_HOST = app.conf.CELERY_REDIS_HOST = redis_hostname
 app.conf.CELERY_TASK_SERIALIZER = app.conf.CELERY_RESULT_SERIALIZER = 'pickle'
