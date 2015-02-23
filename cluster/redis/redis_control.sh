@@ -9,7 +9,9 @@ JID_FILE="${VARRUN}/redis.jid"
 HOSTNAME_FILE="${VARRUN}/redis.hostname"
 CONF_FILE="${VARRUN}/redis.conf"
 SBATCH_FILE="${ALT_ROOT}/redis/sbatch_redis.sh"
-PASSWORD_FILE="${ETC}/redis_password"
+
+## Authentication is broken at the moment.
+#PASSWORD_FILE="${ETC}/redis_password"
 
 if [ "$1" == "" ]; then
     echo "$0" '[start|stop|status]'
@@ -47,7 +49,10 @@ else
     case "$1" in
         start)
             cp "${CONF_FILE}.base" "${CONF_FILE}"
-            echo requirepass $(cat "${PASSWORD_FILE}") >> "${CONF_FILE}"
+
+## Authentication is broken at the moment.
+#            echo requirepass $(cat "${PASSWORD_FILE}") >> "${CONF_FILE}"
+
             /usr/bin/sbatch "${SBATCH_FILE}"
             ;;
         stop)
