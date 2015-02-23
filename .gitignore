@@ -76,3 +76,6 @@ django_fishface/djff/static/admin/
 
 # Log backups don't belong in the repository
 *.log.*
+
+# iPython prototyping stuff
+*.ipynb
