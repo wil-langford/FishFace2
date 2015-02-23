@@ -1,4 +1,5 @@
 import os
+import time
 
 import cv2
 
@@ -278,6 +279,8 @@ def get_fish_contour(data, cal):
     image = FFImage(markers, meta=data.meta, log=data.log)
 
     annotate_hu_moments(image)
+
+    image.meta['timestamp'] = time.time()
 
     return image.meta
 
