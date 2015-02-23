@@ -99,8 +99,9 @@ class FFImage(object):
         if self.meta is None:
             self.meta = dict()
 
-        if self.meta['log'] is None:
-            self.meta['log'] = list()
+        if log is None:
+            log = list()
+        self.meta['log'] = log
 
         if isinstance(source, basestring):
             image_string = source
