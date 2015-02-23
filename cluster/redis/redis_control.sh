@@ -9,9 +9,7 @@ JID_FILE="${VARRUN}/redis.jid"
 HOSTNAME_FILE="${VARRUN}/redis.hostname"
 CONF_FILE="${VARRUN}/redis.conf"
 SBATCH_FILE="${ALT_ROOT}/redis/sbatch_redis.sh"
-
-## Authentication is broken at the moment.
-#PASSWORD_FILE="${ETC}/redis_password"
+PASSWORD_FILE="${ETC}/redis_password"
 
 if [ "$1" == "" ]; then
     echo "$0" '[start|stop|status]'
@@ -38,10 +36,6 @@ if [ -f "${JID_FILE}" ]; then
         remove_jidfile)
             echo Removing jidfile.  I HOPE YOU KNOW WHAT YOU ARE DOING.
             rm "${JID_FILE}"
-            ## On second thought, let's not remove the hostname file.  Its presence won't
-            ## interfere with a restart and  it may help to recover from whatever created
-            ## the need to remove the jidfile manually.
-            # rm "${HOSTNAME_FILE}"
             ;;
     esac
 
@@ -49,10 +43,11 @@ else
     case "$1" in
         start)
             cp "${CONF_FILE}.base" "${CONF_FILE}"
-
-## Authentication is broken at the moment.
-#            echo requirepass $(cat "${PASSWORD_FILE}") >> "${CONF_FILE}"
-
+            if [ -f "${PASSWORD_FILE}" ]; then
+                echo requirepass $(cat "${PASSWORD_FILE}") >> "${CONF_FILE}"
+                # TODO: remove this when it's working.
+                echo WARNING: Redis authentication is not yet fully implemented.
+            fi
             /usr/bin/sbatch "${SBATCH_FILE}"
             ;;
         stop)

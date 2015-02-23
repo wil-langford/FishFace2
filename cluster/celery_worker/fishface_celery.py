@@ -3,22 +3,24 @@ import celery
 
 ALT_ROOT = os.environ['HOME']
 
-with open(os.path.join(ALT_ROOT, 'etc', 'redis', 'redis_password'), 'rt') as f:
-    password = f.read().strip()
+PASSWORD_FILENAME = os.path.join(ALT_ROOT, 'etc', 'redis', 'redis_password')
+
+AUTHENTICATE = os.path.isfile(PASSWORD_FILENAME)
+
+if AUTHENTICATE:
+    with open(PASSWORD_FILENAME, 'rt') as f:
+        redis_password = f.read().strip()
 
 with open(os.path.join(ALT_ROOT, 'var', 'run', 'redis.hostname'), 'rt') as f:
-    hostname = f.read().strip()
-
-broker_url = 'redis://{}'.format(hostname)
-result_url = broker_url
-
-# # Authentication is broken at the moment.
-# broker_url = 'redis://:{}@{}'.format(password, hostname)
-# result_url = u'redis://{}'.format(hostname)
+    redis_hostname = f.read().strip()
 
 app = celery.Celery('tasks')
-app.conf.BROKER_URL = broker_url
-app.conf.CELERY_RESULT_BACKEND = result_url
+
+app.config_from_object('celeryconfig')
+
+app.conf.BROKER_TRANSPORT = app.conf.CELERY_RESULT_BACKEND = 'redis'
+app.conf.BROKER_HOST = app.conf.CELERY_REDIS_HOST = redis_hostname
+app.conf.CELERY_TASK_SERIALIZER = app.conf.CELERY_RESULT_SERIALIZER = 'pickle'
 app.conf.CELERY_ACCEPT_CONTENT = ['pickle', 'json']
-app.conf.CELERY_TASK_SERIALIZER = 'pickle'
-app.conf.CELERY_RESULT_SERIALIZER = 'pickle'
+if AUTHENTICATE:
+    app.conf.BROKER_PASSWORD = app.conf.CELERY_REDIS_PASSWORD = redis_password
