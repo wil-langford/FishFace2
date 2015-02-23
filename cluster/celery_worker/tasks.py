@@ -276,7 +276,7 @@ def get_fish_contour(data, cal):
 
     annotate_hu_moments(image)
 
-    return image.meta, image.log
+    return image.meta
 
 
 

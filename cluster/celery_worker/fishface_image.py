@@ -95,13 +95,12 @@ class FFImage(object):
         image_string = None
 
         self.meta = meta
-        self._log = log
 
         if self.meta is None:
             self.meta = dict()
 
-        if self._log is None:
-            self._log = list()
+        if self.meta['log'] is None:
+            self.meta['log'] = list()
 
         if isinstance(source, basestring):
             image_string = source
@@ -152,11 +151,11 @@ class FFImage(object):
 
     @property
     def log(self):
-        return self._log
+        return self.meta['log']
 
     @log.setter
     def log(self, item):
-        self._log.append(item)
+        self.meta['log'].append(item)
 
     @property
     def height(self):
@@ -216,7 +215,7 @@ class FFImage(object):
         total['jpeg_string'] = sys.getsizeof(self.jpeg_string)
         total['png_string'] = sys.getsizeof(self.png_string)
         total['meta'] = sum(sys.getsizeof(k) + sys.getsizeof(v) for k, v in self.meta.iteritems())
-        total['log'] = sum(sys.getsizeof(v) for v in self._log)
+        total['log'] = sum(sys.getsizeof(v) for v in self.meta['log'])
 
         return sum(total.itervalues()), total
 
