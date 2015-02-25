@@ -5,22 +5,15 @@ import cv2
 
 import numpy as np
 
+from scipy import ndimage
+from scipy import stats
+
 HOME = os.environ['HOME']
 ALT_ROOT = HOME
-CLUSTER_DIR = os.path.join(ALT_ROOT, 'FishFace2', 'cluster')
-
-# TODO: replace this antipattern
-import site
-site.addsitedir(CLUSTER_DIR)
 
 from fishface_image import FFImage, ff_operation, ff_annotation
 import celery
 from fishface_celery import app as celery_app
-from scipy import ndimage
-from scipy import stats
-
-HOME = os.path.expanduser('~')
-ALT_ROOT = HOME
 
 #
 # Convenience functions
@@ -38,7 +31,7 @@ def kernel(radius=3, shape='circle'):
     return cv2.getStructuringElement(shape, (radius * 2 + 1, radius * 2 + 1))
 
 
-@celery_app.task(name='fishface.drone_tasks.return_passthrough')
+@celery_app.task(name='drone_tasks.return_passthrough')
 def return_passthrough(*args, **kwargs):
     return {'args': args, 'kwargs': kwargs}
 
@@ -238,7 +231,7 @@ def draw_contours(image, contours, line_color=255, line_thickness=3, filled=True
     return image
 
 
-@celery_app.task(name='fishface.drone_tasks.test_get_fish_silhouettes')
+@celery_app.task(name='drone_tasks.test_get_fish_silhouettes')
 def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
     data_dir = os.path.join(ALT_ROOT, test_data_dir)
 
@@ -252,18 +245,18 @@ def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
         print >>blah_file, celery_app.tasks
 
     return celery.chord((
-        celery_app.signature('fishface.drone_tasks.get_fish_contour', (
+        celery_app.signature('drone_tasks.get_fish_contour', (
             FFImage(source_filename=datum,
                     source_dir=data_dir,
                     store_source_image_as='jpg'),
             cal_image))
             for datum in data),
-        celery_app.signature('fishface.drone_tasks.return_passthrough'),
+        celery_app.signature('drone_tasks.return_passthrough'),
         app=celery_app
     )
 
 
-@celery_app.task(name='fishface.drone_tasks.get_fish_contour')
+@celery_app.task(name='drone_tasks.get_fish_contour')
 def get_fish_contour(data, cal):
     print data.__class__, cal.__class__
 

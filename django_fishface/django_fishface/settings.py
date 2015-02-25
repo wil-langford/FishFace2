@@ -172,35 +172,3 @@ if LOG_TO_FILE:
     file_handler.setFormatter(formatter)
 
     PRIMARY_LOGGER.addHandler(file_handler)
-
-# Celery configuration
-try:
-    if os.path.isfile(REDIS_PASSWORD_FILE):
-        with open(REDIS_PASSWORD_FILE, 'rt') as f:
-            redis_password = f.read().strip()
-except IOError:
-    logging.warning('No redis key file found.  Disabling redis authentication.')
-    redis_password = ''
-
-try:
-    with open(REDIS_HOSTNAME_FILE, 'rt') as redis_hostname_file:
-        redis_hostname = redis_hostname_file.read().strip()
-except IOError:
-    logging.warning('No redis hostname file found.  Using localhost.')
-    redis_hostname = 'localhost'
-
-
-if redis_password != '':
-    broker_url = 'redis://:{password}@{hostname}'.format(
-        password=redis_password, hostname=redis_hostname)
-    result_url = broker_url
-else:
-    broker_url = 'redis://{hostname}'.format(password=redis_password)
-    result_url = broker_url
-
-BROKER_URL = broker_url
-CELERY_RESULT_BACKEND = result_url
-
-CELERY_ACCEPT_CONTENT = ['pickle', 'json']
-CELERY_TASK_SERIALIZER = 'pickle'
-CELERY_RESULT_SERIALIZER = 'pickle'

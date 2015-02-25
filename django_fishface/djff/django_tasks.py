@@ -1,81 +1,58 @@
 import os
-import sys
+import datetime
 
 import celery
 import models as dm
 
-from django.conf import settings
-
-import cv2
+import django.utils.timezone as dut
 
 HOME = os.environ['HOME']
 ALT_ROOT = HOME
-CLUSTER_DIR = os.path.join(ALT_ROOT, 'FishFace2', 'cluster')
-CELERY_WORKER_DIR = os.path.join(CLUSTER_DIR, 'celery_worker')
 
-# TODO: replace this antipattern
-import site
-site.addsitedir(CLUSTER_DIR)
-site.addsitedir(CELERY_WORKER_DIR)
-import celery_worker.tasks as worker_tasks
-from celery_worker.fishface_image import FFImage, NORMALIZED_DTYPE, NORMALIZED_SHAPE
-from celery_worker.fishface_celery import app as celery_app
-
-print ("= " * 40 + '\n') * 4
-print sys.path
-print ("= " * 40 + '\n') * 4
+from fishface_image import FFImage, NORMALIZED_DTYPE, NORMALIZED_SHAPE
+from fishface_celery import app as celery_app
 
 # used for testing
-@celery.shared_task
+@celery.shared_task(name='django_tasks.return_passthrough')
 def return_passthrough(*args, **kwargs):
     return {'args': args, 'kwargs': kwargs}
-
-
-def normalize_array(image):
-    if image.shape == NORMALIZED_SHAPE:
-        return image
-
-    # too many color channels
-    if len(image.shape) == 3:
-        channels = image.shape[2]
-        if channels == 3:
-            conversion = cv2.COLOR_BGR2GRAY
-        elif channels == 4:
-            conversion = cv2.COLOR_BGRA2GRAY
-        else:
-            raise Exception("Why do I see {} color channels? ".format(channels) +
-                            "I can only handle 1, 3, or 4 (with alpha).")
-
-        image = cv2.cvtColor(image, conversion)
-
-    if image.shape != NORMALIZED_SHAPE:
-        image = cv2.resize(image,
-                           dsize=tuple(reversed(NORMALIZED_SHAPE)),
-                           interpolation=cv2.INTER_AREA)
-    return image
 
 
 def cjr_boomerang(cjr_id=1):
     cjr = dm.CaptureJobRecord.objects.get(pk=cjr_id)
     cal_image = FFImage(source_filename=cjr.cal_image.image_file.path, store_source_image_as='jpg')
     cjr_data = dm.Image.objects.filter(cjr_id=cjr.id)
-    ff_images = (
+    ff_images = [
         FFImage(source_filename=datum.image_file.path,
                 meta={'image_id': datum.id})
         for datum in cjr_data
-    )
+    ][:2]
 
     # metas = celery_app.send_task('tasks.test_get_fish_silhouettes').get().get()['args'][0]
 
-    return celery.chord(
-        celery_app.signature('django.drone_tasks.get_fish_contour', (im, cal_image))
-        for im in ff_images
-    )(
-        celery_app.signature('fishface.django_tasks.store_analyses', tuple())
-    )
+    results = list()
+    for ff_image in ff_images:
+        results.append(celery.chain(
+            celery_app.signature(
+                'drone_tasks.get_fish_contour',
+                args=(ff_image, cal_image),
+                options={'queue': 'drone_tasks'}),
+            celery_app.signature(
+                'django_tasks.store_analyses',
+                options={'queue': 'django_tasks'}),
+        ).apply_async())
+
+    return results
+
+    # return celery.chord(
+    #     (celery_app.signature('django.drone_tasks.get_fish_contour', (im, cal_image))
+    #      for im in ff_images),
+    #     celery_app.signature('django_tasks.store_analyses', tuple()),
+    #     app=celery_app,
+    # )
 
 
-@celery_app.task(name='fishface.django_tasks.store_analyses')
+@celery_app.task(name='django_tasks.store_analyses')
 def store_analyses(metas):
     # if we only have one meta, wrap it in a list
     if isinstance(metas, dict):
@@ -103,12 +80,15 @@ def store_analyses(metas):
             'hu_moments': 'hu_moments',
             'moments': 'moments',
         }
-        for key, meta_key in analysis_config:
+        for key, meta_key in analysis_config.iteritems():
             try:
                 analysis_config[key] = meta[meta_key]
                 del meta[meta_key]
             except KeyError:
                 raise AnalysisImportError("Couldn't find '{}' in imported metadata.".format(meta_key))
+
+        analysis_config['analysis_datetime'] = datetime.datetime.utcfromtimestamp(
+            float(analysis_config['analysis_datetime'])).replace(tzinfo=dut.utc)
 
         # whatever remains in the meta variable gets stored here
         analysis_config['meta_data'] = meta
