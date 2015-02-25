@@ -1,7 +1,13 @@
 import os
 import celery
 
-ALT_ROOT = os.environ['HOME']
+HOME = os.environ['HOME']
+ALT_ROOT = HOME
+CLUSTER_DIR = os.path.join(ALT_ROOT, 'FishFace2', 'cluster')
+
+# TODO: replace this antipattern
+import site
+site.addsitedir(CLUSTER_DIR)
 
 PASSWORD_FILENAME = os.path.join(ALT_ROOT, 'etc', 'redis', 'redis_password')
 
@@ -14,11 +20,15 @@ if AUTHENTICATE:
 with open(os.path.join(ALT_ROOT, 'var', 'run', 'redis.hostname'), 'rt') as f:
     redis_hostname = f.read().strip()
 
-app = celery.Celery('tasks')
-
-app.conf.BROKER_TRANSPORT = app.conf.CELERY_RESULT_BACKEND = 'redis'
-app.conf.BROKER_HOST = app.conf.CELERY_REDIS_HOST = redis_hostname
-app.conf.CELERY_TASK_SERIALIZER = app.conf.CELERY_RESULT_SERIALIZER = 'pickle'
-app.conf.CELERY_ACCEPT_CONTENT = ['pickle', 'json']
 if AUTHENTICATE:
-    app.conf.BROKER_PASSWORD = app.conf.CELERY_REDIS_PASSWORD = redis_password
+    broker_url = 'redis://:{password}@{hostname}'.format(
+        password=redis_password, hostname=redis_hostname)
+    result_url = broker_url
+else:
+    broker_url = 'redis://{hostname}'.format(password=redis_password)
+    result_url = broker_url
+
+app = celery.Celery('tasks', broker=broker_url, backend=result_url)
+app.conf.CELERY_ACCEPT_CONTENT = ['pickle', 'json']
+app.conf.CELERY_TASK_SERIALIZER = 'pickle'
+app.conf.CELERY_RESULT_SERIALIZER = 'pickle'

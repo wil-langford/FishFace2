@@ -15,7 +15,7 @@ def ff_operation(func):
         fname = func.__name__
         ff_image.log = 'OP: {}'.format(fname)
 
-        if not isinstance(ff_image, FFImage):
+        if 'FFImage' not in str(ff_image.__class__):
             raise TypeError('{} requires an FFImage object as its first argument.'.format(fname))
 
         ff_image.array = func(ff_image.array, *args, ff_image=ff_image, **kwargs)
@@ -30,7 +30,7 @@ def ff_annotation(func):
         fname = func.__name__
         ff_image.log = 'AN: {}'.format(fname)
 
-        if not isinstance(ff_image, FFImage):
+        if 'FFImage' not in str(ff_image.__class__):
             raise TypeError('{} requires an FFImage object as its first argument.'.format(fname))
 
         return func(ff_image.array.copy(), *args, ff_image=ff_image, **kwargs)

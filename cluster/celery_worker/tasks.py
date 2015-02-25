@@ -5,14 +5,19 @@ import cv2
 
 import numpy as np
 
-import fishface_image
+HOME = os.environ['HOME']
+ALT_ROOT = HOME
+CLUSTER_DIR = os.path.join(ALT_ROOT, 'FishFace2', 'cluster')
+
+# TODO: replace this antipattern
+import site
+site.addsitedir(CLUSTER_DIR)
+
 from fishface_image import FFImage, ff_operation, ff_annotation
 import celery
-import fishface_celery
+from fishface_celery import app as celery_app
 from scipy import ndimage
 from scipy import stats
-
-celery_app = fishface_celery.app
 
 HOME = os.path.expanduser('~')
 ALT_ROOT = HOME
@@ -33,7 +38,7 @@ def kernel(radius=3, shape='circle'):
     return cv2.getStructuringElement(shape, (radius * 2 + 1, radius * 2 + 1))
 
 
-@celery_app.task
+@celery_app.task(name='fishface.drone_tasks.return_passthrough')
 def return_passthrough(*args, **kwargs):
     return {'args': args, 'kwargs': kwargs}
 
@@ -49,14 +54,12 @@ def image_from_file(file_path):
 
 @ff_operation
 def delta_image(image, cal_image, ff_image=None):
-    if isinstance(cal_image, FFImage):
-        ff_image.log = ('cal_image.meta', cal_image.meta)
+    if 'FFImage' in str(cal_image.__class__):
         cal_image = cal_image.array
-    if not isinstance(cal_image, np.ndarray):
-        raise TypeError('cal_image must be an FFImage or numpy array')
 
     # adjustment for overall brightness delta
-    delta_mode = stats.mstats.mode(image.astype(np.int16) - cal_image.astype(np.int16), axis=None)
+    delta_mode = stats.mstats.mode(image.astype(np.int16) - cal_image.astype(np.int16),
+                                   axis=None)
     almost_there = cv2.absdiff(cal_image, image).astype(np.int16) + delta_mode[0][0]
     almost_there[almost_there < 0] = 0
     return almost_there.astype(np.uint8)
@@ -235,7 +238,7 @@ def draw_contours(image, contours, line_color=255, line_thickness=3, filled=True
     return image
 
 
-@celery_app.task
+@celery_app.task(name='fishface.drone_tasks.test_get_fish_silhouettes')
 def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
     data_dir = os.path.join(ALT_ROOT, test_data_dir)
 
@@ -245,15 +248,24 @@ def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
     files = [name for name in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir,name))]
     data = [name for name in files if ('XP-23_CJR' in name and 'CJR-0' not in name)]
 
-    return celery.chord(get_fish_contour.s(FFImage(source_filename=datum,
-                                                   source_dir=data_dir,
-                                                   store_source_image_as='jpg'),
-                                           cal_image)
-                        for datum in data)(return_passthrough.s())
+    with open('/home/wil/eph/celery_app.tasks', 'wt') as blah_file:
+        print >>blah_file, celery_app.tasks
+
+    return celery.chord((
+        celery_app.signature('fishface.drone_tasks.get_fish_contour', (
+            FFImage(source_filename=datum,
+                    source_dir=data_dir,
+                    store_source_image_as='jpg'),
+            cal_image))
+            for datum in data),
+        celery_app.signature('fishface.drone_tasks.return_passthrough'),
+        app=celery_app
+    )
 
 
-@celery_app.task
+@celery_app.task(name='fishface.drone_tasks.get_fish_contour')
 def get_fish_contour(data, cal):
+    print data.__class__, cal.__class__
 
     color_image = cv2.cvtColor(data.array, cv2.COLOR_GRAY2BGR)
 

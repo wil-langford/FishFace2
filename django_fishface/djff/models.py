@@ -142,6 +142,21 @@ class CaptureJobRecord(models.Model):
                                                             self.xp.id,
                                                             self.id)
 
+
+    @property
+    def cal_image(self):
+        cal_images = Image.objects.filter(xp_id=self.xp_id, is_cal_image=True
+            ).order_by('capture_timestamp')
+        return_image = None
+        for ci in cal_images:
+            if ci.capture_timestamp <= self.job_start:
+                return_image = ci
+            else:
+                break
+
+        return return_image
+
+
     @property
     def slug(self):
         return u'CJR_{}'.format(self.id)
