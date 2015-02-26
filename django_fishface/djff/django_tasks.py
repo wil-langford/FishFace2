@@ -9,11 +9,12 @@ import django.utils.timezone as dut
 HOME = os.environ['HOME']
 ALT_ROOT = HOME
 
-from fishface_image import FFImage, NORMALIZED_DTYPE, NORMALIZED_SHAPE
+from fishface_image import FFImage
 from fishface_celery import app as celery_app
 
+
 # used for testing
-@celery.shared_task(name='django_tasks.return_passthrough')
+@celery.shared_task(name='results.return_passthrough')
 def return_passthrough(*args, **kwargs):
     return {'args': args, 'kwargs': kwargs}
 
@@ -32,27 +33,26 @@ def cjr_boomerang(cjr_id=1):
 
     results = list()
     for ff_image in ff_images:
-        results.append(celery.chain(
-            celery_app.signature(
-                'drone_tasks.get_fish_contour',
-                args=(ff_image, cal_image),
-                options={'queue': 'drone_tasks'}),
-            celery_app.signature(
-                'django_tasks.store_analyses',
-                options={'queue': 'django_tasks'}),
-        ).apply_async())
+        results.append(
+            celery.chain(celery_app.signature('tasks.get_fish_contour',
+                                              args=(ff_image, cal_image),
+                                              options={'queue': 'tasks'}),
+                         celery_app.signature('results.store_analyses',
+                                              options={'queue': 'results'}),
+                         ).apply_async()
+        )
 
     return results
 
     # return celery.chord(
-    #     (celery_app.signature('django.drone_tasks.get_fish_contour', (im, cal_image))
+    #     (celery_app.signature('django.tasks.get_fish_contour', (im, cal_image))
     #      for im in ff_images),
-    #     celery_app.signature('django_tasks.store_analyses', tuple()),
+    #     celery_app.signature('results.store_analyses', tuple()),
     #     app=celery_app,
     # )
 
 
-@celery_app.task(name='django_tasks.store_analyses')
+@celery_app.task(name='results.store_analyses')
 def store_analyses(metas):
     # if we only have one meta, wrap it in a list
     if isinstance(metas, dict):
