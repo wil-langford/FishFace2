@@ -2,8 +2,10 @@ import os
 import datetime
 
 import celery
-import models as dm
 
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_fishface.settings')
+from django.conf import settings
+import models as dm
 import django.utils.timezone as dut
 
 HOME = os.environ['HOME']
@@ -43,14 +45,6 @@ def cjr_boomerang(cjr_id=1):
         )
 
     return results
-
-    # return celery.chord(
-    #     (celery_app.signature('django.tasks.get_fish_contour', (im, cal_image))
-    #      for im in ff_images),
-    #     celery_app.signature('results.store_analyses', tuple()),
-    #     app=celery_app,
-    # )
-
 
 @celery_app.task(name='results.store_analyses')
 def store_analyses(metas):
