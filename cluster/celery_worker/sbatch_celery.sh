@@ -39,7 +39,7 @@ echo "${SLUG}" >> "${LOGFILE}"
 
 
 ### DEVELOPMENT
-srun celery -A tasks worker --loglevel=WARNING --concurrency=16 --autoreload
+srun celery worker --app=drone_tasks --loglevel=WARNING --concurrency=16 --autoreload
 
 ### PRODUCTION
-#srun celery -A tasks worker --loglevel=WARNING --concurrency=16
+# srun celery worker --app=drone_tasks --loglevel=WARNING --concurrency=16

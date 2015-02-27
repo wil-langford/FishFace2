@@ -45,8 +45,6 @@ else
             cp "${CONF_FILE}.base" "${CONF_FILE}"
             if [ -f "${PASSWORD_FILE}" ]; then
                 echo requirepass $(cat "${PASSWORD_FILE}") >> "${CONF_FILE}"
-                # TODO: remove this when it's working.
-                echo WARNING: Redis authentication is not yet fully implemented.
             fi
             /usr/bin/sbatch "${SBATCH_FILE}"
             ;;
