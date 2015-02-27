@@ -7,7 +7,7 @@ ETC="${ALT_ROOT}/etc/redis"
 
 JID_FILE="${VARRUN}/redis.jid"
 HOSTNAME_FILE="${VARRUN}/redis.hostname"
-CONF_FILE="${VARRUN}/redis.conf"
+CONF_FILE="${ETC}/redis.conf"
 SBATCH_FILE="${ALT_ROOT}/redis/sbatch_redis.sh"
 PASSWORD_FILE="${ETC}/redis_password"
 
