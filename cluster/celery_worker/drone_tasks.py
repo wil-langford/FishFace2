@@ -11,8 +11,8 @@ from scipy import stats
 HOME = os.environ['HOME']
 ALT_ROOT = HOME
 
-from fishface_image import FFImage, ff_operation, ff_annotation
 import celery
+from fishface_image import FFImage, ff_operation, ff_annotation
 from fishface_celery import app as celery_app
 
 #
@@ -31,9 +31,15 @@ def kernel(radius=3, shape='circle'):
     return cv2.getStructuringElement(shape, (radius * 2 + 1, radius * 2 + 1))
 
 
-@celery_app.task(name='tasks.return_passthrough')
+@celery.shared_task(name='tasks.return_passthrough')
 def return_passthrough(*args, **kwargs):
     return {'args': args, 'kwargs': kwargs}
+
+
+@celery.shared_task(name='tasks.tattle_on_app')
+def tattle_on_app():
+    # return celery_app.conf.table()
+    return 'tattling!'
 
 
 def test_write_image(ff_image):
@@ -231,7 +237,7 @@ def draw_contours(image, contours, line_color=255, line_thickness=3, filled=True
     return image
 
 
-@celery_app.task(name='tasks.test_get_fish_silhouettes')
+@celery.shared_task(name='tasks.test_get_fish_silhouettes')
 def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
     data_dir = os.path.join(ALT_ROOT, test_data_dir)
 
@@ -241,8 +247,8 @@ def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
     files = [name for name in os.listdir(data_dir) if os.path.isfile(os.path.join(data_dir,name))]
     data = [name for name in files if ('XP-23_CJR' in name and 'CJR-0' not in name)]
 
-    with open('/home/wil/eph/celery_app.tasks', 'wt') as blah_file:
-        print >>blah_file, celery_app.tasks
+    # with open('/home/wil/eph/celery_app.tasks', 'wt') as blah_file:
+    #     print >>blah_file, celery_app.tasks
 
     return celery.chord((
         celery_app.signature('tasks.get_fish_contour', (
@@ -256,7 +262,7 @@ def test_get_fish_silhouettes(test_data_dir='test_data_dir'):
     )
 
 
-@celery_app.task(name='tasks.get_fish_contour')
+@celery.shared_task(name='tasks.get_fish_contour')
 def get_fish_contour(data, cal):
     print data.__class__, cal.__class__
 

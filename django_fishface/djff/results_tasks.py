@@ -21,6 +21,13 @@ def return_passthrough(*args, **kwargs):
     return {'args': args, 'kwargs': kwargs}
 
 
+@celery.shared_task(name='results.tattle_on_app')
+def tattle_on_app():
+    # return celery_app.conf.table()
+    return 'tattling!'
+
+
+@celery.shared_task(name='results.cjr_boomerang')
 def cjr_boomerang(cjr_id=1):
     cjr = dm.CaptureJobRecord.objects.get(pk=cjr_id)
     cal_image = FFImage(source_filename=cjr.cal_image.image_file.path, store_source_image_as='jpg')
@@ -46,7 +53,7 @@ def cjr_boomerang(cjr_id=1):
 
     return results
 
-@celery_app.task(name='results.store_analyses')
+@celery.shared_task(name='results.store_analyses')
 def store_analyses(metas):
     # if we only have one meta, wrap it in a list
     if isinstance(metas, dict):
