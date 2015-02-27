@@ -41,23 +41,18 @@ else:
 # Task router based on task name
 class FishFaceRouter(object):
     @staticmethod
-    def route_for_task(self, task, args=None, kwargs=None):
+    def route_for_task(task, args=None, kwargs=None):
+        route = None
         task_category = task.split('.')[0]
-        logging.info('task_category of {} is {}'.format(task, task_category))
-        print 'task_category of {} is {}'.format(task, task_category)
+
         if task_category in ['tasks', 'results']:
             route = {
                 'exchange': 'fishface',
                 'exchange_type': 'direct',
                 'routing_key': 'fishface.{}'.format(task_category),
             }
-        elif task_category in ['alpha', 'beta']:
-            route = {
-                'exchange': 'test',
-                'exchange_type': 'direct',
-                'routing_key': 'test.{}'.format(task_category),
-            }
-        else:
+
+        if route is None:
             route = {
                 'exchange': 'default',
                 'exchange_type': 'direct',

@@ -1,7 +1,7 @@
 import os
 
-DEBUG = False
-TEMPLATE_DEBUG = False
+DEBUG = True
+TEMPLATE_DEBUG = True
 
 DEV_BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 DATABASES = {

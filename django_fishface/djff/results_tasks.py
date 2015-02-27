@@ -1,6 +1,8 @@
 import os
 import datetime
 
+import numpy as np
+
 import celery
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_fishface.settings')
@@ -14,42 +16,40 @@ ALT_ROOT = HOME
 from fishface_image import FFImage
 from fishface_celery import app as celery_app
 
-
 # used for testing
 @celery.shared_task(name='results.return_passthrough')
 def return_passthrough(*args, **kwargs):
     return {'args': args, 'kwargs': kwargs}
 
 
-@celery.shared_task(name='results.tattle_on_app')
-def tattle_on_app():
-    # return celery_app.conf.table()
-    return 'tattling!'
-
-
-@celery.shared_task(name='results.cjr_boomerang')
-def cjr_boomerang(cjr_id=1):
-    cjr = dm.CaptureJobRecord.objects.get(pk=cjr_id)
-    cal_image = FFImage(source_filename=cjr.cal_image.image_file.path, store_source_image_as='jpg')
-    cjr_data = dm.Image.objects.filter(cjr_id=cjr.id)
-    ff_images = [
-        FFImage(source_filename=datum.image_file.path,
-                meta={'image_id': datum.id})
-        for datum in cjr_data
-    ][:2]
-
-    # metas = celery_app.send_task('tasks.test_get_fish_silhouettes').get().get()['args'][0]
-
+@celery.shared_task(name='results.analyze_cjr_images')
+def analyze_cjr_images(cjr_ids):
     results = list()
-    for ff_image in ff_images:
-        results.append(
-            celery.chain(celery_app.signature('tasks.get_fish_contour',
-                                              args=(ff_image, cal_image),
-                                              options={'queue': 'tasks'}),
-                         celery_app.signature('results.store_analyses',
-                                              options={'queue': 'results'}),
-                         ).apply_async()
-        )
+
+    if not isinstance(cjr_ids, (list, tuple)):
+        cjr_ids = [cjr_ids]
+
+    for cjr_id in cjr_ids:
+        cjr = dm.CaptureJobRecord.objects.get(pk=cjr_id)
+        cal_image = FFImage(source_filename=cjr.cal_image.image_file.path, store_source_image_as='jpg')
+        cjr_data = dm.Image.objects.filter(cjr_id=cjr.id)
+        ff_images = [
+            FFImage(source_filename=datum.image_file.path,
+                    meta={'image_id': datum.id})
+            for datum in cjr_data
+        ]
+
+        # metas = celery_app.send_task('tasks.test_get_fish_silhouettes').get().get()['args'][0]
+
+        for ff_image in ff_images:
+            results.append(
+                celery.chain(celery_app.signature('tasks.get_fish_contour',
+                                                  args=(ff_image, cal_image),
+                                                  options={'queue': 'tasks'}),
+                             celery_app.signature('results.store_analyses',
+                                                  options={'queue': 'results'}),
+                             ).apply_async()
+            )
 
     return results
 
@@ -88,6 +88,9 @@ def store_analyses(metas):
             except KeyError:
                 raise AnalysisImportError("Couldn't find '{}' in imported metadata.".format(meta_key))
 
+            if 'ndarray' in str(analysis_config[key].__class__):
+                analysis_config[key] = analysis_config[key].tolist()
+
         analysis_config['analysis_datetime'] = datetime.datetime.utcfromtimestamp(
             float(analysis_config['analysis_datetime'])).replace(tzinfo=dut.utc)
 
@@ -95,7 +98,8 @@ def store_analyses(metas):
         analysis_config['meta_data'] = meta
 
         analysis = dm.ImageAnalysis(image=image, **analysis_config)
-        analysis.save()
+
+        return analysis.save()
 
 class AnalysisImportError(Exception):
     pass
