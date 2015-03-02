@@ -45,7 +45,7 @@ class FishFaceRouter(object):
         route = None
         task_category = task.split('.')[0]
 
-        if task_category in ['tasks', 'results']:
+        if task_category in ['drone', 'results', 'learn']:
             route = {
                 'exchange': 'fishface',
                 'exchange_type': 'direct',
