@@ -44,11 +44,9 @@ def analyze_cjr_images(cjr_ids):
         for ff_image in ff_images:
             results.append(
                 celery.chain(celery_app.signature('tasks.get_fish_contour',
-                                                  args=(ff_image, cal_image),
-                                                  options={'queue': 'tasks'}),
-                             celery_app.signature('results.store_analyses',
-                                                  options={'queue': 'results'}),
-                             ).apply_async()
+                                                  args=(ff_image, cal_image)),
+                             celery_app.signature('results.store_analyses'),
+                ).apply_async()
             )
 
     return results
@@ -91,8 +89,12 @@ def store_analyses(metas):
             if 'ndarray' in str(analysis_config[key].__class__):
                 analysis_config[key] = analysis_config[key].tolist()
 
+            if key == 'hu_moments':
+                analysis_config[key] = [x[0] for x in analysis_config[key]]
+
         analysis_config['analysis_datetime'] = datetime.datetime.utcfromtimestamp(
             float(analysis_config['analysis_datetime'])).replace(tzinfo=dut.utc)
+
 
         # whatever remains in the meta variable gets stored here
         analysis_config['meta_data'] = meta
