@@ -29,4 +29,4 @@ echo "${SLUG}" >> "${LOGFILE}"
 . "${ALT_ROOT}/.pyenv.sh"
 
 
-srun celery worker --app=learn_tasks --loglevel=WARNING --concurrency=1 -Q learn
+srun celery worker --app=learn_tasks --loglevel=WARNING --concurrency=1 -Q learn -n 'learn.%h'

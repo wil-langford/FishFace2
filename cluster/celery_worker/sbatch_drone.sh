@@ -39,4 +39,4 @@ echo "${SLUG}" >> "${LOGFILE}"
 . "${ALT_ROOT}/.pyenv.sh"
 
 
-srun celery worker --app=drone_tasks --loglevel=WARNING --concurrency=16 -Q tasks
+srun celery worker --app=drone_tasks --loglevel=WARNING --concurrency=16 -Q tasks -n 'drone.%h'
