@@ -39,11 +39,9 @@ def analyze_cjr_images(cjr_ids):
             for datum in cjr_data
         ]
 
-        # metas = celery_app.send_task('tasks.test_get_fish_silhouettes').get().get()['args'][0]
-
         for ff_image in ff_images:
             results.append(
-                celery.chain(celery_app.signature('tasks.get_fish_contour',
+                celery.chain(celery_app.signature('drone.get_fish_contour',
                                                   args=(ff_image, cal_image)),
                              celery_app.signature('results.store_analyses'),
                 ).apply_async()

@@ -6,15 +6,15 @@ VARRUN="${ALT_ROOT}/var/run"
 #VARLOG="${ALT_ROOT}/var/log"
 
 
-JIDFILE=${VARRUN}/drone_workers.jid
+JIDFILE=${VARRUN}/learn_worker.jid
 
 if [ "$1" == "" ]; then
     echo "$0" '[start|stop|status]'
     exit 0
 fi
 
-if [ "$(squeue -h -o '%all' | grep -c drone_workers)" -eq "0" -a -f "${JIDFILE}" ]; then
-    echo WARNING: The jidfile exists, but no drone_workers job is running.  Removing jidfile.
+if [ "$(squeue -h -o '%all' | grep -c learn_worker)" -eq "0" -a -f "${JIDFILE}" ]; then
+    echo WARNING: The jidfile exists, but no learn_worker job is running.  Removing jidfile.
     rm "${JIDFILE}"
 fi
 
@@ -42,7 +42,7 @@ if [ -f "${JIDFILE}" ]; then
 else
     case "$1" in
         start)
-            /usr/bin/sbatch -D "${WORKDIR}" "${ALT_ROOT}"/celery_worker/sbatch_drone.sh
+            /usr/bin/sbatch -D "${WORKDIR}" "${ALT_ROOT}"/celery_worker/sbatch_learn.sh
             ;;
         stop)
             echo Not running.

@@ -72,8 +72,9 @@ CELERY_RESULT_SERIALIZER = 'pickle'
 
 CELERY_QUEUES = (
     Queue('default', Exchange('default'), routing_key='default'),
-    Queue('tasks', Exchange('fishface'), routing_key='fishface.tasks'),
+    Queue('drone', Exchange('fishface'), routing_key='fishface.drone'),
     Queue('results', Exchange('fishface'), routing_key='fishface.results'),
+    Queue('learn', Exchange('fishface'), routing_key='fishface.learn'),
 )
 
 CELERY_DEFAULT_QUEUE = 'default'

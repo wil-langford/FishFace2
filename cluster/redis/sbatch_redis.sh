@@ -21,6 +21,7 @@ echo "${SLURM_JOB_ID}" > "${JIDFILE}"
 VARLOG="${ALT_ROOT}/var/log"
 LOGFILE="${VARLOG}/redis.log"
 SLUG="${HOSTNAME}_${SLURM_JOB_ID}_${SLURM_LOCALID}_${SLURM_TASK_PID}"
+echo "============================ START NEW LOG ============================" >> "${LOGFILE}"
 echo "${SLUG}" >> "${LOGFILE}"
 
 
