@@ -28,7 +28,7 @@ if [ -f "${JID_FILE}" ]; then
             /usr/bin/scancel ${JID}
             rm "${JID_FILE}"
             rm "${HOSTNAME_FILE}"
-            rm
+            rm "${CONF_FILE}
             ;;
         status)
             /usr/bin/scontrol show job ${JID}
