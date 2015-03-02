@@ -27,7 +27,7 @@ DRONE_DIR="${ALT_ROOT}/celery_worker"
 cd "${DRONE_DIR}"
 
 VARRUN="${ALT_ROOT}/var/run"
-JIDFILE="${VARRUN}/celery.jid"
+JIDFILE="${VARRUN}/drone_workers.jid"
 echo "${SLURM_JOB_ID}" > "${JIDFILE}"
 
 VARLOG="${ALT_ROOT}/var/log"
