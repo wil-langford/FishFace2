@@ -22,7 +22,7 @@ JIDFILE="${VARRUN}/learn_worker.jid"
 echo "${SLURM_JOB_ID}" > "${JIDFILE}"
 
 VARLOG="${ALT_ROOT}/var/log"
-LOGFILE="${VARLOG}/celery.log"
+LOGFILE="${VARLOG}/learn_worker.log"
 SLUG="${HOSTNAME}_${SLURM_JOB_ID}_${SLURM_LOCALID}_${SLURM_TASK_PID}"
 echo "${SLUG}" >> "${LOGFILE}"
 
