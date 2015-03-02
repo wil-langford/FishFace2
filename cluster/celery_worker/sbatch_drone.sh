@@ -17,7 +17,7 @@
 ##SBATCH -N 2-4
 
 ### PRODUCTION
-#SBATCH --time=6:23:59:50
+#SBATCH --time=0
 #SBATCH -n 16
 #SBATCH -N 16-20
 
