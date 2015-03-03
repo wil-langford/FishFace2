@@ -37,7 +37,7 @@ class Camera(object):
         stream = io.BytesIO()
         with self._lock:
             capture_time = float(time.time())
-            self.camera.capture(stream, format='jpeg')
+            self.cam.capture(stream, format='jpeg')
 
         return (stream, capture_time)
 
@@ -64,10 +64,13 @@ class ThreadWithHeartbeat(threading.Thread):
     Remember to override the _heartbeat_run(), _pre_run(), and _post_run() methods.
     """
 
-    def __init__(self, heartbeat_interval=0.2, heartbeat_publish_interval=None, *args, **kwargs):
+    def __init__(self, heartbeat_interval=0.2, heartbeat_publish_interval=None,
+                 startup_event=None, *args, **kwargs):
         super(ThreadWithHeartbeat, self).__init__(*args, **kwargs)
 
         self._name = None
+
+        self._startup_event = startup_event
 
         self._heartbeat_count = 0
         self._heartbeat_timestamp = None
@@ -95,6 +98,8 @@ class ThreadWithHeartbeat(threading.Thread):
     def set_ready(self):
         logger.info('{} thread reports that it is ready.'.format(self.name))
         self.ready = True
+        if self._startup_event is not None:
+            self._startup_event.set()
 
     def _heartbeat_run(self):
         raise NotImplementedError
@@ -192,6 +197,8 @@ class CaptureThread(ThreadWithHeartbeat):
                 'actual_timestamp': timestamp
             })
 
+            self.queue.task_done()
+
             self._next_capture_time = None
 
     def _pre_run(self):
@@ -205,15 +212,22 @@ class CaptureThread(ThreadWithHeartbeat):
 
     def pop_next_request(self):
         try:
-            self.queue.get(block=False)
+            return self.queue.get_nowait()
         except Queue.Empty:
             self.abort(complete=True)
 
     def abort(self, complete=False):
         super(CaptureThread, self).abort(complete=complete)
+        if not complete:
+            while not self.queue.empty():
+                try:
+                    self.queue.get_nowait()
+                except Queue.Empty:
+                    continue
+                self.queue.task_done()
+
         self.cam.close()
         self.cam = None
-
 
 
 @celery.shared_task(name="camera.push_capture_request")
@@ -221,10 +235,16 @@ def queue_capture_request(requested_capture_timestamp):
     global capture_thread, capture_thread_lock
     with capture_thread_lock:
         if capture_thread is None:
-            capture_thread = CaptureThread()
+            startup_event = threading.Event()
+            capture_thread = CaptureThread(startup_event=startup_event)
+            if not startup_event.wait(timeout=3):
+                logger.error("Couldn't create capture thread.")
 
-    capture_thread.push_capture_request(requested_capture_timestamp)
+    if capture_thread is not None and capture_thread.ready:
+        capture_thread.push_capture_request(requested_capture_timestamp)
+    else:
+        logger.error("Tried to push request, but capture thread not ready.")
 
 
-class PowerSupplyError(Exception):
+class CameraError(Exception):
     pass
