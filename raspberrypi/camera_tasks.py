@@ -19,7 +19,7 @@ class Camera(object):
         self.rotation = rotation
 
         self.close_if_greater_than = 30
-        self.open_if_less_than =
+        self.open_if_less_than = 4
 
         if REAL_HARDWARE:
             logger.info('Running with real power supply.')
