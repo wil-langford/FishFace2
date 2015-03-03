@@ -49,6 +49,7 @@ def analyze_cjr_images(cjr_ids):
 
     return results
 
+
 @celery.shared_task(name='results.store_analyses')
 def store_analyses(metas):
     # if we only have one meta, wrap it in a list
@@ -100,6 +101,11 @@ def store_analyses(metas):
         analysis = dm.ImageAnalysis(image=image, **analysis_config)
 
         return analysis.save()
+
+
+@celery.shared_task(name='results.thread_heartbeat')
+def thread_heartbeat():
+    pass
 
 class AnalysisImportError(Exception):
     pass
