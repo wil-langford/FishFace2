@@ -16,6 +16,7 @@ ALT_ROOT = HOME
 from fishface_image import FFImage
 from fishface_celery import app as celery_app
 
+
 # used for testing
 @celery.shared_task(name='results.return_passthrough')
 def return_passthrough(*args, **kwargs):
@@ -104,8 +105,14 @@ def store_analyses(metas):
 
 
 @celery.shared_task(name='results.thread_heartbeat')
-def thread_heartbeat(thread_name, heartbeat_timestamp):
+def thread_heartbeat(name, timestamp, count):
     pass
+
+
+@celery.shared_task(name='results.post_image')
+def post_image(image, requested_timestamp, actual_timestamp):
+    pass
+
 
 class AnalysisImportError(Exception):
     pass
