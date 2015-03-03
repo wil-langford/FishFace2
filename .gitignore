@@ -79,3 +79,6 @@ django_fishface/djff/static/admin/
 
 # iPython prototyping stuff
 *.ipynb
+
+# debugging for hardware control celery modules
+FAKE_THE_HARDWARE
