@@ -1,5 +1,7 @@
 import os
 import time
+import io
+import heapq
 
 import threading
 
@@ -10,14 +12,13 @@ from raspi_logging import logger
 
 REAL_HARDWARE = not os.path.isfile('FAKE_THE_HARDWARE')
 
+capture_thread = None
+capture_thread_lock = threading.RLock()
+
 
 class Camera(object):
-    def __init__(self, real=True, resolution=(2048, 1536), rotation=180):
+    def __init__(self, resolution=(2048, 1536), rotation=180):
         self._lock = threading.RLock()
-        self.cam = None
-
-        self.resolution = resolution
-        self.rotation = rotation
 
         if REAL_HARDWARE:
             logger.info('Running with real power supply.')
@@ -28,49 +29,54 @@ class Camera(object):
             import FakeHardware
             self.cam_class = FakeHardware.PiCamera
 
-    def open(self):
-        if self.cam is not None:
-            return False
-
         self.cam = self.cam_class()
-        self.cam.resolution = self.resolution
-        self.cam.rotation = self.rotation
+        self.cam.resolution = resolution
+        self.cam.rotation = rotation
 
-        return True
+    def get_image_with_capture_time(self):
+        stream = io.BytesIO()
+        with self._lock:
+            capture_time = float(time.time())
+            self.camera.capture(stream, format='jpeg')
 
-    def close(self):
-        if self.cam is None:
-            return False
+        return (stream, capture_time)
 
-        self.cam = None
-
-        return True
-
-camera = Camera(real=REAL_HARDWARE)
+camera = Camera()
 
 # Move this into the yet-to-be-implemented scheduler
 # camera.open()
 
-class CaptureThreadWithHeartbeat(threading.Thread):
-    def __init__(self, *args, **kwargs):
-        super(CaptureThread, self).__init__(*args, **kwargs)
 
-        self.close_if_greater_than = 30
-        self.open_if_less_than = 4
+def delay_until(unix_timestamp):
+    now = time.time()
+    while now < unix_timestamp:
+        time.sleep(unix_timestamp - now)
+        now = time.time()
+
+
+def delay_for_seconds(seconds):
+    later = time.time() + seconds
+    delay_until(later)
+
+
+class ThreadWithHeartbeat(threading.Thread):
+    """
+    Remember to override the _heartbeat_run(), _pre_run(), and _post_run() methods.
+    """
+
+    def __init__(self, heartbeat_interval=0.2, heartbeat_publish_interval=None, *args, **kwargs):
+        super(ThreadWithHeartbeat, self).__init__(*args, **kwargs)
+
+        self.name = None
 
         self._heartbeat_count = 0
         self._heartbeat_timestamp = None
         self._heartbeat_interval = heartbeat_interval
-        self._heartbeat_publish_interval = heartbeat_publish_interval
+        self._heartbeat_log_interval = heartbeat_publish_interval
         self._heartbeat_lock = threading.Lock()
 
         self._keep_looping = True
         self.ready = False
-
-        self._thread_registry = thread_registry
-
-        self._last_known_registry_index = len(self._thread_registry)
-        thread_registry.append(self)
 
         logger.debug('{} thread initialized.'.format(self.name))
 
@@ -104,19 +110,25 @@ class CaptureThreadWithHeartbeat(threading.Thread):
             self._heartbeat_timestamp = time.time()
             self._heartbeat_count += 1
 
-        if self._heartbeat_publish_interval is not None:
-            if not self._heartbeat_count % self._heartbeat_publish_interval:
+        if self._heartbeat_log_interval is not None:
+            if not self._heartbeat_count % self._heartbeat_log_interval:
                 logger.debug('{} thread heartbeat count is {}'.format(self.name,
                                                                       self._heartbeat_count))
+        self.publish_heartbeat()
+
+    def publish_heartbeat(self):
+        with self._heartbeat_lock:
+            timestamp, count = self._heartbeat_timestamp, self._heartbeat_count
+
+        celery_app.send_task('results.thread_heartbeat', kwargs={
+            'name': self.name,
+            'timestamp': timestamp,
+            'count': count,
+        })
 
     @property
     def heartbeat_count(self):
         return self._heartbeat_count
-
-    def _set_name(self, new_name):
-        new_name_str = str(new_name)
-        logger.info("Renaming thread '{}' to '{}'.".format(self.name, new_name_str))
-        self.name = new_name_str
 
     @property
     def last_heartbeat(self):
@@ -124,34 +136,69 @@ class CaptureThreadWithHeartbeat(threading.Thread):
 
     @property
     def last_heartbeat_delta(self):
-        if self._heartbeat_timestamp is not None:
+        try:
             return time.time() - self._heartbeat_timestamp
-        else:
-            return 1000000
-
-    @property
-    def index_in_registry(self):
-        if self._thread_registry[self._last_known_registry_index] is self:
-            return self._last_known_registry_index
-
-        if self._thread_registry is None:
+        except TypeError:
             return None
-
-        for idx, thr in self._thread_registry:
-            if thr is self:
-                return idx
-
-        raise Exception("Thread named {} is not in the registry.".format(self.name))
 
     def abort(self):
         self._keep_looping = False
         logger.info('Thread {} aborted.'.format(self.name))
 
 
+class CaptureThread(ThreadWithHeartbeat):
+    def __init__(self, *args, **kwargs):
+        super(CaptureThread, self).__init__(*args, **kwargs)
+        self.name = 'capture_thread'
 
-@celery.shared_task(name="psu.post_image")
-def post_image(meta):
-    pass
+        self._heap = []
+        self._heap_lock = threading.RLock()
+
+        self.cam = Camera()
+
+        self._next_capture = None
+
+    def _heartbeat_run(self):
+        if self._next_capture is None:
+            self._next_capture = self.pop_next_capture()
+
+        if self._next_capture - time.time() < self._heartbeat_interval * 2:
+            delay_until(self._next_capture)
+            stream, timestamp = self.cam.get_image_with_capture_time()
+
+            image = stream.read()
+
+            celery_app.send_task('results.post_image', kwargs={
+                'image': image,
+                'requested_timestamp': self._next_capture,
+                'actual_timestamp': timestamp
+            })
+
+            self._next_capture = None
+
+    def _pre_run(self):
+        self.set_ready()
+
+    def _post_run(self):
+        pass
+
+    def push_capture_request(self, requested_capture_timestamp):
+        with self._heap_lock:
+            heapq.heappush(self._heap, requested_capture_timestamp)
+
+    def pop_next_capture(self):
+        with self._heap_lock:
+            return heapq.heappop(self._heap)
+
+
+@celery.shared_task(name="camera.push_capture_request")
+def queue_capture_request(requested_capture_timestamp):
+    global capture_thread, capture_thread_lock
+    with capture_thread_lock:
+        if capture_thread is None:
+            capture_thread = CaptureThread()
+
+    capture_thread.push_capture_request(requested_capture_timestamp)
 
 
 class PowerSupplyError(Exception):

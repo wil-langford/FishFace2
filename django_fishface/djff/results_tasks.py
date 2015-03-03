@@ -104,7 +104,7 @@ def store_analyses(metas):
 
 
 @celery.shared_task(name='results.thread_heartbeat')
-def thread_heartbeat():
+def thread_heartbeat(thread_name, heartbeat_timestamp):
     pass
 
 class AnalysisImportError(Exception):
