@@ -13,6 +13,8 @@ from django.conf import settings
 
 import jsonfield
 
+import sklearn.cluster as skc
+
 from utils import djff_imagekit as ffik
 
 
@@ -277,6 +279,7 @@ class Image(models.Model):
         except IndexError:
             return None
 
+
 class ImageAnalysis(models.Model):
     # link to a specific image
     image = models.ForeignKey(Image)
@@ -436,6 +439,24 @@ class CaptureJobQueue(models.Model):
     timestamp = models.DateTimeField('when this queue was most recently saved', auto_now=True)
     queue = jsonfield.JSONField('a queue spec object')
     comment = models.TextField('description of this queue')
+
+
+class KMeansEstimator(models.Model):
+    timestamp = models.DateTimeField('when this estimator was produced', auto_now_add=True)
+
+    params = jsonfield.JSONField('used to reconstruct the estimator')
+    cluster_centers = jsonfield.JSONField('used to reconstruct the estimator')
+    labels = jsonfield.JSONField('used to reconstruct the estimator')
+    inertia = jsonfield.JSONField('used to reconstruct the estimator')
+
+    def rebuild_estimator(self):
+        estimator = skc.KMeans()
+        estimator.set_params(**self.params)
+        estimator.cluster_centers_ = self.cluster_centers
+        estimator.labels_ = self.labels
+        estimator.inertia_ = self.inertia
+
+        return estimator
 
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
