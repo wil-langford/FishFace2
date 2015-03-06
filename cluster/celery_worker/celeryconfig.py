@@ -45,7 +45,7 @@ class FishFaceRouter(object):
         route = None
         task_category = task.split('.')[0]
 
-        if task_category in ['drone', 'results', 'learn']:
+        if task_category in ['drone', 'django', 'learn', 'cjc']:
             route = {
                 'exchange': 'fishface',
                 'exchange_type': 'direct',
@@ -73,8 +73,9 @@ CELERY_RESULT_SERIALIZER = 'pickle'
 CELERY_QUEUES = (
     Queue('default', Exchange('default'), routing_key='default'),
     Queue('drone', Exchange('fishface'), routing_key='fishface.drone'),
-    Queue('results', Exchange('fishface'), routing_key='fishface.results'),
+    Queue('django', Exchange('fishface'), routing_key='fishface.django'),
     Queue('learn', Exchange('fishface'), routing_key='fishface.learn'),
+    Queue('cjc', Exchange('fishface'), routing_key='fishface.cjc'),
 )
 
 CELERY_DEFAULT_QUEUE = 'default'
