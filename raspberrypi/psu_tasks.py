@@ -96,7 +96,7 @@ class PowerSupply(object):
                 'output': self.psu.output,
             }
 
-        celery_app.send_task('results.power_supply_report', kwargs = state)
+        celery_app.send_task('django.power_supply_report', kwargs = state)
 
         return True
 

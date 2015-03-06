@@ -125,7 +125,7 @@ class ThreadWithHeartbeat(threading.Thread):
         with self._heartbeat_lock:
             timestamp, count = self._heartbeat_timestamp, self._heartbeat_count
 
-        celery_app.send_task('results.thread_heartbeat', kwargs={
+        celery_app.send_task('cjc.thread_heartbeat', kwargs={
             'name': self.name,
             'timestamp': timestamp,
             'count': count,
@@ -191,7 +191,7 @@ class CaptureThread(ThreadWithHeartbeat):
 
             image = stream.read()
 
-            celery_app.send_task('results.post_image', kwargs={
+            celery_app.send_task('django.post_image', kwargs={
                 'image': image,
                 'requested_timestamp': self._next_capture_time,
                 'actual_timestamp': timestamp
