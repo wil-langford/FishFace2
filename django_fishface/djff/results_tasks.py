@@ -1,5 +1,6 @@
 import os
 import datetime
+import random
 
 import numpy as np
 
@@ -9,6 +10,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_fishface.settings')
 from django.conf import settings
 import models as dm
 import django.utils.timezone as dut
+import django.db.models as ddm
+import django.shortcuts as ds
 
 HOME = os.environ['HOME']
 ALT_ROOT = HOME
@@ -32,7 +35,8 @@ def analyze_cjr_images(cjr_ids):
 
     for cjr_id in cjr_ids:
         cjr = dm.CaptureJobRecord.objects.get(pk=cjr_id)
-        cal_image = FFImage(source_filename=cjr.cal_image.image_file.path, store_source_image_as='jpg')
+        cal_image = FFImage(source_filename=cjr.cal_image.image_file.path,
+                            store_source_image_as='jpg')
         cjr_data = dm.Image.objects.filter(cjr_id=cjr.id)
         ff_images = [
             FFImage(source_filename=datum.image_file.path,
@@ -104,14 +108,39 @@ def store_analyses(metas):
         return analysis.save()
 
 
-@celery.shared_task(name='results.thread_heartbeat')
-def thread_heartbeat(name, timestamp, count):
-    pass
+@celery.shared_task(name='results.train_classifier')
+def train_classifier(minimum_verifications=2, reserve_for_ml_verification=0.1):
+    eligible_image_ids = frozenset([i.id for i in dm.Image.objects.annotate(
+        analysis_count=ddm.Count('imageanalysis')
+    ).filter(
+        analysis_count__gte=1
+    )])
+
+    eligible_tags = random.shuffle(list(
+        dm.ManualTag.objects.annotate(
+            verify_count=ddm.Count('manualverification'),
+        ).filter(
+            verify_count__gte=minimum_verifications,
+            image_id__in=eligible_image_ids
+        )
+    ))
+
+    split_point = int(float(len(eligible_tags)) * reserve_for_ml_verification)
+
+    verification_set, training_set = eligible_tags[:split_point], eligible_tags[split_point:]
 
 
 @celery.shared_task(name='results.post_image')
-def post_image(image, requested_timestamp, actual_timestamp):
-    pass
+def post_image(image_data, meta):
+    xp = ds.get_object_or_404(dm.Experiment, pk=int(meta['xp_id']))
+
+    image_config = dict()
+    for key in 'cjr_id is_cal_image capture_timestamp voltage current'.split(' '):
+        image_config[key] = meta[key]
+
+    image = dm.Image(xp=xp, **image_config)
+    image.image_file = image_data
+    image.save()
 
 
 class AnalysisImportError(Exception):
