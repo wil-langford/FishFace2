@@ -167,9 +167,8 @@ def receive_telemetry(request):
             current=current,
             is_cal_image=is_cal_image,
             cjr=cjr,
-            image_file=image_uploaded_file,
-            normalized_image=image_uploaded_file,
         )
+        captured_image.image_file = image_uploaded_file
         captured_image.save()
 
         logger.info("image stored with ID {}".format(captured_image.id))
@@ -883,10 +882,9 @@ def receive_image(request):
                 current=current,
                 is_cal_image=is_cal_image,
                 cjr=cjr,
-                image_file=request.FILES[
-                    request.POST['filename']
-                ],
             )
+            captured_image.image_file=request.FILES[request.POST['filename']],
+
             captured_image.save()
 
             logger.info("image stored with ID {}".format(

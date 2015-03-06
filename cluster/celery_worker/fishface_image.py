@@ -114,7 +114,9 @@ class FFImage(object):
                 self.meta['source_filename'] = os.path.basename(source_filename)
                 self.meta['filename'] = self.meta['source_filename']
             else:
-                raise InvalidSource("Source file unreadable or non-existent.")
+                raise InvalidSource("Source file unreadable or non-existent: {}".format(
+                    source_filename
+                ))
 
         if image_string is None and isinstance(source, np.ndarray):
             if not normalize_image and (source.shape != NORMALIZED_SHAPE or

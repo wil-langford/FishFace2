@@ -1,10 +1,14 @@
 import math
+import datetime
 
 from django.db import models
 import django.dispatch.dispatcher
 import django.db.models as ddm
 import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
+import django.utils.dateformat as dud
+import django.utils.timezone as dut
+
 from django.conf import settings
 
 import jsonfield
@@ -142,11 +146,11 @@ class CaptureJobRecord(models.Model):
                                                             self.xp.id,
                                                             self.id)
 
-
     @property
     def cal_image(self):
-        cal_images = Image.objects.filter(xp_id=self.xp_id, is_cal_image=True
-            ).order_by('capture_timestamp')
+        cal_images = Image.objects.filter(
+            xp_id=self.xp_id, is_cal_image=True
+        ).order_by('capture_timestamp')
         return_image = None
         for ci in cal_images:
             if ci.capture_timestamp <= self.job_start:
@@ -155,7 +159,6 @@ class CaptureJobRecord(models.Model):
                 break
 
         return return_image
-
 
     @property
     def slug(self):
@@ -168,6 +171,37 @@ class CaptureJobRecord(models.Model):
     @property
     def image_count(self):
         return Image.objects.filter(cjr__pk=self.pk).count()
+
+
+def generate_image_filename(instance, filename):
+    if instance.cjr is None and instance.is_cal_image:
+        cjr_id = 0
+    elif instance.cjr is None and not instance.is_cal_image:
+        raise Exception("The CJR must be set on non-calibration images before setting the image " +
+                        "so that the filename can be generated.")
+    else:
+        cjr_id = instance.cjr.id
+
+    if not all([bool(x) for x in (instance, instance.xp_id, instance.capture_timestamp)]):
+        raise Exception("The xp and capture_timestamp must be set before setting the image " +
+                        "so that the filename can be generated.")
+    utc_ts = round(float(dud.format(instance.capture_timestamp, 'U.u')), 2)
+    temp_dt = datetime.datetime.utcfromtimestamp(utc_ts).replace(tzinfo=dut.utc)
+
+    return (
+        u'experiment_imagery/stills/{dtg}'.format(
+            dtg=dud.format(instance.capture_timestamp, 'Y.m.d')
+        ) +
+        u'/XP-{instance.xp_id}_CJR-{cjr_id}_{instance.xp.species.shortname}_'.format(
+            instance=instance,
+            cjr_id=cjr_id
+        ) +
+        u'{file_dtg}_{file_ts}.jpg'.format(
+            file_dtg=temp_dt.astimezone(dut.LocalTimezone()).strftime(
+                settings.FILENAME_DATE_FORMAT),
+            file_ts=utc_ts
+        )
+    )
 
 
 class Image(models.Model):
@@ -185,7 +219,7 @@ class Image(models.Model):
     voltage = models.FloatField('voltage at power supply', default=0)
     current = models.FloatField('current at power supply', default=0)
     image_file = models.ImageField('path of image file',
-                                   upload_to="experiment_imagery/stills/%Y.%m.%d", null=True)
+                                   upload_to=generate_image_filename, null=True)
     is_cal_image = models.BooleanField('is this image a calibration image?', default=False)
 
     bad_tags = models.IntegerField(
@@ -230,17 +264,18 @@ class Image(models.Model):
     linked_angle_bullet.allow_tags = True
 
     @property
-    def normalized_image(self):
-        print 'Checking to see if normalized image file exists.'
+    def latest_analysis(self):
         try:
-            self.normalized_image_file.file
-        except ValueError:
-            print 'Generating normalized image file on the fly.'
-            self.normalized_image_file = self.image_file.file
-            self.save()
+            return ImageAnalysis.objects.filter(image_id=self.id).order_by("-analysis_datetime")[0]
+        except IndexError:
+            return None
 
-        return self.normalized_image_file
-
+    @property
+    def latest_automatictag(self):
+        try:
+            return AutomaticTag.objects.filter(image_id=self.id).order_by("-timestamp")[0]
+        except IndexError:
+            return None
 
 class ImageAnalysis(models.Model):
     # link to a specific image
@@ -254,6 +289,18 @@ class ImageAnalysis(models.Model):
     hu_moments = jsonfield.JSONField('The Hu moments derived from the moments')
 
     meta_data = jsonfield.JSONField('Any metadata other than what gets its own field')
+
+    @property
+    def orientation_from_moments(self):
+        # from http://en.wikipedia.org/wiki/Image_moment
+        m00 = self.moments['m00']
+        mu20p = self.moments['mu20'] / m00
+        mu02p = self.moments['mu02'] / m00
+        mu11p = self.moments['mu11'] / m00
+        try:
+            return math.degrees(0.5 * math.atan2(2 * mu11p, mu20p - mu02p))
+        except ZeroDivisionError:
+            return False
 
 
 class AutomaticTag(models.Model):
