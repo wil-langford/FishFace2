@@ -233,8 +233,6 @@ def draw_contours(image, contours, line_color=255, line_thickness=3, filled=True
 
 @celery.shared_task(name='drone.get_fish_contour')
 def get_fish_contour(data, cal):
-    print data.__class__, cal.__class__
-
     color_image = cv2.cvtColor(data.array, cv2.COLOR_GRAY2BGR)
 
     delta_image(data, cal)

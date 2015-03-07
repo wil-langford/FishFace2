@@ -70,12 +70,14 @@ CELERY_ACCEPT_CONTENT = ['pickle']
 CELERY_TASK_SERIALIZER = 'pickle'
 CELERY_RESULT_SERIALIZER = 'pickle'
 
+fishface_exchange = Exchange('fishface')
+
 CELERY_QUEUES = (
     Queue('default', Exchange('default'), routing_key='default'),
-    Queue('drone', Exchange('fishface'), routing_key='fishface.drone'),
-    Queue('django', Exchange('fishface'), routing_key='fishface.django'),
-    Queue('learn', Exchange('fishface'), routing_key='fishface.learn'),
-    Queue('cjc', Exchange('fishface'), routing_key='fishface.cjc'),
+    Queue('drone', fishface_exchange, routing_key='fishface.drone'),
+    Queue('django', fishface_exchange, routing_key='fishface.django'),
+    Queue('learn', fishface_exchange, routing_key='fishface.learn'),
+    Queue('cjc', fishface_exchange, routing_key='fishface.cjc'),
 )
 
 CELERY_DEFAULT_QUEUE = 'default'
