@@ -6,4 +6,9 @@ south
 quantities
 Pillow
 pytz
+mpi4py
+django-imagekit
 picamera
+celery
+redis
+scipy

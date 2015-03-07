@@ -56,17 +56,14 @@ class ImageAdmin(admin.ModelAdmin):
                 'voltage',
                 'current',
                 'is_cal_image',
-                'psu_log',
                 'image_file',
             ]
         })
     ]
-    # TODO: uncomment following line
-    # inlines = [PowerSupplyLogInline]
     list_display = (
+        'capture_timestamp',
         'voltage',
         'current',
-        'capture_timestamp',
         'is_cal_image',
         'xp',
         'cjr',

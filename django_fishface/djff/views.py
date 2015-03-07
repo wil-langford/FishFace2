@@ -4,6 +4,7 @@ import datetime
 import json
 import random
 import math
+import copy
 
 import cv2
 import pytz
@@ -155,6 +156,8 @@ def receive_telemetry(request):
         except dh.Http404:
             cjr = None
 
+        image_uploaded_file = request.FILES[payload['filename']]
+
         logger.info("storing image")
 
         captured_image = Image(
@@ -164,10 +167,8 @@ def receive_telemetry(request):
             current=current,
             is_cal_image=is_cal_image,
             cjr=cjr,
-            image_file=request.FILES[
-                payload['filename']
-            ],
         )
+        captured_image.image_file = image_uploaded_file
         captured_image.save()
 
         logger.info("image stored with ID {}".format(captured_image.id))
@@ -644,8 +645,6 @@ def xp_detail_cals(request, xp_id):
         'cal_images_chunk': cal_images_chunk,
     })
 
-    logger.warning(cal_images_chunk)
-
     return dh.HttpResponse(payload, content_type='application/json')
 
 
@@ -883,10 +882,9 @@ def receive_image(request):
                 current=current,
                 is_cal_image=is_cal_image,
                 cjr=cjr,
-                image_file=request.FILES[
-                    request.POST['filename']
-                ],
             )
+            captured_image.image_file=request.FILES[request.POST['filename']],
+
             captured_image.save()
 
             logger.info("image stored with ID {}".format(

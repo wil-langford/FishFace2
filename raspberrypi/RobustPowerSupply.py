@@ -50,8 +50,9 @@ MAX_ATTEMPTS = 10
 
 
 class RobustPowerSupply(object):
-    def __init__(self):
-        self.psu = POWER_SUPPLY_CLASS.open_gpibusb('/dev/ttyUSB0', 2)
+    def __init__(self, port_device='/dev/ttyUSB0', gpib_address=2):
+        self.psu = POWER_SUPPLY_CLASS.open_gpibusb(port_device,
+                                                   gpib_address)
         self.psu_lock = threading.RLock()
 
         self._last_commanded_output_state = None
@@ -99,6 +100,10 @@ class RobustPowerSupply(object):
     @voltage.setter
     def voltage(self, value):
         with self.psu_lock:
+            if value == 0:
+                self.output = False
+                return
+
             for attempt in range(MAX_ATTEMPTS):
                 logger.debug("Attempt {} to set voltage.".format(attempt))
 
@@ -106,6 +111,7 @@ class RobustPowerSupply(object):
                     self.psu.voltage = value
                 except (SerialException, ValueError):
                     pass
+
 
                 if abs(float(self.voltage) - value) < VOLTAGE_TOLERANCE:
                     break
@@ -153,6 +159,10 @@ class RobustPowerSupply(object):
     @current.setter
     def current(self, value):
         with self.psu_lock:
+            if value == 0:
+                self.output = False
+                return
+
             for attempt in range(MAX_ATTEMPTS):
                 logger.debug("Attempt {} to set current.".format(attempt))
 

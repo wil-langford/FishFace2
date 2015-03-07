@@ -1,15 +1,20 @@
 import math
+import datetime
 
 from django.db import models
 import django.dispatch.dispatcher
 import django.db.models as ddm
 import django.db.models.signals as ddms
 import django.core.urlresolvers as dcu
+import django.utils.dateformat as dud
+import django.utils.timezone as dut
+
 from django.conf import settings
 
 import jsonfield
 
-import fields
+import sklearn.cluster as skc
+
 from utils import djff_imagekit as ffik
 
 
@@ -144,6 +149,20 @@ class CaptureJobRecord(models.Model):
                                                             self.id)
 
     @property
+    def cal_image(self):
+        cal_images = Image.objects.filter(
+            xp_id=self.xp_id, is_cal_image=True
+        ).order_by('capture_timestamp')
+        return_image = None
+        for ci in cal_images:
+            if ci.capture_timestamp <= self.job_start:
+                return_image = ci
+            else:
+                break
+
+        return return_image
+
+    @property
     def slug(self):
         return u'CJR_{}'.format(self.id)
 
@@ -154,6 +173,37 @@ class CaptureJobRecord(models.Model):
     @property
     def image_count(self):
         return Image.objects.filter(cjr__pk=self.pk).count()
+
+
+def generate_image_filename(instance, filename):
+    if instance.cjr is None and instance.is_cal_image:
+        cjr_id = 0
+    elif instance.cjr is None and not instance.is_cal_image:
+        raise Exception("The CJR must be set on non-calibration images before setting the image " +
+                        "so that the filename can be generated.")
+    else:
+        cjr_id = instance.cjr.id
+
+    if not all([bool(x) for x in (instance, instance.xp_id, instance.capture_timestamp)]):
+        raise Exception("The xp and capture_timestamp must be set before setting the image " +
+                        "so that the filename can be generated.")
+    utc_ts = round(float(dud.format(instance.capture_timestamp, 'U.u')), 2)
+    temp_dt = datetime.datetime.utcfromtimestamp(utc_ts).replace(tzinfo=dut.utc)
+
+    return (
+        u'experiment_imagery/stills/{dtg}'.format(
+            dtg=dud.format(instance.capture_timestamp, 'Y.m.d')
+        ) +
+        u'/XP-{instance.xp_id}_CJR-{cjr_id}_{instance.xp.species.shortname}_'.format(
+            instance=instance,
+            cjr_id=cjr_id
+        ) +
+        u'{file_dtg}_{file_ts}.jpg'.format(
+            file_dtg=temp_dt.astimezone(dut.LocalTimezone()).strftime(
+                settings.FILENAME_DATE_FORMAT),
+            file_ts=utc_ts
+        )
+    )
 
 
 class Image(models.Model):
@@ -167,19 +217,16 @@ class Image(models.Model):
     cjr = models.ForeignKey(CaptureJobRecord, null=True, editable=False, )
 
     # Data available at capture time.
-    capture_timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
+    capture_timestamp = models.DateTimeField('DTG of image capture', default=0)
     voltage = models.FloatField('voltage at power supply', default=0)
     current = models.FloatField('current at power supply', default=0)
     image_file = models.ImageField('path of image file',
-                                   upload_to="experiment_imagery/stills/%Y.%m.%d")
+                                   upload_to=generate_image_filename, null=True)
     is_cal_image = models.BooleanField('is this image a calibration image?', default=False)
 
     bad_tags = models.IntegerField(
         "how many of this image's tags have been deleted during validation",
         default=0)
-
-    psu_log = models.ForeignKey(PowerSupplyLog,
-                                null=True, blank=True)
 
     @property
     def angle(self):
@@ -190,7 +237,6 @@ class Image(models.Model):
             angle = None
 
         return angle
-
 
     def inline_image(self, thumb=False):
         width = [200, 40][thumb]
@@ -219,6 +265,20 @@ class Image(models.Model):
         )
     linked_angle_bullet.allow_tags = True
 
+    @property
+    def latest_analysis(self):
+        try:
+            return ImageAnalysis.objects.filter(image_id=self.id).order_by("-analysis_datetime")[0]
+        except IndexError:
+            return None
+
+    @property
+    def latest_automatictag(self):
+        try:
+            return AutomaticTag.objects.filter(image_id=self.id).order_by("-timestamp")[0]
+        except IndexError:
+            return None
+
 
 class ImageAnalysis(models.Model):
     # link to a specific image
@@ -226,21 +286,33 @@ class ImageAnalysis(models.Model):
 
     # Data available after processing.
     analysis_datetime = models.DateTimeField('the time/date that this analysis was performed')
-    orientation = models.SmallIntegerField('angle between the water flow source and the fish',
-                                           default=None)
-    location = fields.LocationField('the x,y coordinates of the fish in the image')
-    silhouette = fields.ContourField('The OpenCV contour of the outline of the fish')
+    silhouette = jsonfield.JSONField('The OpenCV contour of the outline of the fish')
 
-    verified_dtg = models.DateTimeField('the dtg at which verification took place',
-                                        blank=True, null=True)
-    verified_by = models.ForeignKey(Researcher)
+    moments = jsonfield.JSONField('The image moments of the silhouette')
+    hu_moments = jsonfield.JSONField('The Hu moments derived from the moments')
+
+    meta_data = jsonfield.JSONField('Any metadata other than what gets its own field')
+
+    @property
+    def orientation_from_moments(self):
+        # from http://en.wikipedia.org/wiki/Image_moment
+        m00 = self.moments['m00']
+        mu20p = self.moments['mu20'] / m00
+        mu02p = self.moments['mu02'] / m00
+        mu11p = self.moments['mu11'] / m00
+        try:
+            return math.degrees(0.5 * math.atan2(2 * mu11p, mu20p - mu02p))
+        except ZeroDivisionError:
+            return False
 
 
-class ManualMeasurement(models.Model):
-    orientation = models.SmallIntegerField('angle between the water flow source and the fish',
-                                           default=None)
-    analysis_datetime = models.DateTimeField('the time/date that this analysis was performed')
-    researcher = models.ForeignKey(Researcher)
+class AutomaticTag(models.Model):
+    image = models.ForeignKey(Image)
+    timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
+    image_analysis = models.ForeignKey(ImageAnalysis)
+
+    centroid = jsonfield.JSONField('The center of mass of the fish')
+    orientation = jsonfield.JSONField("Angle of the fish referenced against oncoming water flow")
 
 
 class ManualTag(models.Model):
@@ -294,6 +366,12 @@ class ManualVerification(models.Model):
     researcher = models.ForeignKey(Researcher)
 
 
+class AnalysisVerification(models.Model):
+    image_analysis = models.ForeignKey(ImageAnalysis)
+    timestamp = models.DateTimeField('DTG of analysis verification', auto_now_add=True)
+    researcher = models.ForeignKey(Researcher)
+
+
 class CaptureJobTemplate(models.Model):
     voltage = models.FloatField('the voltage that the power supply will be set to', default=0, )
     current = models.FloatField('maximum current in amps that the power supply will provide',
@@ -311,9 +389,12 @@ class CaptureJobTemplate(models.Model):
 
     @property
     def job_spec(self):
-        return '_'.join([str(x) for x in
-            self.voltage, self.current, self.startup_delay, self.interval, self.duration
-        ])
+        return '_'.join(
+            [
+                str(x) for x in
+                self.voltage, self.current, self.startup_delay, self.interval, self.duration
+            ]
+        )
 
     def get_absolute_url(self):
         return dcu.reverse(
@@ -360,10 +441,29 @@ class CaptureJobQueue(models.Model):
     comment = models.TextField('description of this queue')
 
 
+class KMeansEstimator(models.Model):
+    timestamp = models.DateTimeField('when this estimator was produced', auto_now_add=True)
+
+    params = jsonfield.JSONField('used to reconstruct the estimator')
+    cluster_centers = jsonfield.JSONField('used to reconstruct the estimator')
+    labels = jsonfield.JSONField('used to reconstruct the estimator')
+    inertia = jsonfield.JSONField('used to reconstruct the estimator')
+
+    def rebuild_estimator(self):
+        estimator = skc.KMeans()
+        estimator.set_params(**self.params)
+        estimator.cluster_centers_ = self.cluster_centers
+        estimator.labels_ = self.labels
+        estimator.inertia_ = self.inertia
+
+        return estimator
+
+
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
 def image_delete(sender, instance, **kwargs):
     # pass False so ImageField won't save the model
     instance.image_file.delete(False)
+
 
 @django.dispatch.dispatcher.receiver(ddms.pre_delete, sender=ManualTag)
 def tag_delete(sender, instance, **kwargs):

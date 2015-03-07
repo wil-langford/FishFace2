@@ -8,7 +8,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
-bin/
+# bin/
 build/
 develop-eggs/
 dist/
@@ -69,8 +69,16 @@ migrations
 # Secrets don't belong in the repository
 secret_keys.py
 fishface_db_password
+redis_password
+redis.conf
 
 django_fishface/djff/static/admin/
 
 # Log backups don't belong in the repository
 *.log.*
+
+# iPython prototyping stuff
+*.ipynb
+
+# debugging for hardware control celery modules
+FAKE_THE_HARDWARE
