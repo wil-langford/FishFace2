@@ -451,7 +451,7 @@ class KMeansEstimator(models.Model):
 
     def rebuild_estimator(self):
         estimator = skc.KMeans()
-        estimator.set_params(**self.params)
+        estimator.set_params(self.params)
         estimator.cluster_centers_ = self.cluster_centers
         estimator.labels_ = self.labels
         estimator.inertia_ = self.inertia

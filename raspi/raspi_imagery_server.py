@@ -21,21 +21,21 @@ import sys
 import requests
 
 import fishface_server_auth
+from util.fishface_logging import logger
 
-from raspi_logging import logger
 
 try:
     import picamera
-    import RobustPowerSupply
+    from ff_celery import RobustPowerSupply, FakeHardware, FakeHardware
     from serial.serialutil import SerialException
     REAL_HARDWARE = True
     BASE_URL = "http://fishface/fishface/"
     logger.info("Running server on real Raspi hardware with an HP power supply.")
 except ImportError:
     # noinspection PyPep8Naming
-    import FakeHardware as picamera
+    import ff_celery.FakeHardware as picamera
     # noinspection PyPep8Naming
-    import FakeHardware as ik
+    import ff_celery.FakeHardware as ik
 
     class SerialException(IOError):
         pass

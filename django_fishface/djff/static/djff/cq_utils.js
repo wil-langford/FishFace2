@@ -136,7 +136,7 @@ $(document).ready(function(){
             success: function (data, status, jqXHR) {
                 $("#" + ul_id).append(prefix + data + suffix);
                 if (is_draggable) {
-                    console.log('making CJT_{0} draggable'.format(cjt_id))
+                    console.log('making CJT_{0} draggable'.format(cjt_id));
                     $("#CJT_" + cjt_id).draggable({
                         connectToSortable: "#capture_job_queue",
                         helper: "clone",

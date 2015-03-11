@@ -390,17 +390,17 @@ div#raspi_monitor #RASPI {
 
 #save_queue_button {
     background-color: lightgreen;
-    font-width: bolder;
+    /*font-weight: bolder;*/
 }
 
 #save_queue_button {
     background-color: lightgreen;
-    font-width: bolder;
+    /*font-weight: bolder;*/
 }
 
 #save_queue_button:hover {
     background-color: green;
-    font-width: bolder;
+    /*font-weight: bolder;*/
 }
 
 form#queue_form {
@@ -409,7 +409,7 @@ form#queue_form {
 
 .big_label {
     font-size: larger;
-    font-width: bolder;
+    /*font-weight: bolder;*/
 }
 
 span.queue_deleter {

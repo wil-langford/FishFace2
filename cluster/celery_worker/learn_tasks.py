@@ -1,18 +1,6 @@
-import os
-import time
-
-import sklearn
 import sklearn.preprocessing as skp
 import sklearn.cluster as skc
-
 import celery
-import fishface_celery
-
-
-celery_app = fishface_celery.app
-
-HOME = os.path.expanduser('~')
-ALT_ROOT = HOME
 
 
 @celery.shared_task(name="learn.cluster_hu_moments")

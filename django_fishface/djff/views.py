@@ -4,7 +4,6 @@ import datetime
 import json
 import random
 import math
-import copy
 
 import cv2
 import pytz
@@ -468,10 +467,10 @@ def cq_interface(request):
 
 
 def cjqs(request):
-    cjqs = CaptureJobQueue.objects.all()
-    cjq_ids = [cjq.id for cjq in cjqs]
+    cjqs_ = CaptureJobQueue.objects.all()
+    cjq_ids = [cjq.id for cjq in cjqs_]
     queues = dict()
-    for cjq in cjqs:
+    for cjq in cjqs_:
         queues[cjq.id] = {
             'id': cjq.id,
             'name': cjq.name,

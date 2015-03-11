@@ -1,12 +1,11 @@
 import unittest
 import time
 import random
-import math
 
 try:
-    import RobustPowerSupply
-except:
-    import FakeHardware as ik
+    from ff_celery import RobustPowerSupply, FakeHardware
+except ImportError:
+    import ff_celery.FakeHardware as ik
 
 VOLTAGE_ALLOWABLE_ERROR = 0.005
 CURRENT_ALLOWABLE_ERROR = 0.005

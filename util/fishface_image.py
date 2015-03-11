@@ -213,7 +213,7 @@ class FFImage(object):
         total = dict()
         if self._array is not None:
             total['array'] = self._array.nbytes
-        total['jpeg_string'] = sys.getsizeof(self.jpeg_string)
+        total['jpeg_string'] = sys.getsizeof(self.source_image_string)
         total['png_string'] = sys.getsizeof(self.png_string)
         total['meta'] = sum(sys.getsizeof(k) + sys.getsizeof(v) for k, v in self.meta.iteritems())
         total['log'] = sum(sys.getsizeof(v) for v in self.meta['log'])

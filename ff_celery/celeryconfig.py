@@ -1,11 +1,12 @@
 import os
-import logging
 
 from kombu import Queue, Exchange
 
+from util.fishface_logging import logger
+
 # Groundwork
 
-_HOME = os.environ['HOME']
+_HOME = os.path.expanduser('~')
 _ALT_ROOT = _HOME
 
 _password_filename = os.path.join(_ALT_ROOT, 'etc', 'redis', 'redis_password')
@@ -16,7 +17,7 @@ try:
     with open(_password_filename, 'rt') as f:
         _redis_password = f.read().strip()
 except IOError:
-    logging.warning('No redis password found.  Disabling redis authentication.')
+    logger.warning('No redis password found.  Disabling redis authentication.')
     _redis_password = False
 
 
@@ -45,7 +46,7 @@ class FishFaceRouter(object):
         route = None
         task_category = task.split('.')[0]
 
-        if task_category in ['drone', 'django', 'learn', 'cjc']:
+        if task_category in ['drone', 'django', 'learn', 'cjc', 'results']:
             route = {
                 'exchange': 'fishface',
                 'exchange_type': 'direct',
@@ -76,6 +77,7 @@ CELERY_QUEUES = (
     Queue('default', Exchange('default'), routing_key='default'),
     Queue('drone', fishface_exchange, routing_key='fishface.drone'),
     Queue('django', fishface_exchange, routing_key='fishface.django'),
+    Queue('results', fishface_exchange, routing_key='fishface.results'),
     Queue('learn', fishface_exchange, routing_key='fishface.learn'),
     Queue('cjc', fishface_exchange, routing_key='fishface.cjc'),
 )

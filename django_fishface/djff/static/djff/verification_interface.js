@@ -190,8 +190,7 @@ $(document).ready(function() {
     ff.window.on('mouse:down', function(options) {
         var pointer = ff.window.getPointer(options.e);
         var point = new fabric.Point(pointer.x, pointer.y);
-        var tile_index = ff.window.coords_to_index(point);
-        ff.DOWN_MOUSE_TILE_INDEX = tile_index;
+        ff.DOWN_MOUSE_TILE_INDEX = ff.window.coords_to_index(point);
     });
 
     ff.window.on('mouse:up', function(options) {
@@ -247,7 +246,7 @@ $(document).ready(function() {
         });
 
         ff.window.renderAll();
-    }
+    };
 
     $('#verification_form').on('submit', function (event) {
         event.preventDefault();

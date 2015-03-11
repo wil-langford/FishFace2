@@ -125,7 +125,7 @@ $(document).ready(function(){
             'xp_id': xp_id,
             'species': window.ff.xp_species[xp_id]
         }, repop_in_milliseconds(1000))
-    }
+    };
 
     function repop() {
         window.ff.send_to_raspi({'command': 'job_status'}, repopulate_fields);

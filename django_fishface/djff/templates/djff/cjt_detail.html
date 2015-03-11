@@ -30,7 +30,7 @@ $(document).ready(function() {
        var startup_delay = $('input#id_startup_delay');
        if (Number($(this).val()) <= 0) {
            window.ff.cached_startup_delay = Number(startup_delay.val());
-           console.log('disabling after cached delay: ' + window.ff.cached_startup_delay)
+           console.log('disabling after cached delay: ' + window.ff.cached_startup_delay);
            startup_delay.val(0);
            startup_delay.attr('disabled', 'true');
        } else {

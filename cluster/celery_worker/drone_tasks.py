@@ -1,19 +1,13 @@
-import os
 import time
 
 import cv2
-
 import numpy as np
-
 from scipy import ndimage
 from scipy import stats
 
-HOME = os.environ['HOME']
-ALT_ROOT = HOME
 
 import celery
-from fishface_image import FFImage, ff_operation, ff_annotation
-from fishface_celery import app as celery_app
+from util.fishface_image import FFImage, ff_operation, ff_annotation
 
 #
 # Convenience functions
@@ -34,11 +28,6 @@ def kernel(radius=3, shape='circle'):
 @celery.shared_task(name='drone.return_passthrough')
 def return_passthrough(*args, **kwargs):
     return {'args': args, 'kwargs': kwargs}
-
-
-def test_write_image(ff_image):
-    full_path = os.path.join(ALT_ROOT, 'test_out', ff_image.meta['filename'])
-    cv2.imwrite(full_path, ff_image.array)
 
 
 def image_from_file(file_path):
@@ -261,20 +250,6 @@ def get_fish_contour(data, cal):
     image.meta['timestamp'] = time.time()
 
     return image.meta
-
-
-
-def test_normalize_test_data(test_data_dir='test_data_dir'):
-    data_dir = os.path.join(ALT_ROOT, test_data_dir)
-
-    data = [name for name in os.listdir(data_dir) if
-            'CJR-0' in name and os.path.isfile(os.path.join(data_dir, name))]
-
-    for jpeg_filename in data:
-        image = cv2.imread(os.path.join(data_dir, jpeg_filename))
-        ff_image = FFImage(image)
-        ff_image.meta['filename'] = jpeg_filename
-        test_write_image(ff_image)
 
 
 class ImageProcessingException(Exception):

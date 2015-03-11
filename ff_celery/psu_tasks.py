@@ -2,11 +2,13 @@ import os
 import time
 
 import celery
-from fishface_celery import app as celery_app
 
-from raspi_logging import logger
+from fishface_celery import celery_app
+from util.fishface_logging import logger
+
 
 REAL_HARDWARE = not os.path.isfile('FAKE_THE_HARDWARE')
+
 
 class PowerSupply(object):
     def __init__(self, real=True):
@@ -19,11 +21,13 @@ class PowerSupply(object):
 
         if self.real:
             logger.info('Running with real power supply.')
-            import RobustPowerSupply
+            from ff_celery import RobustPowerSupply
+
             self.psu_class = RobustPowerSupply.RobustPowerSupply
         else:
             logger.warning('Running with fake power supply.')
-            import FakeHardware
+            from ff_celery import FakeHardware
+
             self.psu_class = FakeHardware.HP6652a
 
     def open(self):
@@ -48,6 +52,9 @@ class PowerSupply(object):
 
         return True
 
+    def reset(self):
+        self.set_psu(reset=True)
+
     def set_psu(self, voltage=False, current=False, output=False, reset=False):
         if self.psu is None:
             return False
@@ -56,7 +63,7 @@ class PowerSupply(object):
             voltage = 0
             current = 0
             output = False
-            power_supply.reset()
+            self.psu.reset()
 
         if voltage:
             logger.info("setting psu voltage to {} V".format(
@@ -85,7 +92,7 @@ class PowerSupply(object):
 
         return True
 
-    def report(self):
+    def report(self, extra_report_data=None):
         if self.psu is None:
             return False
         else:
@@ -96,11 +103,15 @@ class PowerSupply(object):
                 'output': self.psu.output,
             }
 
-        celery_app.send_task('django.power_supply_report', kwargs = state)
+        if extra_report_data is not None:
+            state['extra_report_data'] = extra_report_data
+
+        celery_app.send_task('django.power_supply_report', kwargs=state)
 
         return True
 
-power_supply = PowerSupply(REAL_HARDWARE)
+
+power_supply = PowerSupply(real=REAL_HARDWARE)
 power_supply.open()
 
 
@@ -110,8 +121,8 @@ def set_psu(*args, **kwargs):
 
 
 @celery.shared_task(name="psu.report")
-def report(*args, **kwargs):
-    power_supply.report(*args, **kwargs)
+def report(extra_report_data=None):
+    power_supply.report(extra_report_data)
 
 
 class PowerSupplyError(Exception):

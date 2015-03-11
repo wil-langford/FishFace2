@@ -7,7 +7,7 @@ $(document).ready(function(){
         $('textarea#queue_comment').val('');
         cq_util.no_jobs_placeholder();
         window.ff.cjq_id = 0;
-    }
+    };
 
     function delete_queue(id) {
         if (window.ff.cjq_id == id) {

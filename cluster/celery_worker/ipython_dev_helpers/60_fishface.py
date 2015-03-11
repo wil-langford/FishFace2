@@ -1,9 +1,8 @@
 import os
 import site
-import celery
 
-import fishface_image
-from fishface_celery import app as celery_app
+from util import fishface_image
+
 
 HOME = os.path.expanduser('~')
 ALT_ROOT = HOME

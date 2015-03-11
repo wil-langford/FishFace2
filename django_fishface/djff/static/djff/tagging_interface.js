@@ -424,7 +424,7 @@ $(document).ready(function() {
                 id: '0',
                 name: 'RESEARCHER NOT FOUND',
                 tag_score: 0
-            }
+            };
 
             for (var i in window.ff.researchers) {
                 if (window.ff.researchers[i].id == researcher_id) {
@@ -432,7 +432,7 @@ $(document).ready(function() {
                 }
             }
 
-            console.log('researcher:')
+            console.log('researcher:');
             console.log(researcher);
 
             $('input#researcher_id').attr('value', researcher_id);

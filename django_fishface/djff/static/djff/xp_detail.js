@@ -86,7 +86,7 @@ $(document).ready(function() {
             this.arrow = new fabric.BuilderArrow(this);
         },
         png_with_angle: function(angle) {
-            this.arrow.update_arrow_with_angle(angle)
+            this.arrow.update_arrow_with_angle(angle);
             this.renderAll();
             return this.toDataURL({
                 format: 'png'
@@ -131,7 +131,7 @@ $(document).ready(function() {
         var bullet = $(this);
         var angle_text = bullet.attr('data-angle');
         if (angle_text != 'None') {
-            var angle = Number(angle_text)
+            var angle = Number(angle_text);
             var data_url = window.ff.builder.png_with_angle(angle);
             bullet.html('<img src="' + data_url + '" />');
         }

@@ -20,7 +20,7 @@ $(document).ready(function(){
 
     window.ff.text_to_seconds = function(text_value) {
         var values = text_value.split(':');
-        var multipliers = [60, 1]
+        var multipliers = [60, 1];
 
         switch(values.length) {
             case 1:
@@ -84,8 +84,7 @@ $(document).ready(function(){
             if (hours   < 10) {hours   = "0"+hours;}
             if (minutes < 10) {minutes = "0"+minutes;}
             if (seconds < 10) {seconds = "0"+seconds;}
-            var time    = hours+':'+minutes+':'+seconds;
-            return time;
+            return hours+':'+minutes+':'+seconds;
         }
     }
 });

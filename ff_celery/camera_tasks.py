@@ -2,18 +2,20 @@ import os
 import time
 import io
 import Queue
-
 import threading
 
 import celery
-from fishface_celery import app as celery_app
 
-from raspi_logging import logger
+from fishface_celery import celery_app
+from util.fishface_logging import logger
+
 
 REAL_HARDWARE = not os.path.isfile('FAKE_THE_HARDWARE')
 
 capture_thread = None
 capture_thread_lock = threading.RLock()
+
+import util.thread_with_heartbeat as thread_with_heartbeat
 
 
 class Camera(object):
@@ -26,7 +28,8 @@ class Camera(object):
             self.cam_class = picamera.PiCamera
         else:
             logger.warning('Running with fake power supply.')
-            import FakeHardware
+            from ff_celery import FakeHardware
+
             self.cam_class = FakeHardware.PiCamera
 
         self.cam = self.cam_class()
@@ -37,7 +40,7 @@ class Camera(object):
         stream = io.BytesIO()
         with self._lock:
             capture_time = float(time.time())
-            self.cam.capture(stream, format='jpeg')
+            self.cam.capture(stream, format_='jpeg')
 
         return (stream, capture_time)
 
@@ -59,113 +62,7 @@ def delay_for_seconds(seconds):
     delay_until(later)
 
 
-class ThreadWithHeartbeat(threading.Thread):
-    """
-    Remember to override the _heartbeat_run(), _pre_run(), and _post_run() methods.
-    """
-
-    def __init__(self, heartbeat_interval=0.2, heartbeat_publish_interval=None,
-                 startup_event=None, *args, **kwargs):
-        super(ThreadWithHeartbeat, self).__init__(*args, **kwargs)
-
-        self._name = None
-
-        self._startup_event = startup_event
-
-        self._heartbeat_count = 0
-        self._heartbeat_timestamp = None
-        self._heartbeat_interval = heartbeat_interval
-        self._heartbeat_log_interval = heartbeat_publish_interval
-        self._heartbeat_lock = threading.Lock()
-
-        self._keep_looping = True
-        self.ready = False
-
-        logger.debug('{} thread initialized.'.format(self.name))
-
-    def run(self):
-        logger.debug('{} thread started.'.format(self.name))
-        try:
-            self._pre_run()
-
-            while self._keep_looping:
-                self._heartbeat_run()
-                self.beat_heart()
-                delay_for_seconds(self._heartbeat_interval)
-        finally:
-            self._post_run()
-
-    def set_ready(self):
-        logger.info('{} thread reports that it is ready.'.format(self.name))
-        self.ready = True
-        if self._startup_event is not None:
-            self._startup_event.set()
-
-    def _heartbeat_run(self):
-        raise NotImplementedError
-
-    def _pre_run(self):
-        self.set_ready()
-
-    def _post_run(self):
-        pass
-
-    def beat_heart(self):
-        with self._heartbeat_lock:
-            self._heartbeat_timestamp = time.time()
-            self._heartbeat_count += 1
-
-        if self._heartbeat_log_interval is not None:
-            if not self._heartbeat_count % self._heartbeat_log_interval:
-                logger.debug('{} thread heartbeat count is {}'.format(self.name,
-                                                                      self._heartbeat_count))
-        self.publish_heartbeat()
-
-    def publish_heartbeat(self):
-        with self._heartbeat_lock:
-            timestamp, count = self._heartbeat_timestamp, self._heartbeat_count
-
-        celery_app.send_task('cjc.thread_heartbeat', kwargs={
-            'name': self.name,
-            'timestamp': timestamp,
-            'count': count,
-        })
-
-    @property
-    def heartbeat_count(self):
-        return self._heartbeat_count
-
-    @property
-    def last_heartbeat(self):
-        return self._heartbeat_timestamp
-
-    @property
-    def last_heartbeat_delta(self):
-        try:
-            return time.time() - self._heartbeat_timestamp
-        except TypeError:
-            return None
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, new_name):
-        if self._name is None:
-            self._name = new_name + "." + str(time.time())
-        else:
-            logger.warning("Tried to rename thread.  Thread names are immutable once set.")
-
-    def abort(self, complete=False):
-        self._keep_looping = False
-        if complete:
-            logger.info('Thread {} complete.  Shutting down.'.format(self.name))
-        else:
-            logger.warning('Thread {} aborted.'.format(self.name))
-
-
-class CaptureThread(ThreadWithHeartbeat):
+class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, *args, **kwargs):
         super(CaptureThread, self).__init__(*args, **kwargs)
         self.name = 'capture_thread'
