@@ -40,13 +40,14 @@ def analyze_images_from_cjr(cjr_id):
                         store_source_image_as='jpg')
     cjr_data = dm.Image.objects.filter(cjr_id=cjr.id)
 
-    for chunk in chunkify(cjr_data, chunk_length=25):
+    for chunk in chunkify(cjr_data, chunk_length=ff_conf.ML_STAGE_1_IMAGES_PER_CHUNK):
         data_list = [(datum.image_file.path, {'image_id': datum.id}) for datum in chunk]
 
         results.append(celery_app.send_task('django.analyze_image_list',
                                             args=(data_list, cal_image)))
 
     return results
+
 
 @celery.shared_task(name='django.analyze_image_list')
 def analyze_image_list(data_list, cal_image):

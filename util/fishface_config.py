@@ -16,7 +16,7 @@ if os.path.isfile('ENABLE_CAMERA'):
         import picamera as camera_module
     else:
         logging.warning('Running with fake camera.')
-        from util import FakeHardware as camera_module
+        from ff_celery import FakeHardware as camera_module
     CAMERA_CLASS = camera_module.PiCamera
 else:
     CAMERA_CLASS = None
@@ -29,7 +29,7 @@ if os.path.isfile('ENABLE_PSU'):
         from util.RobustPowerSupply import RobustPowerSupply as PSU_CLASS
     else:
         logging.warning('Running with fake power supply.')
-        from util.FakeHardware import HP6652a as PSU_CLASS
+        from ff_celery.FakeHardware import HP6652a as PSU_CLASS
 else:
     PSU_CLASS = None
 
@@ -59,3 +59,4 @@ CELERY_QUEUE_NAMES = ['drone', 'django', 'learn', 'cjc', 'results']
 
 ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1 = 2
 ML_RESERVE_DATA_FRACTION_FOR_VERIFICATION = 0.1
+ML_STAGE_1_IMAGES_PER_CHUNK = 25
