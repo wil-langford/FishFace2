@@ -4,40 +4,9 @@ from kombu import Queue, Exchange
 
 from util.fishface_logging import logger
 
+import util.fishface_config as ff_conf
+
 # Groundwork
-
-_HOME = os.path.expanduser('~')
-_ALT_ROOT = _HOME
-
-_password_filename = os.path.join(_ALT_ROOT, 'etc', 'redis', 'redis_password')
-
-
-# Redis password retrieval
-try:
-    with open(_password_filename, 'rt') as f:
-        _redis_password = f.read().strip()
-except IOError:
-    logger.warning('No redis password found.  Disabling redis authentication.')
-    _redis_password = False
-
-
-# Redis hostname retrieval
-try:
-    with open(os.path.join(_ALT_ROOT, 'var', 'run', 'redis.hostname'), 'rt') as f:
-        _redis_hostname = f.read().strip()
-except IOError:
-    _redis_hostname = 'localhost'
-
-
-# The format of the url depends on whether or not we are authenticating
-if _redis_password:
-    _broker_url = 'redis://:{password}@{hostname}'.format(
-        password=_redis_password, hostname=_redis_hostname)
-    _result_url = _broker_url
-else:
-    _broker_url = 'redis://{hostname}'.format(hostname=_redis_hostname)
-    _result_url = _broker_url
-
 
 # Task router based on task name
 class FishFaceRouter(object):
@@ -46,7 +15,7 @@ class FishFaceRouter(object):
         route = None
         task_category = task.split('.')[0]
 
-        if task_category in ['drone', 'django', 'learn', 'cjc', 'results']:
+        if task_category in ff_conf.CELERY_QUEUE_NAMES:
             route = {
                 'exchange': 'fishface',
                 'exchange_type': 'direct',
@@ -64,22 +33,19 @@ class FishFaceRouter(object):
 
 
 # Actual Celery configuration
-BROKER_URL = _broker_url
-CELERY_RESULT_BACKEND = _result_url
+BROKER_URL = ff_conf.CELERY_BROKER_URL
+CELERY_RESULT_BACKEND = ff_conf.CELERY_RESULT_URL
 
-CELERY_ACCEPT_CONTENT = ['pickle']
+CELERY_ACCEPT_CONTENT = ['pickle', 'json']
 CELERY_TASK_SERIALIZER = 'pickle'
 CELERY_RESULT_SERIALIZER = 'pickle'
 
 fishface_exchange = Exchange('fishface')
 
-CELERY_QUEUES = (
-    Queue('default', Exchange('default'), routing_key='default'),
-    Queue('drone', fishface_exchange, routing_key='fishface.drone'),
-    Queue('django', fishface_exchange, routing_key='fishface.django'),
-    Queue('results', fishface_exchange, routing_key='fishface.results'),
-    Queue('learn', fishface_exchange, routing_key='fishface.learn'),
-    Queue('cjc', fishface_exchange, routing_key='fishface.cjc'),
+CELERY_QUEUES = tuple(
+    [Queue('default', Exchange('default'), routing_key='default')] +
+    [Queue(name, fishface_exchange, routing_key='fishface.' + name)
+     for name in ff_conf.CELERY_QUEUE_NAMES]
 )
 
 CELERY_DEFAULT_QUEUE = 'default'

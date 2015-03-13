@@ -3,6 +3,12 @@ import sklearn.cluster as skc
 import celery
 
 
+@celery.shared_task(bind=True, name='learn.debug_task')
+def debug_task(self):
+    print('Request: {0!r}'.format(self.request))
+
+
+
 @celery.shared_task(name="learn.cluster_hu_moments")
 def cluster_hu_moments(hu_moments, n_clusters=40, n_init=10, init='k-means++'):
     try:

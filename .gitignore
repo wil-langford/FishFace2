@@ -81,4 +81,4 @@ django_fishface/djff/static/admin/
 *.ipynb
 
 # debugging for hardware control celery modules
-FAKE_THE_HARDWARE
+FAKE_*

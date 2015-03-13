@@ -9,6 +9,9 @@ import celery
 from fishface_celery import celery_app
 from util.fishface_logging import logger
 
+from util.misc_utilities import delay_until, delay_for_seconds
+
+import util.fishface_config as ff_conf
 
 REAL_HARDWARE = not os.path.isfile('FAKE_THE_HARDWARE')
 
@@ -18,21 +21,16 @@ capture_thread_lock = threading.RLock()
 import util.thread_with_heartbeat as thread_with_heartbeat
 
 
+@celery_app.task(bind=True, name='camera.debug_task')
+def debug_task(self):
+    print('Request: {0!r}'.format(self.request))
+
+
 class Camera(object):
-    def __init__(self, resolution=(2048, 1536), rotation=180):
+    def __init__(self, resolution=ff_conf.CAMERA_RESOLUTION, rotation=ff_conf.CAMERA_ROTATION):
         self._lock = threading.RLock()
 
-        if REAL_HARDWARE:
-            logger.info('Running with real power supply.')
-            import picamera
-            self.cam_class = picamera.PiCamera
-        else:
-            logger.warning('Running with fake power supply.')
-            from ff_celery import FakeHardware
-
-            self.cam_class = FakeHardware.PiCamera
-
-        self.cam = self.cam_class()
+        self.cam = ff_conf.CAMERA_CLASS()
         self.cam.resolution = resolution
         self.cam.rotation = rotation
 
@@ -43,23 +41,6 @@ class Camera(object):
             self.cam.capture(stream, format_='jpeg')
 
         return (stream, capture_time)
-
-camera = Camera()
-
-# Move this into the yet-to-be-implemented scheduler
-# camera.open()
-
-
-def delay_until(unix_timestamp):
-    now = time.time()
-    while now < unix_timestamp:
-        time.sleep(unix_timestamp - now)
-        now = time.time()
-
-
-def delay_for_seconds(seconds):
-    later = time.time() + seconds
-    delay_until(later)
 
 
 class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
@@ -88,10 +69,11 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
 
             image = stream.read()
 
-            celery_app.send_task('django.post_image', kwargs={
+            celery_app.send_task('results.post_image', kwargs={
                 'image': image,
                 'requested_timestamp': self._next_capture_time,
-                'actual_timestamp': timestamp
+                'actual_timestamp': timestamp,
+
             })
 
             self.queue.task_done()

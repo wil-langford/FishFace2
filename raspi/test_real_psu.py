@@ -2,10 +2,7 @@ import unittest
 import time
 import random
 
-try:
-    from ff_celery import RobustPowerSupply, FakeHardware
-except ImportError:
-    import ff_celery.FakeHardware as ik
+import util.fishface_config as ff_conf
 
 VOLTAGE_ALLOWABLE_ERROR = 0.005
 CURRENT_ALLOWABLE_ERROR = 0.005
@@ -32,7 +29,7 @@ def delay_for_seconds(seconds):
 class CommCheckTest(unittest.TestCase):
 
     def setUp(self):
-        self.psu = RobustPowerSupply.RobustPowerSupply()
+        self.psu = ff_conf.PSU_CLASS()
         self.psu.voltage = 0
         self.psu.current = MAX_CURRENT
         self.output = True

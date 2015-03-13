@@ -25,9 +25,9 @@ def kernel(radius=3, shape='circle'):
     return cv2.getStructuringElement(shape, (radius * 2 + 1, radius * 2 + 1))
 
 
-@celery.shared_task(name='drone.return_passthrough')
-def return_passthrough(*args, **kwargs):
-    return {'args': args, 'kwargs': kwargs}
+@celery.shared_task(bind=True, name='drone.debug_task')
+def debug_task(self):
+    print('Request: {0!r}'.format(self.request))
 
 
 def image_from_file(file_path):

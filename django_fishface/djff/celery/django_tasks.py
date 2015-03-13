@@ -11,11 +11,12 @@ import django.db.models as ddm
 from util.fishface_image import FFImage
 from ff_celery.fishface_celery import celery_app
 
+import util.fishface_config as ff_conf
 
-# used for testing
-@celery.shared_task(name='django.return_passthrough')
-def return_passthrough(*args, **kwargs):
-    return {'args': args, 'kwargs': kwargs}
+
+@celery_app.task(bind=True, name='django.debug_task')
+def debug_task(self):
+    print('Request: {0!r}'.format(self.request))
 
 
 @celery.shared_task(name='django.analyze_cjr_images')
@@ -48,7 +49,8 @@ def analyze_cjr_images(cjr_ids):
 
 
 @celery.shared_task(name='django.train_classifier')
-def train_classifier(minimum_verifications=2, reserve_for_ml_verification=0.1):
+def train_classifier(minimum_verifications=ff_conf.ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1,
+                     reserve_for_ml_verification=ff_conf.ML_RESERVE_DATA_FRACTION_FOR_VERIFICATION):
     eligible_image_ids = frozenset([i.id for i in dm.Image.objects.annotate(
         analysis_count=ddm.Count('imageanalysis')
     ).filter(

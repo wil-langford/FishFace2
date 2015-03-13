@@ -21,12 +21,12 @@ class PowerSupply(object):
 
         if self.real:
             logger.info('Running with real power supply.')
-            from ff_celery import RobustPowerSupply
+            from util import RobustPowerSupply
 
             self.psu_class = RobustPowerSupply.RobustPowerSupply
         else:
             logger.warning('Running with fake power supply.')
-            from ff_celery import FakeHardware
+            from util import FakeHardware
 
             self.psu_class = FakeHardware.HP6652a
 
