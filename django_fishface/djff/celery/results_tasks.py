@@ -2,7 +2,7 @@ import os
 import datetime
 
 import celery
-
+import pytz
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_fishface.settings')
 import django_fishface.djff.models as dm
@@ -82,6 +82,28 @@ def post_image(image_data, meta):
     image = dm.Image(xp=xp, **image_config)
     image.image_file = image_data
     image.save()
+
+
+@celery.shared_task(name='results.new_cjr')
+def new_cjr(xp_id, voltage, current, start_timestamp):
+    cjr = dm.CaptureJobRecord()
+
+    cjr.xp_id = xp_id
+    cjr.voltage = voltage
+    cjr.current = current
+
+    cjr.running = True
+
+    cjr.job_start = datetime.datetime.utcfromtimestamp(
+        float(start_timestamp)).replace(tzinfo=pytz.utc)
+
+    cjr.save()
+
+    return {
+        'cjr_id': cjr.id,
+        'species': cjr.xp.species.shortname
+    }
+
 
 
 class AnalysisImportError(Exception):
