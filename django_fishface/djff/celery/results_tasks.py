@@ -99,11 +99,12 @@ def new_cjr(xp_id, voltage, current, start_timestamp):
 
     cjr.save()
 
-    return {
-        'cjr_id': cjr.id,
-        'species': cjr.xp.species.shortname
-    }
+    return cjr.id
 
+
+@celery.shared_task(name='results.cjr_deathcry')
+def cjr_deathcry(deathcry):
+    raise NotImplementedError
 
 
 class AnalysisImportError(Exception):

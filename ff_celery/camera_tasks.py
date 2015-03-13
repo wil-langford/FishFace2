@@ -116,7 +116,7 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
 
 
 @celery.shared_task(name="camera.push_capture_request")
-def queue_capture_request(requested_capture_timestamp):
+def queue_capture_request(requested_capture_timestamp, meta):
     global capture_thread, capture_thread_lock
     with capture_thread_lock:
         if capture_thread is None:
@@ -126,7 +126,7 @@ def queue_capture_request(requested_capture_timestamp):
                 logger.error("Couldn't create capture thread.")
 
     if capture_thread is not None and capture_thread.ready:
-        capture_thread.push_capture_request(requested_capture_timestamp)
+        capture_thread.push_capture_request((requested_capture_timestamp, meta))
     else:
         logger.error("Tried to push request, but capture thread not ready.")
 
@@ -146,7 +146,6 @@ def start_capture_thread():
         return True
     except celery.exceptions.TimeoutError:
         return False
-
 
 
 @celery.shared_task(name='camera.stop_capture_thread')
