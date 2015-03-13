@@ -11,6 +11,8 @@ import django.db.models as ddm
 from util.fishface_image import FFImage
 from ff_celery.fishface_celery import celery_app
 
+from util.misc_utilities import chunkify
+
 import util.fishface_config as ff_conf
 
 
@@ -19,33 +21,43 @@ def debug_task(self):
     print('Request: {0!r}'.format(self.request))
 
 
-@celery.shared_task(name='django.analyze_cjr_images')
-def analyze_cjr_images(cjr_ids):
+@celery.shared_task(name='django.analyze_images_from_cjr_list')
+def analyze_images_from_cjr_list(cjr_ids):
     results = list()
 
-    if not isinstance(cjr_ids, (list, tuple)):
-        cjr_ids = [cjr_ids]
-
     for cjr_id in cjr_ids:
-        cjr = dm.CaptureJobRecord.objects.get(pk=cjr_id)
-        cal_image = FFImage(source_filename=cjr.cal_image.image_file.path,
-                            store_source_image_as='jpg')
-        cjr_data = dm.Image.objects.filter(cjr_id=cjr.id)
-        ff_images = [
-            FFImage(source_filename=datum.image_file.path,
-                    meta={'image_id': datum.id})
-            for datum in cjr_data
-        ]
-
-        for ff_image in ff_images:
-            results.append(
-                celery.chain(
-                    celery_app.signature('drone.get_fish_contour', args=(ff_image, cal_image)),
-                    celery_app.signature('results.store_analyses')
-                ).apply_async()
-            )
+        results.append(celery_app.send_task('django.analyze_images_from_cjr', args=(cjr_id,)))
 
     return results
+
+
+@celery.shared_task(name='django.analyze_images_from_cjr')
+def analyze_images_from_cjr(cjr_id):
+    results = list()
+
+    cjr = dm.CaptureJobRecord.objects.get(pk=cjr_id)
+    cal_image = FFImage(source_filename=cjr.cal_image.image_file.path,
+                        store_source_image_as='jpg')
+    cjr_data = dm.Image.objects.filter(cjr_id=cjr.id)
+
+    for chunk in chunkify(cjr_data, chunk_length=25):
+        data_list = [(datum.image_file.path, {'image_id': datum.id}) for datum in chunk]
+
+        results.append(celery_app.send_task('django.analyze_image_list',
+                                            args=(data_list, cal_image)))
+
+    return results
+
+@celery.shared_task(name='django.analyze_image_list')
+def analyze_image_list(data_list, cal_image):
+    return [
+        celery.chain(
+            celery_app.signature('drone.get_fish_contour', args=(FFImage(
+                source_filename=filename, meta=meta), cal_image)),
+            celery_app.signature('results.store_analyses')
+        ).apply_async()
+        for filename, meta in data_list
+    ]
 
 
 @celery.shared_task(name='django.train_classifier')

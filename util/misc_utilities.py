@@ -29,3 +29,10 @@ def return_text_file_contents(file_path, strip=True):
                 return f.read()
     except IOError:
         logging.warning("Couldn't read file: {}".format(file_path))
+
+
+def chunkify(chunkable, chunk_length=1):
+    while chunkable:
+        chunk = chunkable[:chunk_length]
+        chunkable = chunkable[chunk_length:]
+        yield chunk
