@@ -14,8 +14,8 @@
             $('#cjt_list_placeholder').remove();
         }
 
-        for (idx in cjt_ids) {
-            cjt_id = cjt_ids[idx];
+        for (var idx in cjt_ids) {
+            var cjt_id = cjt_ids[idx];
             window.ff.cq_util.append_cjt_li_chunk(
                 "cjt_list", cjt_id,
                 false,
