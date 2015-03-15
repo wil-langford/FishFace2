@@ -1,16 +1,16 @@
 import os
 import datetime
 
-import celery
 import pytz
 
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_fishface.settings')
-import django_fishface.djff.models as dm
+import djff.models as dm
 import django.utils.timezone as dut
 import django.shortcuts as ds
 
-import util.fishface_config as ff_conf
-from util.fishface_logging import logger
+import celery
+from djff.celery.django_celery import celery_app
 
 
 @celery.shared_task(bind=True, name='results.debug_task')
@@ -61,7 +61,6 @@ def store_analyses(metas):
 
         analysis_config['analysis_datetime'] = datetime.datetime.utcfromtimestamp(
             float(analysis_config['analysis_datetime'])).replace(tzinfo=dut.utc)
-
 
         # whatever remains in the meta variable gets stored here
         analysis_config['meta_data'] = meta

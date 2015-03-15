@@ -105,30 +105,46 @@ $(document).ready(function(){
     }
 
     function push_entire_queue_to_raspi() {
-        queue_array = cq_util.get_queue_array();
+        var queue_array = cq_util.get_queue_array();
         if (queue_array != []) {
-            xp_id = get_xp_id();
-            window.ff.send_to_raspi({
-                'command': 'set_queue',
-                'queue': JSON.stringify(queue_array),
-                'xp_id': xp_id,
-                'species': window.ff.xp_species[xp_id]
-            }, repop_in_milliseconds(1000))
+            var xp_id = get_xp_id();
+
+            window.ff.celery_async('cjc.set_queue', repop_in_milliseconds(1000),
+                false,
+                {
+                    queue: JSON.stringify(queue_array),
+                    xp_id: xp_id,
+                    species: window.ff.xp_species[xp_id]
+                }
+            );
         }
     }
 
     window.ff.cq_util.clear_queue = function() {
         var xp_id = get_xp_id();
-        window.ff.send_to_raspi({
-            'command': 'set_queue',
-            'queue': JSON.stringify([]),
-            'xp_id': xp_id,
-            'species': window.ff.xp_species[xp_id]
-        }, repop_in_milliseconds(1000))
+
+        window.ff.celery_async('cjc.set_queue', repop_in_milliseconds(1000),
+            false,
+            {
+                queue: JSON.stringify([]),
+                xp_id: xp_id,
+                species: window.ff.xp_species[xp_id]
+            }
+        );
+
     };
 
     function repop() {
-        window.ff.send_to_raspi({'command': 'job_status'}, repopulate_fields);
+        window.ff.celery_async('cjc.set_queue', repop_in_milliseconds(1000),
+            false,
+            {
+                queue: JSON.stringify(queue_array),
+                xp_id: xp_id,
+                species: window.ff.xp_species[xp_id]
+            }
+        );
+
+        window.ff.celery_async('cjc.complete_status', repopulate_fields, false, true);
     }
 
     function repop_in_milliseconds(msec) {
@@ -136,12 +152,8 @@ $(document).ready(function(){
         return function() {};
     }
 
-    function pause_queue() {
-        window.ff.send_to_raspi({'command': 'pause_queue'}, repop_in_milliseconds(1000))
-    }
-
     function abort_all() {
-        window.ff.send_to_raspi({'command': 'abort_all'}, repop_in_milliseconds(2000))
+        window.ff.celery_async('cjc.abort_all', repop_in_milliseconds(2000));
     }
 
     function start_periodic_monitor() {
@@ -200,11 +212,11 @@ $(document).ready(function(){
         },
 
         over: function(event, ui) {
-            keep_job_in_queue = 1;
+            window.ff.keep_job_in_queue = 1;
         },
 
         out: function(event, ui) {
-            keep_job_in_queue = 0;
+            window.ff.keep_job_in_queue = 0;
         },
 
         update: function(event, ui) {
@@ -225,7 +237,7 @@ $(document).ready(function(){
             }
         },
         beforeStop: function(event, ui) {
-            if (keep_job_in_queue == 0) {
+            if (window.ff.keep_job_in_queue == 0) {
                 ui.item.remove();
 
                 if (cq_util.get_queue_array().length == 0) {
@@ -237,20 +249,18 @@ $(document).ready(function(){
                     start_periodic_monitor();
                 }
             } else {
-                newItem = ui.item;
-                attrib_job_spec = ui.helper.attr('data-attrib_job_spec');
+                window.ff.new_item = ui.item;
+                window.ff.attrib_job_spec = ui.helper.attr('data-attrib_job_spec');
             }
         },
         receive: function(event, ui) {
-            $(newItem).attr('data-attrib_job_spec', attrib_job_spec);
-            keep_job_in_queue = 1;
+            $(window.ff.new_item).attr('data-attrib_job_spec', window.ff.attrib_job_spec);
+            window.ff.keep_job_in_queue = 1;
         },
         placeholder: "ui_sortable_placeholder"
     });
 
     // Executable stuff
-    date_format = 'YYYY-MM-DD HH:mm:ss.SSZZ';
-
     window.fishface_monitoring = false;
 
     $("#xp_select_form input:radio:last").attr('checked', true);

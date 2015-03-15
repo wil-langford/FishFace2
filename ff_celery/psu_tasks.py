@@ -6,35 +6,20 @@ import celery
 from fishface_celery import celery_app
 from util.fishface_logging import logger
 
-
-REAL_HARDWARE = not os.path.isfile('FAKE_THE_HARDWARE')
-
+import util.fishface_config as ff_conf
 
 class PowerSupply(object):
-    def __init__(self, real=True):
-        self.real = bool(real)
-
+    def __init__(self):
         self.voltage = None
         self.current = None
         self.output = None
         self.psu = None
 
-        if self.real:
-            logger.info('Running with real power supply.')
-            from util import RobustPowerSupply
-
-            self.psu_class = RobustPowerSupply.RobustPowerSupply
-        else:
-            logger.warning('Running with fake power supply.')
-            from util import FakeHardware
-
-            self.psu_class = FakeHardware.HP6652a
-
     def open(self):
         if self.psu is not None:
             return False
 
-        self.psu = self.psu_class()
+        self.psu = ff_conf.PSU_CLASS()
         self.voltage = self.psu.voltage
         self.current = self.psu.current
         self.output = self.psu.output
@@ -110,17 +95,24 @@ class PowerSupply(object):
         return True
 
 
-power_supply = PowerSupply(real=REAL_HARDWARE)
+power_supply = PowerSupply()
 power_supply.open()
-
 
 @celery.shared_task(name="psu.set_psu")
 def set_psu(*args, **kwargs):
+    global power_supply
     power_supply.set_psu(*args, **kwargs)
+
+
+@celery.shared_task(name='psu.reset_psu')
+def reset_psu():
+    global power_supply
+    power_supply.set_psu(reset=True)
 
 
 @celery.shared_task(name="psu.report")
 def report(extra_report_data=None):
+    global power_supply
     power_supply.report(extra_report_data)
 
 

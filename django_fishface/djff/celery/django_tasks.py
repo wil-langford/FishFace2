@@ -1,15 +1,13 @@
 import os
 import random
 
-import celery
-
-
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_fishface.settings')
-import django_fishface.djff.models as dm
+import djff.models as dm
 import django.db.models as ddm
 
 from util.fishface_image import FFImage
-from ff_celery.fishface_celery import celery_app
+import celery
+from djff.celery.django_celery import celery_app
 
 from util.misc_utilities import chunkify
 

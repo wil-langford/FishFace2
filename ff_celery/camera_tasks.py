@@ -14,8 +14,6 @@ from util.misc_utilities import delay_until, delay_for_seconds
 
 import util.fishface_config as ff_conf
 
-REAL_HARDWARE = not os.path.isfile('FAKE_THE_HARDWARE')
-
 capture_thread = None
 capture_thread_lock = threading.RLock()
 
@@ -163,6 +161,11 @@ def stop_capture_thread(force=False):
             return True
     else:
         return False
+
+
+@celery.shared_task(name='camera.abort')
+def abort():
+    stop_capture_thread(force=True)
 
 
 class CameraError(Exception):

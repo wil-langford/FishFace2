@@ -48,11 +48,11 @@ $(document).ready(function(){
         },
 
         over: function(event, ui) {
-            keep_job_in_queue = 1;
+            window.ff.keep_job_in_queue = 1;
         },
 
         out: function(event, ui) {
-            keep_job_in_queue = 0;
+            window.ff.keep_job_in_queue = 0;
         },
 
         update: function(event, ui) {
@@ -66,17 +66,17 @@ $(document).ready(function(){
             }
         },
         beforeStop: function(event, ui) {
-            if (keep_job_in_queue == 0) {
+            if (window.ff.keep_job_in_queue == 0) {
                 ui.item.remove();
                 cq_util.no_jobs_placeholder();
             } else {
-                newItem = ui.item;
-                attrib_job_spec = ui.helper.attr('data-attrib_job_spec');
+                window.ff.new_item = ui.item;
+                window.ff.attrib_job_spec = ui.helper.attr('data-attrib_job_spec');
             }
         },
         receive: function(event, ui) {
-            $(newItem).attr('data-attrib_job_spec', attrib_job_spec);
-            keep_job_in_queue = 1;
+            $(window.ff.new_item).attr('data-attrib_job_spec', window.ff.attrib_job_spec);
+            window.ff.keep_job_in_queue = 1;
         }
     });
 
@@ -145,8 +145,6 @@ $(document).ready(function(){
     });
 
     // Executable stuff
-    date_format = 'YYYY-MM-DD HH:mm:ss.SSZZ';
-
     cq_util.refresh_queues();
 
     var main_loop = window.setInterval(

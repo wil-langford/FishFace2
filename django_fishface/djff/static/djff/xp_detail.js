@@ -117,13 +117,20 @@ $(document).ready(function() {
         event.preventDefault();
         if ($('#cal_ready').prop('checked')) {
             $('#cal_ready').prop('checked', false);
-            window.ff.send_to_raspi({
-                command: 'post_calibration_image',
-                species: $('#species').val(),
-                xp_id: $('#xp_id').val()
-            }, function(data, status, jqXHR) {
-                window.ff.refresh_cal_images();
-            });
+
+            window.ff.celery_async('camera.push_capture_request',
+                function(data, status, jqXHR) {
+                    window.ff.refresh_cal_images();
+                },
+                {
+                    requested_capture_timestamp: 0,
+                    meta: {
+                        species: $('#species').val(),
+                        xp_id: $('#xp_id').val()
+                    }
+                },
+                true
+            );
         }
     });
 

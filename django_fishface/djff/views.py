@@ -37,13 +37,10 @@ from ff_celery.fishface_celery import celery_app
 
 import djff.utils.telemetry as telemetry
 
-IMAGERY_SERVER_IP = settings.IMAGERY_SERVER_HOST
-IMAGERY_SERVER_PORT = settings.IMAGERY_SERVER_PORT
-
-IMAGERY_SERVER_URL = 'http://{}:{}/'.format(
-    IMAGERY_SERVER_IP,
-    IMAGERY_SERVER_PORT
-)
+# IMAGERY_SERVER_IP = settings.IMAGERY_SERVER_HOST
+# IMAGERY_SERVER_PORT = settings.IMAGERY_SERVER_PORT
+#
+# IMAGERY_SERVER_URL = 'http://{}:{}/'.format(IMAGERY_SERVER_IP, IMAGERY_SERVER_PORT)
 
 logger = logging.getLogger('djff.views')
 logger.setLevel(logging.DEBUG)
@@ -217,21 +214,22 @@ def receive_telemetry(request):
     return response
 
 
-@csrf_dec.csrf_exempt
-def telemetry_proxy(request):
-    payload = request.POST
-    logger.info('Telemetry proxy payload: {}'.format(payload))
-
-    telemeter = telemetry.Telemeter()
-    pi_reply = telemeter.post_to_raspi(payload)
-
-    return dh.HttpResponse(content=json.dumps(pi_reply), content_type='application/json')
-
+# @csrf_dec.csrf_exempt
+# def telemetry_proxy(request):
+#     payload = request.POST
+#     logger.info('Telemetry proxy payload: {}'.format(payload))
+#
+#     telemeter = telemetry.Telemeter()
+#     pi_reply = telemeter.post_to_raspi(payload)
+#
+#     return dh.HttpResponse(content=json.dumps(pi_reply), content_type='application/json')
+#
 
 def celery_proxy(request):
     payload = request.POST
-    result_return = payload.get('result_return', False)
+    result_return = bool(payload.get('result_return', False))
     result_timeout = payload.get('result_timeout', 15)
+    result_timeout = result_timeout if bool(result_timeout) else 15
 
     celery_result = celery_app.send_task(
         payload['task_name'],

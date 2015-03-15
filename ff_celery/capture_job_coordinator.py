@@ -50,6 +50,11 @@ def complete_status():
     return ecc.complete_status()
 
 
+@celery.shared_task(name='cjc.set_queue')
+def set_queue(**kwargs):
+    ecc.set_queue(**kwargs)
+
+
 class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, startup_delay, interval, duration, voltage, current,
                  xp_id, species,
@@ -148,6 +153,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self._keep_looping = False
         logger.info('Job aborted: {}'.format(self.get_status_dict()))
         self.status = 'aborted'
+        self.post_report()
 
     def get_status_dict(self):
         return {
@@ -240,6 +246,7 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self._keep_looping = False
         logger.info('Job aborted: {}'.format(self.get_status_dict()))
         self.status = 'aborted'
+        self.post_report()
 
     def get_status_dict(self):
         return {
@@ -304,6 +311,19 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
             'queue': self._job_queue if self._job_queue else [],
         }
 
+    def abort_all(self):
+        if self.job_queue:
+            self.job_queue = list()
+        if self.staged_job is not None:
+            self.staged_job = None
+        if self.current_job is not None:
+            self.current_job.abort_job()
+
+            self.current_job = None
+
+        celery_app.send_task('camera.abort').get(timeout=1)
+        celery_app.send_task('psu.reset_psu')
+
     def _heartbeat_run(self):
         # there is no currently running job
         if self.current_job is None:
@@ -339,8 +359,8 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
             current_state = self.current_job.get_status_dict()
 
             if current_state['status'] == 'aborted' or (
-                        self.current_job.job_ends_after is not None and
-                            self.current_job.job_ends_after < time.time()):
+                self.current_job.job_ends_after is not None and
+                self.current_job.job_ends_after < time.time()):
                 self.logger.info("Current job is dead or expired; clearing it.")
                 self.current_job = None
             elif self.job_queue and self.staged_job is None and self.current_job.job_ends_in < 10:

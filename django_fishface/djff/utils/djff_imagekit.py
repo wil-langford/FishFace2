@@ -1,7 +1,7 @@
 import imagekit as ik
 import imagekit.processors as ikp
 
-import djff_math as ffm
+import djff.utils.djff_math as ffm
 
 
 class RotateImage(object):

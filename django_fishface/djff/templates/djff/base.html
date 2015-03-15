@@ -18,9 +18,10 @@
         $(document).ready(function() {
             if (window.ff == undefined) {
                 window.ff = {
-                    telemetry_proxy_url: "{% url 'djff:telemetry_proxy' %}",
+                    celery_proxy_url: "{% url 'djff:celery_proxy' %}",
                     cjt_chunk_base_url: "{% url 'djff:cjt_chunk' 1 %}".slice(0,-2),
-                    csrf_token: "{{ csrf_token }}"
+                    csrf_token: "{{ csrf_token }}",
+                    date_format: 'YYYY-MM-DD HH:mm:ss.SSZZ'
                 };
             }
         });

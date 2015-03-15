@@ -1,20 +1,45 @@
 $(document).ready(function(){
 
-    window.ff.send_to_raspi = function (obj_to_send, success_function) {
+    //window.ff.send_to_raspi = function (obj_to_send, success_function) {
+    //    $.ajax({
+    //    type: 'POST',
+    //    url: window.ff.telemetry_proxy_url,
+    //    data: obj_to_send,
+    //    success: success_function,
+    //    error: function (jqXHR, textStatus, errorThrown) {
+    //        console.log(
+    //            "ERROR:\n  textStatus: " + textStatus +
+    //            "\n  text: " + jqXHR.text +
+    //            "\n  errorThrown: " + errorThrown
+    //        );
+    //        return false;
+    //    },
+    //    dataType: 'json'
+    //    });
+    //};
+
+    window.ff.celery_async = function (task_name, success_function, kwargs,
+                                       result_return, result_timeout) {
         $.ajax({
-        type: 'POST',
-        url: window.ff.telemetry_proxy_url,
-        data: obj_to_send,
-        success: success_function,
-        error: function (jqXHR, textStatus, errorThrown) {
-            console.log(
-                "ERROR:\n  textStatus: " + textStatus +
-                "\n  text: " + jqXHR.text +
-                "\n  errorThrown: " + errorThrown
-            );
-            return false;
-        },
-        dataType: 'json'
+            type: 'POST',
+            url: window.ff.telemetry_proxy_url,
+            data: {
+                'task_name': task_name,
+                'result_return': result_return,
+                'result_timeout': result_timeout,
+                'args': args,
+                'kwargs': kwargs
+            },
+            success: success_function,
+            error: function (jqXHR, textStatus, errorThrown) {
+                console.log(
+                    "ERROR:\n  textStatus: " + textStatus +
+                    "\n  text: " + jqXHR.text +
+                    "\n  errorThrown: " + errorThrown
+                );
+                return false;
+            },
+            dataType: 'json'
         });
     };
 
