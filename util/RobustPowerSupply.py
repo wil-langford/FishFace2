@@ -112,7 +112,6 @@ class RobustPowerSupply(object):
                 except (SerialException, ValueError):
                     pass
 
-
                 if abs(float(self.voltage) - value) < VOLTAGE_TOLERANCE:
                     break
 

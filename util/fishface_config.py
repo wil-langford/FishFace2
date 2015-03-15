@@ -40,17 +40,9 @@ REDIS_PASSWORD = return_text_file_contents(redis_password_file_path)
 REDIS_HOSTNAME = return_text_file_contents(redis_hostname_file_path)
 
 
-CELERY_BROKER_URL = ('redis://' +
-    ':' + str(REDIS_PASSWORD)
-        if REDIS_PASSWORD
-        else '' +
-    '@'
-        if (REDIS_HOSTNAME and REDIS_PASSWORD)
-        else '' +
-    str(REDIS_HOSTNAME)
-        if REDIS_HOSTNAME
-        else ''
-)
+CELERY_BROKER_URL = ('redis://' + ':' + str(REDIS_PASSWORD) if REDIS_PASSWORD else '' +
+                     '@' if (REDIS_HOSTNAME and REDIS_PASSWORD) else '' +
+                     str(REDIS_HOSTNAME) if REDIS_HOSTNAME else '')
 
 CELERY_RESULT_URL = CELERY_BROKER_URL
 

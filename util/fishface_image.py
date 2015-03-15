@@ -220,7 +220,6 @@ class FFImage(object):
 
         return sum(total.itervalues()), total
 
-
     @property
     def details(self):
         return_value = list()
@@ -237,6 +236,7 @@ class FFImage(object):
                 item_value = "{}: {}".format(key, item)
             return_value.append(item_value)
         return '\n'.join(return_value)
+
 
 class InvalidSource(Exception):
     pass
