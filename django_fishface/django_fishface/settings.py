@@ -21,8 +21,6 @@ ALT_ROOT = HOME
 
 # TODO: change for full production
 DB_PASSWD_FILE = os.path.join(BASE_DIR, 'fishface_db_password')
-REDIS_PASSWORD_FILE = os.path.join(ALT_ROOT, 'etc', 'redis', 'redis_password')
-REDIS_HOSTNAME_FILE = os.path.join(ALT_ROOT, 'var', 'run', 'redis.hostname')
 
 # These get imported/generated later.
 DB_PASSWD = None
