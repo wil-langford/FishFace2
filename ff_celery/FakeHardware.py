@@ -12,6 +12,7 @@ MAX_VARIANCE_FACTOR = 0.05
 HOME_DIR = os.getenv("HOME")
 PROJECT_DIR = os.path.join('FishFace2', 'raspi')
 
+
 class PiCamera(object):
     def __init__(self):
         self.resolution = (2048, 1536)
@@ -19,7 +20,7 @@ class PiCamera(object):
 
         self._closed = False
 
-        with open(os.path.join(HOME_DIR, PROJECT_DIR,"sample-DATA.jpg"), 'rb') as f:
+        with open(os.path.join(HOME_DIR, PROJECT_DIR, "sample-DATA.jpg"), 'rb') as f:
             self._fake_image = f.read()
 
     def capture(self, stream, format_='jpeg'):
@@ -136,6 +137,7 @@ class HP6652a(object):
         self.voltage = 0
         self.current = 0
         self.output = False
+
 
 def main():
     cam = PiCamera()
