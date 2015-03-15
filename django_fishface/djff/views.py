@@ -33,6 +33,8 @@ from djff.models import (
     CaptureJobQueue,
 )
 
+from ff_celery.fishface_celery import celery_app
+
 import djff.utils.telemetry as telemetry
 
 IMAGERY_SERVER_IP = settings.IMAGERY_SERVER_HOST
@@ -224,6 +226,25 @@ def telemetry_proxy(request):
     pi_reply = telemeter.post_to_raspi(payload)
 
     return dh.HttpResponse(content=json.dumps(pi_reply), content_type='application/json')
+
+
+def celery_proxy(request):
+    payload = request.POST
+    result_return = payload.get('result_return', False)
+    result_timeout = payload.get('result_timeout', 15)
+
+    celery_result = celery_app.send_task(
+        payload['task_name'],
+        args=payload.get('args', None),
+        kwargs=payload.get('kwargs', None)
+    )
+
+    if result_return:
+        result = celery_result.get(timeout=result_timeout)
+    else:
+        result = False
+
+    return dh.HttpResponse(content=json.dumps(result), content_type='application/json')
 
 
 #

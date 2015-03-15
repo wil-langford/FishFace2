@@ -98,9 +98,8 @@ class PowerSupply(object):
         else:
             state = {
                 'timestamp': time.time(),
-                'current': self.psu.current,
-                'voltage': self.psu.voltage,
-                'output': self.psu.output,
+                'current_meas': self.psu.current_sense,
+                'voltage_meas': self.psu.voltage_sense,
             }
 
         if extra_report_data is not None:

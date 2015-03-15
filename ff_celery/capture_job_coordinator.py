@@ -54,7 +54,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, startup_delay, interval, duration, voltage, current,
                  xp_id, species,
                  *args, **kwargs):
-        super(CaptureJob, self).__init__(*args, **kwargs)
+        super(CaptureJob, self).__init__()
 
         self.status = 'staged'
 
@@ -82,7 +82,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
     def _pre_run(self):
         self.start_timestamp = time.time()
 
-        self.logger.info("starting up job for experiment {}".format(self.xp_id))
+        logger.info("starting up job for experiment {}".format(self.xp_id))
         self.status = 'startup_delay'
 
         celery_app.send_task('set_psu', kwargs={
@@ -91,14 +91,14 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
             'current': self.current,
         })
 
-        self.logger.info("Asking server to create new CJR for XP_{}.".format(self.xp_id))
+        logger.info("Asking server to create new CJR for XP_{}.".format(self.xp_id))
         r_cjr_id = celery_app.send_task('results.new_cjr', args=(
             self.xp_id, self.voltage, self.current, self.start_timestamp))
 
         self.cjr_id = r_cjr_id.get(timeout=ff_conf.CJR_CREATION_TIMEOUT)
 
         self._set_name(self.name[:-10] + str(self.cjr_id))
-        self.logger.info('Preparing capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
+        logger.info('Preparing capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
 
         first_capture_at = self.start_timestamp + self.startup_delay
 
@@ -116,7 +116,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         if self.status == 'running':
             self.status = 'completed'
 
-        celery_app.send_task('results.cjr_deathcry', self.get_status_dict())
+        celery_app.send_task('results.job_status_update', self.get_status_dict())
 
     def _heartbeat_run(self):
         self.status = 'running'
@@ -146,7 +146,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
 
     def abort_job(self):
         self._keep_looping = False
-        self.logger.info('Job aborted: {}'.format(self.get_status_dict()))
+        logger.info('Job aborted: {}'.format(self.get_status_dict()))
         self.status = 'aborted'
 
     def get_status_dict(self):
@@ -172,10 +172,14 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         else:
             return 1000000
 
+    def post_report(self):
+        celery_app.send_task('results.job_status_report', kwargs=self.get_status_dict())
+
 
 class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
-    def __init__(self, duration, voltage, current, *args, **kwargs):
-        super(NonCaptureJob, self).__init__(*args, **kwargs)
+    def __init__(self, duration, voltage, current, start_timestamp=None,
+                 *args, **kwargs):
+        super(NonCaptureJob, self).__init__()
 
         self.status = 'staged'
 
@@ -196,13 +200,15 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self.capture_times = None
         self.job_ends_after = None
 
-        self.start_timestamp = None
+        self.start_timestamp = start_timestamp
         self.stop_timestamp = None
 
     def _pre_run(self):
-        self.start_timestamp = time.time()
+        self.start_timestamp = self.start_timestamp if self.start_timestamp else time.time()
 
-        self.logger.info("starting up job for experiment {}".format(self.xp_id))
+        delay_until(self.start_timestamp)
+
+        logger.info("starting up job for experiment {}".format(self.xp_id))
         self.status = 'startup'
 
         self.controller.set_psu({
@@ -216,7 +222,7 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self.job_ends_after = time.time() + self.duration
 
         self.status = 'running'
-        self.logger.info('starting captureless wait period')
+        logger.info('starting captureless wait period')
 
         self.set_ready()
 
@@ -232,7 +238,7 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
 
     def abort_job(self):
         self._keep_looping = False
-        self.logger.info('Job aborted: {}'.format(self.get_status_dict()))
+        logger.info('Job aborted: {}'.format(self.get_status_dict()))
         self.status = 'aborted'
 
     def get_status_dict(self):
@@ -258,6 +264,10 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         else:
             return 1000000
 
+    def post_report(self):
+        # no need to send updates on what is basically a static job after it starts
+        pass
+
 
 class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, *args, **kwargs):
@@ -266,7 +276,8 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
         self.job_queue = list()
         self._job_queue_lock = threading.RLock()
 
-        self.current_cjr = None
+        self.current_job = None
+        self.staged_job = None
 
         self._complete_status = None
 
@@ -282,12 +293,60 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
             job['xp_id'] = xp_id
             job['species'] = species
 
-        self._job_queue = queue
+        self.job_queue = queue
 
         return True
 
     def complete_status(self):
         return {
-            'current_job': self.current_cjr if self.current_cjr else None,
+            'current_job': self.current_job if self.current_job else None,
+            'staged_job': self.staged_job if self.staged_job else None,
             'queue': self._job_queue if self._job_queue else [],
         }
+
+    def _heartbeat_run(self):
+        # there is no currently running job
+        if self.current_job is None:
+            if self.staged_job is not None:  # there is a staged job
+                logger.info('Promoting staged job.')
+                self.current_job = self.staged_job
+                self.current_job.start()
+                self.staged_job = None
+            else:  # there is no staged job
+                if self.job_queue:  # there are jobs in queue
+                    logger.info('No jobs active or staged, but jobs in queue.')
+                    next_job = self.queue.pop(0)
+                    if next_job['interval'] > 0:
+                        self.current_job = CaptureJob(self, **next_job)
+                    else:
+                        self.current_job = NonCaptureJob(self, **next_job)
+                    self.current_job.start()
+                    logger.debug('Started new current job.')
+
+                else:  # queue is empty
+                    if self.imagery_server.power_supply.output:
+                        logger.info('Shutting down power supply until the next job arrives.')
+                        self.set_psu({
+                            'voltage': 0,
+                            'current': 0,
+                            'enable_output': 0,
+                        })
+
+        # there is a currently running job
+        else:
+            self.logger.debug('Reporting on current job.')
+            self.current_job.post_report()
+            current_state = self.current_job.get_status_dict()
+
+            if current_state['status'] == 'aborted' or (
+                        self.current_job.job_ends_after is not None and
+                            self.current_job.job_ends_after < time.time()):
+                self.logger.info("Current job is dead or expired; clearing it.")
+                self.current_job = None
+            elif self.job_queue and self.staged_job is None and self.current_job.job_ends_in < 10:
+                self.logger.info("Current job ends soon; promoting queued job to staged job.")
+                next_job = self.queue.pop(0)
+                if next_job['interval'] > 0:
+                    self.staged_job = CaptureJob(self, **next_job)
+                else:
+                    self.staged_job = NonCaptureJob(self, **next_job)

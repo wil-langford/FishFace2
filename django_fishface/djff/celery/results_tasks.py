@@ -102,9 +102,33 @@ def new_cjr(xp_id, voltage, current, start_timestamp):
     return cjr.id
 
 
-@celery.shared_task(name='results.cjr_deathcry')
-def cjr_deathcry(deathcry):
-    raise NotImplementedError
+@celery.shared_task(name='results.job_status_report')
+def job_status_report(status, start_timestamp, stop_timestamp, voltage, current, seconds_left,
+                      xp_id, cjr_id, species, total, remaining):
+    cjr = ds.get_object_or_404(dm.CaptureJobRecord, pk=int(cjr_id))
+
+    cjr.running = (status == "running")
+
+    cjr.job_start = dut.datetime.utcfromtimestamp(float(start_timestamp)).replace(tzinfo=dut.utc)
+
+    if stop_timestamp:
+        cjr.job_start = dut.datetime.utcfromtimestamp(
+            float(start_timestamp)).replace(tzinfo=dut.utc)
+
+    cjr.total = int(total)
+    cjr.remaining = int(remaining)
+
+    cjr.save()
+
+
+@celery.shared_task(name='results.power_supply_report')
+def power_supply_log(timestamp, voltage_meas, current_meas, extra_report_data=None):
+    psl = dm.PowerSupplyLog()
+    psl.measurement_datetime = dut.datetime.utcfromtimestamp(
+        float(timestamp)).replace(tzinfo=dut.utc)
+    psl.voltage_meas = voltage_meas
+    psl.current_meas = current_meas
+    psl.save()
 
 
 class AnalysisImportError(Exception):
