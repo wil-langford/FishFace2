@@ -27,7 +27,6 @@ $(document).ready(function(){
                 'task_name': task_name,
                 'result_return': result_return,
                 'result_timeout': result_timeout,
-                'args': args,
                 'kwargs': kwargs
             },
             success: success_function,

@@ -13,9 +13,13 @@ import celery
 from djff.celery.django_celery import celery_app
 
 
-@celery.shared_task(bind=True, name='results.debug_task')
-def debug_task(self):
-    print('Request: {0!r}'.format(self.request))
+@celery_app.task(bind=True, name='results.debug_task')
+def debug_task(self, *args, **kwargs):
+    return '''
+    Request: {0!r}
+    Args: {1}
+    KWArgs: {2}
+    '''.format(self.request, args, kwargs)
 
 
 @celery.shared_task(name='results.store_analyses')

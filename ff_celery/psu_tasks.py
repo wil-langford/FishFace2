@@ -8,6 +8,16 @@ from util.fishface_logging import logger
 
 import util.fishface_config as ff_conf
 
+
+@celery.shared_task(bind=True, name='psu.debug_task')
+def debug_task(self, *args, **kwargs):
+    return '''
+    Request: {0!r}
+    Args: {1}
+    KWArgs: {2}
+    '''.format(self.request, args, kwargs)
+
+
 class PowerSupply(object):
     def __init__(self):
         self.voltage = None

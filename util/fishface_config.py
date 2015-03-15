@@ -39,7 +39,7 @@ CELERY_BROKER_URL = (('redis://' + ':' + str(REDIS_PASSWORD) + '@' if REDIS_PASS
 
 CELERY_RESULT_URL = CELERY_BROKER_URL
 
-CELERY_QUEUE_NAMES = ['drone', 'django', 'learn', 'cjc', 'results']
+CELERY_QUEUE_NAMES = ['drone', 'django', 'learn', 'cjc', 'results', 'psu', 'camera']
 
 
 ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1 = 2

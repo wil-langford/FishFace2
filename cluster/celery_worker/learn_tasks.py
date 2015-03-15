@@ -3,9 +3,13 @@ import sklearn.cluster as skc
 import celery
 
 
-@celery.shared_task(bind=True, name='learn.debug_task')
-def debug_task(self):
-    print('Request: {0!r}'.format(self.request))
+@celery_app.task(bind=True, name='learn.debug_task')
+def debug_task(self, *args, **kwargs):
+    return '''
+    Request: {0!r}
+    Args: {1}
+    KWArgs: {2}
+    '''.format(self.request, args, kwargs)
 
 
 @celery.shared_task(name="learn.cluster_hu_moments")

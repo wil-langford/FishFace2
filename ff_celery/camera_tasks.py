@@ -21,8 +21,12 @@ import util.thread_with_heartbeat as thread_with_heartbeat
 
 
 @celery_app.task(bind=True, name='camera.debug_task')
-def debug_task(self):
-    print('Request: {0!r}'.format(self.request))
+def debug_task(self, *args, **kwargs):
+    return '''
+    Request: {0!r}
+    Args: {1}
+    KWArgs: {2}
+    '''.format(self.request, args, kwargs)
 
 
 class Camera(object):

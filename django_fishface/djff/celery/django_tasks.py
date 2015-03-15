@@ -14,9 +14,13 @@ from util.misc_utilities import chunkify
 import util.fishface_config as ff_conf
 
 
-@celery_app.task(bind=True, name='django.debug_task')
-def debug_task(self):
-    print('Request: {0!r}'.format(self.request))
+@celery.shared_task(bind=True, name='django.debug_task')
+def debug_task(self, *args, **kwargs):
+    return '''
+    Request: {0!r}
+    Args: {1}
+    KWArgs: {2}
+    '''.format(self.request, args, kwargs)
 
 
 @celery.shared_task(name='django.analyze_images_from_cjr_list')

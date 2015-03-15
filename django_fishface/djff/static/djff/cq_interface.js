@@ -135,6 +135,10 @@ $(document).ready(function(){
     };
 
     function repop() {
+        var queue_array = cq_util.get_queue_array();
+        var xp_id = get_xp_id();
+
+
         window.ff.celery_async('cjc.set_queue', repop_in_milliseconds(1000),
             false,
             {
