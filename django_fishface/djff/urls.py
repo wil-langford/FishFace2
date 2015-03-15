@@ -96,9 +96,15 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
-      r'^telemetry_proxy/$',
-      views.telemetry_proxy,
-      name='telemetry_proxy'
+        r'^telemetry_proxy/$',
+        views.telemetry_proxy,
+        name='telemetry_proxy'
+    ),
+
+    dcu.url(
+        r'^celery_proxy/$',
+        views.celery_proxy,
+        name='celery_proxy'
     ),
 
     dcu.url(
@@ -174,5 +180,3 @@ urlpatterns = dcu.patterns(
     ),
 
 )
-
-
