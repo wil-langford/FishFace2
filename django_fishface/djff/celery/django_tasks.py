@@ -14,6 +14,11 @@ from util.misc_utilities import chunkify
 import util.fishface_config as ff_conf
 
 
+@celery.shared_task(name='django.ping')
+def ping():
+    return True
+
+
 @celery.shared_task(bind=True, name='django.debug_task')
 def debug_task(self, *args, **kwargs):
     return '''

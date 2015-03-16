@@ -27,7 +27,8 @@ class ThreadWithHeartbeat(threading.Thread):
         self._heartbeat_lock = threading.Lock()
 
         self._keep_looping = True
-        self.ready = False
+
+        self._thread_start_timestamp = time.time()
 
         logger.debug('{} thread initialized.'.format(self.name))
 
@@ -46,6 +47,7 @@ class ThreadWithHeartbeat(threading.Thread):
     def set_ready(self):
         logger.info('{} thread reports that it is ready.'.format(self.name))
         if self._ready_event is not None:
+            logger.info('Setting startup event per creator request.')
             self._ready_event.set()
 
     def _heartbeat_run(self):
@@ -115,6 +117,17 @@ class ThreadWithHeartbeat(threading.Thread):
     def ready_event(self):
         return self._ready_event
 
+    @property
+    def ready(self):
+        if self._ready_event is None:
+            return True
+        else:
+            return self._ready_event.is_set()
+
+    @property
+    def thread_age(self):
+        return time.time() - self._thread_start_timestamp
+
 
 class ThreadRegistration(object):
     def __init__(self):
@@ -146,16 +159,23 @@ class ThreadRegistry(object):
             else:
                 reg.update(timestamp, count)
 
+        print self.thread_states
+
     def thread_state(self, name):
-        with self._lock():
+        with self._lock:
             return (name, self._registry['name'].state)
 
     @property
     def thread_list(self):
-        with self._lock():
-            return self._registry.viewkeys()
+        with self._lock:
+            return self._registry.keys()
 
     @property
     def thread_states(self):
-        with self._lock():
+        with self._lock:
             return [self.thread_state(name) for name in self.thread_list]
+
+    @property
+    def registry(self):
+        with self._lock:
+            return self._registry

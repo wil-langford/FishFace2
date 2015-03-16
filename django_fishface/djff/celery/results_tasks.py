@@ -1,5 +1,6 @@
 import os
 import datetime
+import io
 
 import pytz
 
@@ -8,18 +9,31 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_fishface.settings')
 import djff.models as dm
 import django.utils.timezone as dut
 import django.shortcuts as ds
+import django.core.files.base as dcfb
 
 import celery
 from djff.celery.django_celery import celery_app
 
 
-@celery_app.task(bind=True, name='results.debug_task')
+@celery.shared_task(name='results.ping')
+def ping():
+    return True
+
+
+@celery.shared_task(bind=True, name='results.debug_task')
 def debug_task(self, *args, **kwargs):
     return '''
     Request: {0!r}
     Args: {1}
     KWArgs: {2}
     '''.format(self.request, args, kwargs)
+
+
+class ResultCache(object):
+    def __init__(self):
+        self.psu_report = None
+
+result_cache = ResultCache()
 
 
 @celery.shared_task(name='results.store_analyses')
@@ -82,9 +96,23 @@ def post_image(image_data, meta):
     for key in 'cjr_id is_cal_image capture_timestamp voltage current'.split(' '):
         image_config[key] = meta[key]
 
+    image_config['capture_timestamp'] = dut.datetime.utcfromtimestamp(
+        float(image_config['capture_timestamp'])).replace(tzinfo=dut.utc)
+
+    if image_config['is_cal_image']:
+        image_config['cjr_id'] = None
+
+    print 'image size:', len(image_data)
+    print 'image type:', type(image_data)
+
     image = dm.Image(xp=xp, **image_config)
-    image.image_file = image_data
+    image.image_file.save(image.image_file.name, dcfb.ContentFile(image_data))
     image.save()
+
+    return {'id': image.id,
+            'cjr_id': image.cjr_id,
+            'xp_id': image.xp_id,
+            'path': image.image_file.name}
 
 
 @celery.shared_task(name='results.new_cjr')
@@ -126,12 +154,28 @@ def job_status_report(status, start_timestamp, stop_timestamp, voltage, current,
 
 @celery.shared_task(name='results.power_supply_report')
 def power_supply_log(timestamp, voltage_meas, current_meas, extra_report_data=None):
+    global result_cache
+    result_cache.psu_report = {
+        'timestamp': timestamp,
+        'voltage_meas': voltage_meas,
+        'current_meas': current_meas
+    }
+
+    if extra_report_data:
+        result_cache.psu_report['extra_report_data'] = extra_report_data
+
     psl = dm.PowerSupplyLog()
     psl.measurement_datetime = dut.datetime.utcfromtimestamp(
         float(timestamp)).replace(tzinfo=dut.utc)
     psl.voltage_meas = voltage_meas
     psl.current_meas = current_meas
     psl.save()
+
+
+@celery.shared_task(name='results.get_result_cache')
+def get_result_cache():
+    global result_cache
+    return result_cache
 
 
 class AnalysisImportError(Exception):

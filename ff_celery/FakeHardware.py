@@ -22,8 +22,9 @@ class PiCamera(object):
 
         with open(os.path.join(HOME_DIR, PROJECT_DIR, "sample-DATA.jpg"), 'rb') as f:
             self._fake_image = f.read()
+            print 'fake image has size {}'.format(len(self._fake_image))
 
-    def capture(self, stream, format_='jpeg'):
+    def capture(self, stream, format='jpeg'):
         # shadowing 'format' can't be helped because
         # of the use of it by picamera's capture().
         # plus, isn't Python's 'format' only used on
@@ -31,12 +32,13 @@ class PiCamera(object):
         if self._closed:
             raise NotImplementedError("Proper errors aren't implemented on fake hardware.")
 
-        if format_ != 'jpeg':
+        if format != 'jpeg':
             raise NotImplementedError("Can only fake jpegs currently.")
 
         if isinstance(stream, io.BytesIO):
             time.sleep(0.2)
             stream.write(self._fake_image)
+            stream.seek(0)
         else:
             raise Exception("Can only write to io.BytesIO streams.")
 

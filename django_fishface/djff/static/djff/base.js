@@ -20,14 +20,19 @@ $(document).ready(function(){
 
     window.ff.celery_async = function (task_name, success_function, kwargs,
                                        result_return, result_timeout) {
+        if (result_timeout == undefined) { result_timeout = 0; }
+        if (result_return == undefined) { result_return = false; }
+        //console.log(task_name + ', ' + result_return + ', ' + result_timeout);
+        //console.log('KWARGS');
+        //console.log(kwargs);
         $.ajax({
             type: 'POST',
-            url: window.ff.telemetry_proxy_url,
+            url: window.ff.celery_proxy_url,
             data: {
                 'task_name': task_name,
                 'result_return': result_return,
                 'result_timeout': result_timeout,
-                'kwargs': kwargs
+                'kwargs': JSON.stringify(kwargs)
             },
             success: success_function,
             error: function (jqXHR, textStatus, errorThrown) {

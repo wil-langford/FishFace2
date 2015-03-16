@@ -176,8 +176,9 @@ class CaptureJobRecord(models.Model):
 
 
 def generate_image_filename(instance, filename):
-    if instance.cjr is None and instance.is_cal_image:
+    if instance.cjr_id is None and instance.is_cal_image:
         cjr_id = 0
+
     elif instance.cjr is None and not instance.is_cal_image:
         raise Exception("The CJR must be set on non-calibration images before setting the image " +
                         "so that the filename can be generated.")
@@ -217,11 +218,11 @@ class Image(models.Model):
     cjr = models.ForeignKey(CaptureJobRecord, null=True, editable=False, )
 
     # Data available at capture time.
-    capture_timestamp = models.DateTimeField('DTG of image capture', default=0)
+    capture_timestamp = models.DateTimeField('DTG of image capture')
     voltage = models.FloatField('voltage at power supply', default=0)
     current = models.FloatField('current at power supply', default=0)
     image_file = models.ImageField('path of image file',
-                                   upload_to=generate_image_filename, null=True)
+                                   upload_to=generate_image_filename)
     is_cal_image = models.BooleanField('is this image a calibration image?', default=False)
 
     bad_tags = models.IntegerField(

@@ -118,15 +118,19 @@ $(document).ready(function() {
         if ($('#cal_ready').prop('checked')) {
             $('#cal_ready').prop('checked', false);
 
-            window.ff.celery_async('camera.push_capture_request',
+            window.ff.celery_async('camera.queue_capture_request',
                 function(data, status, jqXHR) {
-                    window.ff.refresh_cal_images();
+                    window.setTimeout(window.ff.refresh_cal_images, 500)
                 },
                 {
-                    requested_capture_timestamp: 0,
+                    requested_capture_timestamp: Math.floor(Date.now() / 1000),
                     meta: {
                         species: $('#species').val(),
-                        xp_id: $('#xp_id').val()
+                        xp_id: $('#xp_id').val(),
+                        cjr_id: 0,
+                        is_cal_image: true,
+                        voltage: 0,
+                        current: 0
                     }
                 },
                 true

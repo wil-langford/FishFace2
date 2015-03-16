@@ -2,6 +2,7 @@ import threading
 import time
 
 import celery
+from celery.exceptions import TimeoutError
 import redis
 
 from util import thread_with_heartbeat
@@ -22,13 +23,30 @@ redis_client = redis.Redis(
 )
 
 
-@celery_app.task(bind=True, name='cjc.debug_task')
+@celery.shared_task(name='cjc.ping')
+def ping():
+    return True
+
+
+@celery.shared_task(bind=True, name='cjc.debug_task')
 def debug_task(self, *args, **kwargs):
     return '''
     Request: {0!r}
     Args: {1}
     KWArgs: {2}
     '''.format(self.request, args, kwargs)
+
+
+@celery.shared_task(name='cjc.thread_states')
+def thread_states():
+    global thread_registry
+    return thread_registry.thread_states
+
+
+@celery.shared_task(name='cjc.thread_registry')
+def thread_states():
+    global thread_registry
+    return thread_registry.registry
 
 
 @celery.shared_task(name='cjc.thread_heartbeat')
@@ -51,8 +69,21 @@ def queues_length(queue_list=None):
 @celery.shared_task(name='cjc.complete_status')
 def complete_status():
     global ecc
-    return ecc.complete_status()
+    if ecc is not None:
+        return ecc.complete_status()
+    else:
+        return False
 
+
+@celery.shared_task(name='cjc.queues_ping')
+def queues_ping():
+    return [(queue_name, celery_app.send_task(queue_name + '.ping'))
+            for queue_name in ff_conf.CELERY_QUEUE_NAMES]
+
+
+@celery.shared_task(name='cjc.monitor')
+def monitor():
+    return celery.group([celery.signature('results.get_result_cache'), celery.signature('cjc.queues_ping')])()
 
 @celery.shared_task(name='cjc.set_queue')
 def set_queue(**kwargs):

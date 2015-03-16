@@ -20,7 +20,12 @@ capture_thread_lock = threading.RLock()
 import util.thread_with_heartbeat as thread_with_heartbeat
 
 
-@celery_app.task(bind=True, name='camera.debug_task')
+@celery.shared_task(name='camera.ping')
+def ping():
+    return True
+
+
+@celery.shared_task(bind=True, name='camera.debug_task')
 def debug_task(self, *args, **kwargs):
     return '''
     Request: {0!r}
@@ -33,17 +38,28 @@ class Camera(object):
     def __init__(self, resolution=ff_conf.CAMERA_RESOLUTION, rotation=ff_conf.CAMERA_ROTATION):
         self._lock = threading.RLock()
 
-        self.cam = ff_conf.CAMERA_CLASS()
-        self.cam.resolution = resolution
-        self.cam.rotation = rotation
+        self.cam_class = ff_conf.CAMERA_CLASS
+        self.resolution = resolution
+        self.rotation = rotation
+
+        self.open()
 
     def get_image_with_capture_time(self):
         stream = io.BytesIO()
         with self._lock:
             capture_time = float(time.time())
-            self.cam.capture(stream, format_='jpeg')
+            self.cam.capture(stream, format='jpeg')
 
-        return (stream, capture_time)
+        return (stream.read(), capture_time)
+
+    def close(self):
+        self.cam.close()
+        self.cam = None
+
+    def open(self):
+        self.cam = self.cam_class()
+        self.cam.resolution = self.resolution
+        self.cam.rotation = self.rotation
 
 
 class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
@@ -60,25 +76,39 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
         self._next_capture_time = None
         self._next_capture_meta = None
 
+        self._thread_started_at = time.time()
+
     def _heartbeat_run(self):
         if self._next_capture_time is None:
+            print 'Popping next.'
             self._next_capture_time, self._next_capture_meta = self.pop_next_request()
+            if self._next_capture_meta is None:
+                if self.thread_age > 3:
+                    self.abort(complete=True)
+                return
+
+        print self._next_capture_time
+        print self._next_capture_meta
 
         if not self._keep_looping:
+            print 'returning early'
             return
 
         if self._next_capture_time - time.time() < self._wait_for_capture_when_less_than:
             delay_until(self._next_capture_time)
-            stream, timestamp = self.cam.get_image_with_capture_time()
+            image, timestamp = self.cam.get_image_with_capture_time()
 
-            image = stream.read()
+            print "image created with size [{}]".format(len(image))
 
-            celery_app.send_task('results.post_image', kwargs={
-                'image': image,
-                'requested_timestamp': self._next_capture_time,
-                'actual_timestamp': timestamp,
-                'meta': self._next_capture_meta,
-            })
+            meta = self._next_capture_meta
+            meta['capture_timestamp'] = timestamp
+
+            print "meta updated"
+
+            r = celery_app.send_task('results.post_image',
+                                     kwargs={'image_data': image, 'meta': meta})
+
+            print "post post"
 
             self.queue.task_done()
 
@@ -98,9 +128,10 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
         try:
             return self.queue.get_nowait()
         except Queue.Empty:
-            self.abort(complete=True)
+            return (None, None)
 
     def abort(self, complete=False):
+        print "aborting thread.  complete? {}".format(complete)
         # we don't want to accept any more imagery requests after we start the abort
         self.push_capture_request = lambda x: True
 
@@ -117,20 +148,29 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
         self.cam = None
 
 
-@celery.shared_task(name="camera.push_capture_request")
+
+
+@celery.shared_task(name="camera.queue_capture_request")
 def queue_capture_request(requested_capture_timestamp, meta):
+    print requested_capture_timestamp, meta
     global capture_thread, capture_thread_lock
     with capture_thread_lock:
-        if capture_thread is None:
+        if capture_thread is None or not capture_thread.is_alive():
             startup_event = threading.Event()
-            capture_thread = CaptureThread(startup_event=startup_event)
-            if not startup_event.wait(timeout=3):
+            capture_thread = CaptureThread(
+                startup_event=startup_event,
+                heartbeat_interval=0.2
+                )
+            capture_thread.start()
+            if not startup_event.wait(timeout=6):
                 logger.error("Couldn't create capture thread.")
 
     if capture_thread is not None and capture_thread.ready:
         capture_thread.push_capture_request((requested_capture_timestamp, meta))
     else:
         logger.error("Tried to push request, but capture thread not ready.")
+
+    return requested_capture_timestamp, meta
 
 
 @celery.shared_task(name='camera.start_capture_thread')
@@ -159,12 +199,12 @@ def stop_capture_thread(force=False):
     if force or capture_thread.queue.empty():
         capture_thread.abort()
 
-    while capture_thread is not None:
+    for i in range(5):
         time.sleep(0.5)
         if capture_thread is None:
             return True
-    else:
-        return False
+
+    return False
 
 
 @celery.shared_task(name='camera.abort')

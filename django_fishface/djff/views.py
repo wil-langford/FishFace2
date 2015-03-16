@@ -231,13 +231,17 @@ def celery_proxy(request):
     result_timeout = payload.get('result_timeout', 15)
     result_timeout = result_timeout if bool(result_timeout) else 15
 
+    kwargs = json.loads(payload.get('kwargs'))
+    if kwargs == False:
+        kwargs = dict()
+
     celery_result = celery_app.send_task(
         payload['task_name'],
-        args=payload.get('args', None),
-        kwargs=payload.get('kwargs', None)
+        kwargs=kwargs
     )
 
     if result_return:
+        logger.warning('waiting for results')
         result = celery_result.get(timeout=result_timeout)
     else:
         result = False

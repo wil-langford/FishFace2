@@ -9,7 +9,7 @@ formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 LOG_TO_CONSOLE = True
 CONSOLE_LOG_LEVEL = logging.INFO
 FILE_LOG_LEVEL = logging.DEBUG
-LOG_FILE_PATH = os.path.join(os.path.expanduser('~'), 'fishface.log')
+LOG_FILE_PATH = os.path.join(os.path.expanduser('~'), 'var', 'log', 'fishface.log')
 
 console_handler = logging.StreamHandler()
 console_handler.setLevel(CONSOLE_LOG_LEVEL)
