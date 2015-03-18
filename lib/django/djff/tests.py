@@ -1,6 +1,6 @@
 from django.test import TestCase
-from djff.models import (Experiment, Species)
-import djff.views as views
+from lib.django.djff.models import (Experiment, Species)
+import lib.django.djff.views as views
 import django.utils as du
 from django.utils import timezone
 from django.core.management import call_command

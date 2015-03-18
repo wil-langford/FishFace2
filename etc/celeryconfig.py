@@ -2,9 +2,9 @@ import os
 
 from kombu import Queue, Exchange
 
-from util.fishface_logging import logger
+from lib.fishface_logging import logger
 
-import util.fishface_config as ff_conf
+import etc.fishface_config as ff_conf
 
 # Groundwork
 

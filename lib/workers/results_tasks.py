@@ -5,14 +5,14 @@ import io
 import pytz
 
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_fishface.settings')
-import djff.models as dm
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'lib.django.django_fishface.settings')
+import lib.django.djff.models as dm
 import django.utils.timezone as dut
 import django.shortcuts as ds
 import django.core.files.base as dcfb
 
 import celery
-from djff.celery.django_celery import celery_app
+from lib.django_celery import celery_app
 
 
 @celery.shared_task(name='results.ping')

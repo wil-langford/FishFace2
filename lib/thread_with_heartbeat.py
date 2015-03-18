@@ -2,9 +2,9 @@ import time
 import threading
 import collections
 
-from util.fishface_logging import logger
-from ff_celery.fishface_celery import celery_app
-from util.misc_utilities import delay_for_seconds
+from lib.fishface_logging import logger
+from lib.fishface_celery import celery_app
+from lib.misc_utilities import delay_for_seconds
 
 
 class ThreadWithHeartbeat(threading.Thread):

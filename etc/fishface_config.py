@@ -1,41 +1,63 @@
+from __future__ import print_function
+
+import sys
 import os
+from os.path import join as path_join
+
 import logging
+import numpy as np
 
-from util.misc_utilities import return_text_file_contents
+from lib.misc_utilities import return_text_file_contents, is_file
 
-APP_ROOT = os.path.expanduser('~')
-UTIL_DIR = os.path.join(APP_ROOT, 'FishFace2', 'util')
+HOME = os.path.expanduser('~')
+VENV = path_join(HOME, 'venvs', 'FishFace2.venv')
+LOG_LEVEL = 'INFO'
+
+try:
+    ROOT = os.environ['FF_ROOT']
+except KeyError:
+    ROOT = path_join(os.path.expanduser('~'), 'FishFace2')
+
+ETC = path_join(ROOT, 'etc')
+VAR = path_join(ROOT, 'var')
+VAR_RUN = path_join(VAR, 'run')
+VAR_LOG = path_join(VAR, 'log')
+LIB = path_join(ROOT, 'lib')
+BIN = path_join(ROOT, 'bin')
+
+
+DJANGO_DIR = path_join(LIB, 'django')
 
 CAMERA_RESOLUTION = (512, 384)
 CAMERA_ROTATION = 180
 
+NORMALIZED_SHAPE = (384, 512)
+NORMALIZED_DTYPE = np.uint8
 
-REAL_CAMERA = not os.path.isfile(os.path.join(UTIL_DIR, 'FAKE_CAMERA'))
+REAL_CAMERA = not is_file(ETC, 'FAKE_CAMERA')
 if REAL_CAMERA:
     logging.info('Running with real camera.')
-    import picamera as camera_module
+    from picamera import PiCamera as camera_class
 else:
     logging.warning('Running with fake camera.')
-    from ff_celery import FakeHardware as camera_module
-CAMERA_CLASS = camera_module.PiCamera
+    from lib.FakeHardware import PiCamera as camera_class
 
-
-REAL_POWER_SUPPLY = not os.path.isfile(os.path.join(UTIL_DIR, 'FAKE_POWER_SUPPLY'))
+REAL_POWER_SUPPLY = not is_file(ETC, 'FAKE_POWER_SUPPLY')
 if REAL_POWER_SUPPLY:
     logging.info('Running with real power supply.')
-    from util.RobustPowerSupply import RobustPowerSupply as PSU_CLASS
+    from lib.RobustPowerSupply import RobustPowerSupply as psu_class
 else:
     logging.warning('Running with fake power supply.')
-    from ff_celery.FakeHardware import HP6652a as PSU_CLASS
+    from lib.FakeHardware import HP6652a as psu_class
 
 
-redis_password_file_path = os.path.join(APP_ROOT, 'etc', 'redis', 'redis_password')
-redis_hostname_file_path = os.path.join(APP_ROOT, 'var', 'run', 'redis.hostname')
-REDIS_PASSWORD = return_text_file_contents(redis_password_file_path)
-REDIS_HOSTNAME = return_text_file_contents(redis_hostname_file_path)
+redis_password_file_path = path_join(ETC, 'redis', 'redis_password')
+redis_hostname_file_path = path_join(VAR_RUN, 'redis.hostname')
+REDIS_PASSWORD = str(return_text_file_contents(redis_password_file_path))
+REDIS_HOSTNAME = str(return_text_file_contents(redis_hostname_file_path))
 
-CELERY_BROKER_URL = (('redis://' + ':' + str(REDIS_PASSWORD) + '@' if REDIS_PASSWORD else '') +
-                     REDIS_HOSTNAME)
+CELERY_BROKER_URL = 'redis://' + ((':' + REDIS_PASSWORD + '@') if REDIS_PASSWORD else '')
+CELERY_BROKER_URL += REDIS_HOSTNAME
 
 CELERY_RESULT_URL = CELERY_BROKER_URL
 
@@ -48,3 +70,17 @@ ML_STAGE_1_IMAGES_PER_CHUNK = 25
 
 CJR_CREATION_TIMEOUT = 30
 CAMERA_QUEUE_PRELOAD = 15
+
+
+def bash_exports():
+    return 'export ' + ' '.join(['FF_{export_me}={value}'.format(export_me=export_me,
+                                                                   value=globals()[export_me])
+        for export_me in 'ROOT ETC VAR VAR_RUN VAR_LOG LIB BIN VENV LOG_LEVEL'.split(' ')])
+
+
+def main():
+    if sys.argv[1] == '--exports':
+        print(bash_exports())
+
+if __name__ == '__main__':
+    main()

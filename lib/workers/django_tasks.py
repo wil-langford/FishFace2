@@ -1,17 +1,17 @@
 import os
 import random
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_fishface.settings')
-import djff.models as dm
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'lib.django.django_fishface.settings')
+import lib.django.djff.models as dm
 import django.db.models as ddm
 
-from util.fishface_image import FFImage
+from lib.fishface_image import FFImage
 import celery
-from djff.celery.django_celery import celery_app
+from lib.django_celery import celery_app
 
-from util.misc_utilities import chunkify
+from lib.misc_utilities import chunkify
 
-import util.fishface_config as ff_conf
+import etc.fishface_config as ff_conf
 
 
 @celery.shared_task(name='django.ping')

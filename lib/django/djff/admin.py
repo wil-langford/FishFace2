@@ -1,5 +1,5 @@
 from django.contrib import admin
-from djff import models
+import lib.django.djff.models as models
 
 
 class ImageInline(admin.TabularInline):

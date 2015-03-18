@@ -20,7 +20,7 @@ import django.views.generic.edit as dvge
 import django.db.models as ddm
 from django.conf import settings
 
-from djff.models import (
+from lib.django.djff.models import (
     Experiment,
     Image,
     Species,
@@ -33,9 +33,9 @@ from djff.models import (
     CaptureJobQueue,
 )
 
-from ff_celery.fishface_celery import celery_app
+from lib.fishface_celery import celery_app
 
-import djff.utils.telemetry as telemetry
+import lib.django.djff.utils.telemetry as telemetry
 
 # IMAGERY_SERVER_IP = settings.IMAGERY_SERVER_HOST
 # IMAGERY_SERVER_PORT = settings.IMAGERY_SERVER_PORT

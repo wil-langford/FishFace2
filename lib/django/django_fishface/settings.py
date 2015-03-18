@@ -14,18 +14,19 @@ import logging
 import logging.handlers
 from django.utils.crypto import get_random_string
 
+import etc.fishface_config as ff_conf
+
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
-HOME = os.environ['HOME']
-ALT_ROOT = HOME
+
+APP_ROOT = ff_conf.ROOT
 
 # TODO: change for full production
-DB_PASSWD_FILE = os.path.join(BASE_DIR, 'fishface_db_password')
+DB_PASSWD_FILE = os.path.join(ff_conf.ETC, 'fishface_db_password')
 
 # These get imported/generated later.
 DB_PASSWD = None
 SECRET_KEY = None
-
 
 def generate_and_collect_secret_keys():
     length = 50
@@ -92,9 +93,8 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django_extensions',
     'south',
-    'djff',
+    'lib.django.djff',
 )
 
 MIDDLEWARE_CLASSES = (

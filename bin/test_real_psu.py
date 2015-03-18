@@ -2,7 +2,7 @@ import unittest
 import time
 import random
 
-import util.fishface_config as ff_conf
+import etc.fishface_config as ff_conf
 
 VOLTAGE_ALLOWABLE_ERROR = 0.005
 CURRENT_ALLOWABLE_ERROR = 0.005

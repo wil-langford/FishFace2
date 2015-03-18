@@ -5,14 +5,14 @@ import celery
 from celery.exceptions import TimeoutError
 import redis
 
-from util import thread_with_heartbeat
-from ff_celery.fishface_celery import celery_app
+import lib.thread_with_heartbeat as thread_with_heartbeat
+from lib.fishface_celery import celery_app
 
-from util.misc_utilities import delay_until
+from lib.misc_utilities import delay_until
 
-import util.fishface_config as ff_conf
+import etc.fishface_config as ff_conf
 
-from util.fishface_logging import logger
+from lib.fishface_logging import logger
 
 thread_registry = thread_with_heartbeat.ThreadRegistry()
 

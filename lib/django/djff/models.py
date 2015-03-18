@@ -15,7 +15,7 @@ import jsonfield
 
 import sklearn.cluster as skc
 
-from utils import djff_imagekit as ffik
+import lib.django.djff.utils.djff_imagekit as ffik
 
 
 class Species(models.Model):

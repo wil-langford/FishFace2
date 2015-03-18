@@ -1,5 +1,6 @@
 import time
 import logging
+import os
 
 
 def delay_until(unix_timestamp):
@@ -20,7 +21,7 @@ class AttrDict(dict):
         self.__dict__ = self
 
 
-def return_text_file_contents(file_path, strip=True):
+def return_text_file_contents(file_path, strip=True, ignore_fail=True):
     try:
         with open(file_path, 'rt') as f:
             if strip:
@@ -28,11 +29,15 @@ def return_text_file_contents(file_path, strip=True):
             else:
                 return f.read()
     except IOError:
-        logging.warning("Couldn't read file: {}".format(file_path))
-
+        if not ignore_fail:
+            logging.warning("Couldn't read file: {}".format(file_path))
+        return ''
 
 def chunkify(chunkable, chunk_length=1):
     while chunkable:
         chunk = chunkable[:chunk_length]
         chunkable = chunkable[chunk_length:]
         yield chunk
+
+def is_file(*args):
+    return os.path.isfile(os.path.join(*args))

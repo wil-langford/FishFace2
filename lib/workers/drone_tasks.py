@@ -7,7 +7,7 @@ from scipy import stats
 
 
 import celery
-from util.fishface_image import FFImage, ff_operation, ff_annotation
+from lib.fishface_image import FFImage, ff_operation, ff_annotation
 
 #
 # Convenience functions
@@ -25,7 +25,7 @@ def kernel(radius=3, shape='circle'):
     return cv2.getStructuringElement(shape, (radius * 2 + 1, radius * 2 + 1))
 
 
-@celery_app.task(bind=True, name='drone.debug_task')
+@celery.shared_task(bind=True, name='drone.debug_task')
 def debug_task(self, *args, **kwargs):
     return '''
     Request: {0!r}

@@ -3,10 +3,10 @@ import time
 
 import celery
 
-from fishface_celery import celery_app
-from util.fishface_logging import logger
+from lib.fishface_celery import celery_app
+from lib.fishface_logging import logger
 
-import util.fishface_config as ff_conf
+import etc.fishface_config as ff_conf
 
 
 @celery.shared_task(name='psu.ping')
@@ -34,7 +34,7 @@ class PowerSupply(object):
         if self.psu is not None:
             return False
 
-        self.psu = ff_conf.PSU_CLASS()
+        self.psu = ff_conf.psu_class()
         self.voltage = self.psu.voltage
         self.current = self.psu.current
         self.output = self.psu.output

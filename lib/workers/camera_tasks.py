@@ -1,4 +1,3 @@
-import os
 import time
 import io
 import Queue
@@ -7,17 +6,17 @@ import threading
 import celery
 import celery.exceptions
 
-from fishface_celery import celery_app
-from util.fishface_logging import logger
+from lib.fishface_celery import celery_app
+from lib.fishface_logging import logger
 
-from util.misc_utilities import delay_until, delay_for_seconds
+from lib.misc_utilities import delay_until
 
-import util.fishface_config as ff_conf
+import etc.fishface_config as ff_conf
 
 capture_thread = None
 capture_thread_lock = threading.RLock()
 
-import util.thread_with_heartbeat as thread_with_heartbeat
+import lib.thread_with_heartbeat as thread_with_heartbeat
 
 
 @celery.shared_task(name='camera.ping')
@@ -38,7 +37,9 @@ class Camera(object):
     def __init__(self, resolution=ff_conf.CAMERA_RESOLUTION, rotation=ff_conf.CAMERA_ROTATION):
         self._lock = threading.RLock()
 
-        self.cam_class = ff_conf.CAMERA_CLASS
+        self.cam = None
+
+        self.cam_class = ff_conf.camera_class
         self.resolution = resolution
         self.rotation = rotation
 
@@ -148,8 +149,6 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
         self.cam = None
 
 
-
-
 @celery.shared_task(name="camera.queue_capture_request")
 def queue_capture_request(requested_capture_timestamp, meta):
     print requested_capture_timestamp, meta
@@ -160,7 +159,7 @@ def queue_capture_request(requested_capture_timestamp, meta):
             capture_thread = CaptureThread(
                 startup_event=startup_event,
                 heartbeat_interval=0.2
-                )
+            )
             capture_thread.start()
             if not startup_event.wait(timeout=6):
                 logger.error("Couldn't create capture thread.")

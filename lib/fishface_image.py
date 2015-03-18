@@ -5,8 +5,7 @@ import numpy as np
 import cv2
 import functools
 
-NORMALIZED_SHAPE = (384, 512)
-NORMALIZED_DTYPE = np.uint8
+import etc.fishface_config as ff_conf
 
 
 def ff_operation(func):
@@ -59,7 +58,7 @@ def array_to_png_string(arr):
 
 
 def normalize_array(image):
-    if image.shape == NORMALIZED_SHAPE:
+    if image.shape == ff_conf.NORMALIZED_SHAPE:
         return image
 
     # too many color channels
@@ -75,9 +74,9 @@ def normalize_array(image):
 
         image = cv2.cvtColor(image, conversion)
 
-    if image.shape != NORMALIZED_SHAPE:
+    if image.shape != ff_conf.NORMALIZED_SHAPE:
         image = cv2.resize(image,
-                           dsize=tuple(reversed(NORMALIZED_SHAPE)),
+                           dsize=tuple(reversed(ff_conf.NORMALIZED_SHAPE)),
                            interpolation=cv2.INTER_AREA)
     return image
 
@@ -119,10 +118,10 @@ class FFImage(object):
                 ))
 
         if image_string is None and isinstance(source, np.ndarray):
-            if not normalize_image and (source.shape != NORMALIZED_SHAPE or
-                                        source.dtype != NORMALIZED_DTYPE):
+            if not normalize_image and (source.shape != ff_conf.NORMALIZED_SHAPE or
+                                        source.dtype != ff_conf.NORMALIZED_DTYPE):
                 raise InvalidSource('input_array must have shape {} and dtype {}.'.format(
-                    NORMALIZED_SHAPE, NORMALIZED_DTYPE))
+                    ff_conf.NORMALIZED_SHAPE, ff_conf.NORMALIZED_DTYPE))
 
             image_string = array_to_png_string(source)
 
@@ -131,7 +130,8 @@ class FFImage(object):
                             'string, a raw jpeg as a string, or a numpy array image.')
 
         if image_string is None:
-            image_string = array_to_png_string(np.zeros(NORMALIZED_SHAPE, dtype=NORMALIZED_DTYPE))
+            image_string = array_to_png_string(np.zeros(ff_conf.NORMALIZED_SHAPE,
+                                                        dtype=ff_conf.NORMALIZED_DTYPE))
 
         if normalize_image and image_string is not None:
             image_array = normalize_image_string(image_string)

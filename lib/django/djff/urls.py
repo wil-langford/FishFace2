@@ -1,5 +1,5 @@
 import django.conf.urls as dcu
-import djff.views as views
+import lib.django.djff.views as views
 urlpatterns = dcu.patterns(
     '',
     dcu.url(
