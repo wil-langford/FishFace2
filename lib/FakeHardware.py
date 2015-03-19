@@ -8,9 +8,11 @@ import os
 
 import quantities as pq
 
+## Why is this broken?
+# import etc.fishface_config as ff_conf
+HOME = os.environ['HOME']
+
 MAX_VARIANCE_FACTOR = 0.05
-HOME_DIR = os.getenv("HOME")
-PROJECT_DIR = os.path.join('FishFace2', 'raspi')
 
 
 class PiCamera(object):
@@ -20,15 +22,11 @@ class PiCamera(object):
 
         self._closed = False
 
-        with open(os.path.join(HOME_DIR, PROJECT_DIR, "sample-DATA.jpg"), 'rb') as f:
+        with open(os.path.join(HOME, 'FishFace2', 'lib', "sample-DATA.jpg"), 'rb') as f:
             self._fake_image = f.read()
             print 'fake image has size {}'.format(len(self._fake_image))
 
     def capture(self, stream, format='jpeg'):
-        # shadowing 'format' can't be helped because
-        # of the use of it by picamera's capture().
-        # plus, isn't Python's 'format' only used on
-        # strings?
         if self._closed:
             raise NotImplementedError("Proper errors aren't implemented on fake hardware.")
 

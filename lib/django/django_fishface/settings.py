@@ -59,8 +59,8 @@ try:
         DEBUG,
         TEMPLATE_DEBUG,
         DATABASES,
-        IMAGERY_SERVER_HOST,
-        IMAGERY_SERVER_PORT,
+        # IMAGERY_SERVER_HOST,
+        # IMAGERY_SERVER_PORT,
     )
 except ImportError:
     DEBUG = False
@@ -77,8 +77,8 @@ except ImportError:
         },
     }
 
-    IMAGERY_SERVER_HOST = 'raspi'
-    IMAGERY_SERVER_PORT = 18765
+    # IMAGERY_SERVER_HOST = 'raspi'
+    # IMAGERY_SERVER_PORT = 18765
 
 # Set to wildcard pending fixed IP assignment
 # TODO: After fixed IP assignment, put real value here.
@@ -134,8 +134,6 @@ MEDIA_ROOT = '/mnt/server_storage/media/'
 MEDIA_URL = '/media/'
 
 # DJFF settings
-
-TELEMETRY_URL = "http://{}:{}/telemetry/".format(IMAGERY_SERVER_HOST, IMAGERY_SERVER_PORT)
 
 # Logging
 PRIMARY_LOGGER = logging.getLogger('djff')

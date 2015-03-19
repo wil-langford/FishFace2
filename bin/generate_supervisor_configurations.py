@@ -45,7 +45,7 @@ def main():
 
     redis_config_string = textwrap.dedent("""
         [program:redis]
-        command=/usr/bin/redis-server {etc}/redis/redis.conf
+        command=/home/fishface/bin/redis-server {etc}/redis/redis.conf
         autostart=true
         autorestart=true
         user=fishface
@@ -53,6 +53,7 @@ def main():
         stderr_logfile={var_log}/redis.err
         priority=50"""
     ).format(
+        bin=ff_conf.BIN,
         etc=ff_conf.ETC,
         var_log=ff_conf.VAR_LOG
     )

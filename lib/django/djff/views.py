@@ -35,12 +35,6 @@ from lib.django.djff.models import (
 
 from lib.fishface_celery import celery_app
 
-import lib.django.djff.utils.telemetry as telemetry
-
-# IMAGERY_SERVER_IP = settings.IMAGERY_SERVER_HOST
-# IMAGERY_SERVER_PORT = settings.IMAGERY_SERVER_PORT
-#
-# IMAGERY_SERVER_URL = 'http://{}:{}/'.format(IMAGERY_SERVER_IP, IMAGERY_SERVER_PORT)
 
 logger = logging.getLogger('djff.views')
 logger.setLevel(logging.DEBUG)
@@ -129,101 +123,6 @@ def stats(request):
     }
     return ds.render(request, 'djff/stats.html', context)
 
-
-@csrf_dec.csrf_exempt
-def receive_telemetry(request):
-
-    payload = json.loads(request.POST['payload'])
-    logger.info("Received telemetry from Raspi:\n{}".format(payload))
-
-    if payload['command'] == 'post_image':
-        xp = ds.get_object_or_404(Experiment, pk=payload['xp_id'])
-
-        logger.info("Receiving image for experiment: {} ({})".format(xp.name, xp.slug))
-
-        is_cal_image = (str(payload['is_cal_image']).lower()
-                        in ['true', 't', 'yes', 'y', '1'])
-        voltage = float(payload['voltage'])
-        current = float(payload['current'])
-
-        capture_timestamp = datetime.datetime.utcfromtimestamp(
-            float(payload['capture_time'])).replace(tzinfo=dut.utc)
-
-        try:
-            cjr = ds.get_object_or_404(CaptureJobRecord, pk=int(payload['cjr_id']))
-        except dh.Http404:
-            cjr = None
-
-        image_uploaded_file = request.FILES[payload['filename']]
-
-        logger.info("storing image")
-
-        captured_image = Image(
-            xp=xp,
-            capture_timestamp=capture_timestamp,
-            voltage=voltage,
-            current=current,
-            is_cal_image=is_cal_image,
-            cjr=cjr,
-        )
-        captured_image.image_file = image_uploaded_file
-        captured_image.save()
-
-        logger.info("image stored with ID {}".format(captured_image.id))
-
-    if payload['command'] == 'job_status_update':
-        cjr = ds.get_object_or_404(CaptureJobRecord,
-                                   pk=int(payload['cjr_id']))
-
-        if payload['status'] == 'running':
-            cjr.running = True
-        else:
-            cjr.running = False
-
-        cjr.job_start = du.timezone.datetime.utcfromtimestamp(
-            float(payload['start_timestamp'])
-        ).replace(tzinfo=dut.utc)
-
-        cjr.total = int(payload['total'])
-        cjr.remaining = int(payload['remaining'])
-
-        if payload['stop_timestamp']:
-            cjr.job_stop = du.timezone.datetime.utcfromtimestamp(
-                float(payload['stop_timestamp'])
-            ).replace(tzinfo=dut.utc)
-
-        cjr.save()
-
-    if payload['command'] == 'power_supply_log':
-
-        logger.info("posting power supply log:\n{}".format(payload))
-
-        voltage_meas = float(payload['voltage_meas'])
-        current_meas = float(payload['current_meas'])
-
-        logger.info("voltage: {}, current: {}".format(voltage_meas, current_meas))
-
-        psl = PowerSupplyLog()
-        psl.voltage_meas = voltage_meas
-        psl.current_meas = current_meas
-        psl.save()
-
-    response = dh.HttpResponse(json.dumps({'payload': ""}), content_type='text/json')
-    response.status_code = 200
-
-    return response
-
-
-# @csrf_dec.csrf_exempt
-# def telemetry_proxy(request):
-#     payload = request.POST
-#     logger.info('Telemetry proxy payload: {}'.format(payload))
-#
-#     telemeter = telemetry.Telemeter()
-#     pi_reply = telemeter.post_to_raspi(payload)
-#
-#     return dh.HttpResponse(content=json.dumps(pi_reply), content_type='application/json')
-#
 
 def celery_proxy(request):
     payload = request.POST
@@ -484,7 +383,6 @@ def cq_interface(request):
         'job_specs': job_specs,
         'cjts': cjts,
         'cjt_ids': cjt_ids,
-        'raspi_telemetry_url': settings.TELEMETRY_URL,
     }
     return ds.render(request, 'djff/cq_interface.html', context)
 
@@ -805,53 +703,6 @@ def cjt_chunk(request, cjt_id):
     }
 
     return ds.render(request, 'djff/cjt_chunk.html', context)
-
-
-def insert_capturejob_into_queue(request):
-    post = request.POST
-    xp_id = post['xp_id']
-    xp = ds.get_object_or_404(Experiment, pk=xp_id)
-
-    payload = {
-        'command': 'insert_job',
-        'position': post['position'],
-        'xp_id': xp.id,
-        'species': xp.species.shortname,
-        'voltage': post['voltage'],
-        'current': post['current'],
-        'duration': post['duration'],
-        'interval': post['interval'],
-        'startup_delay': post['startup_delay'],
-    }
-
-    telemeter = telemetry.Telemeter()
-    response = telemeter.post_to_raspi(payload)
-    return response
-
-
-def abort_running_job(request):
-    telemeter = telemetry.Telemeter()
-    response = telemeter.post_to_raspi({'command': 'abort_running_job'})
-
-    running_jobs = CaptureJobRecord.objects.filter(running=True)
-    for cjr in running_jobs:
-        cjr.running = False
-        cjr.save()
-
-    xp_id = response.get('xp_id', False)
-    cjr_id = response.get('cjr_id', False)
-
-    if cjr_id and not xp_id:
-        cjr = ds.get_object_or_404(CaptureJobRecord, pk=int(cjr_id))
-        xp_id = cjr.xp_id
-
-    if xp_id:
-        return dh.HttpResponseRedirect(
-            dcu.reverse('djff:xp_detail',
-                        args=(xp_id,))
-        )
-
-    return dh.HttpResponseRedirect(dcu.reverse('djff:xp_index'))
 
 
 #

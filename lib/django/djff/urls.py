@@ -84,24 +84,6 @@ urlpatterns = dcu.patterns(
     ),
 
     dcu.url(
-        r'^cj/abort_job/$',
-        views.abort_running_job,
-        name='abort_running_job'
-    ),
-
-    dcu.url(
-        r'^telemetry/$',
-        views.receive_telemetry,
-        name='receive_telemetry'
-    ),
-
-    # dcu.url(
-    #     r'^telemetry_proxy/$',
-    #     views.telemetry_proxy,
-    #     name='telemetry_proxy'
-    # ),
-
-    dcu.url(
         r'^celery_proxy/$',
         views.celery_proxy,
         name='celery_proxy'
