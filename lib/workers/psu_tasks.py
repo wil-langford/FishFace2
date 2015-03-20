@@ -88,11 +88,9 @@ class PowerSupply(object):
 
         self.psu.output = output
 
-        self.report()
+        return self.report()
 
-        return True
-
-    def report(self, extra_report_data=None):
+    def report(self, extra_report_data=None, post=True):
         if self.psu is None:
             return False
         else:
@@ -105,9 +103,10 @@ class PowerSupply(object):
         if extra_report_data is not None:
             state['extra_report_data'] = extra_report_data
 
-        celery_app.send_task('results.power_supply_report', kwargs=state)
+        if post:
+            celery_app.send_task('results.power_supply_report', kwargs=state)
 
-        return True
+        return state
 
 
 power_supply = PowerSupply()
@@ -128,7 +127,7 @@ def reset_psu():
 @celery.shared_task(name="psu.report")
 def report(extra_report_data=None):
     global power_supply
-    power_supply.report(extra_report_data)
+    return power_supply.report(extra_report_data)
 
 
 class PowerSupplyError(Exception):

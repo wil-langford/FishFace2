@@ -126,16 +126,16 @@ def stats(request):
 
 def celery_proxy(request):
     payload = request.POST
-    result_return = bool(payload.get('result_return', False))
-    result_timeout = payload.get('result_timeout', 15)
-    result_timeout = result_timeout if bool(result_timeout) else 15
-
+    result_return = payload.get('result_return')
+    result_timeout = payload.get('result_timeout')
+    result_timeout = result_timeout if result_timeout else 15
+    task_name = payload.get('task_name')
     kwargs = json.loads(payload.get('kwargs'))
-    if kwargs == False:
-        kwargs = dict()
+
+    print 'type {} value {}'.format(type(kwargs), kwargs)
 
     celery_result = celery_app.send_task(
-        payload['task_name'],
+        task_name,
         kwargs=kwargs
     )
 

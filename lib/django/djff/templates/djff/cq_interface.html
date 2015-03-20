@@ -2,7 +2,8 @@
 {% load staticfiles %}
 
 {% block localscript %}
-<script type="text/javascript" src="{% static 'djff/remote_hardware_monitor.js' %}"></script>
+{# TODO: uncomment when we fix the psu monitor. #}
+{#<script type="text/javascript" src="{% static 'djff/power_supply_monitor.js' %}"></script>#}
 
 <script type="text/javascript">
     $(document).ready(function(){
@@ -42,20 +43,11 @@ $(document).ready(function(){
 {% block subtitle %}Capture Queue Editor{% endblock %}
 
 {% block sidebar %}
-    <div id="raspi_monitor">
-        <p class="hw_monitor_label">Remote<br>Hardware<br>Monitor</p>
-        <span id="RASPI" class="hover_wrapper monitor_status_box">
-            RASPI<span class="hover_text">Green means that the Raspberry Pi's master server reports
-            that it is running properly. (imagery_server)</span>
-        </span>
-        <br>
-        <span id="CJC" class="hover_wrapper monitor_status_box">
-            CJC<span class="hover_text">Green means that the raspi is ready to process queued
-            capture jobs. (capturejob_controller)</span>
-        </span>
-        <span id="DP" class="hover_wrapper monitor_status_box">
-            DP<span class="hover_text">Green means that the thread that publishes the final status
-            of completed jobs back to the database is running. (deathcry_publisher)</span>
+    <div id="psu_monitor">
+        <p class="hw_monitor_label">Power<br>Supply<br>Monitor</p>
+        <span id="PSU" class="hover_wrapper monitor_status_box">
+            PSU<span class="hover_text">Green means that the power supply is responding to status
+            update requests.</span>
         </span>
         <br>
         <span class="hover_wrapper monitor_status_box psu_monitor_box">

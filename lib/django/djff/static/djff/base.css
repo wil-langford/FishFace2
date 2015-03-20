@@ -319,7 +319,9 @@ div#zero_unverified {
     display: none;
 }
 
-div#raspi_monitor {
+div#psu_monitor {
+    /* TODO: remove "display: none;" when we fix the PSU monitor. */
+    display: none;
     position: absolute;
     left: 1em;
     background-color: cadetblue;
@@ -331,7 +333,7 @@ div#raspi_monitor {
     font-size: 10pt;
 }
 
-div#raspi_monitor .hover_wrapper .hover_text {
+div#psu_monitor .hover_wrapper .hover_text {
     position: absolute;
     bottom: 2em;
     left: 16em;
@@ -345,11 +347,11 @@ div#raspi_monitor .hover_wrapper .hover_text {
     font-weight: normal;
 }
 
-div#raspi_monitor .hover_wrapper:hover .hover_text {
+div#psu_monitor .hover_wrapper:hover .hover_text {
     visibility: visible;
 }
 
-div#raspi_monitor .monitor_status_box
+div#psu_monitor .monitor_status_box
 {
     display: inline;
     text-align: center;
@@ -359,7 +361,7 @@ div#raspi_monitor .monitor_status_box
     font-weight: bolder;
 }
 
-div#raspi_monitor .monitor_status_box
+div#psu_monitor .monitor_status_box
 {
     display: inline;
     text-align: center;
@@ -369,12 +371,12 @@ div#raspi_monitor .monitor_status_box
     font-weight: bolder;
 }
 
-div#raspi_monitor .psu_monitor_box
+div#psu_monitor .psu_monitor_box
 {
     background-color: #FFDDAA;
 }
 
-div#raspi_monitor .hw_monitor_label {
+div#psu_monitor .hw_monitor_label {
     margin: 0;
     padding: 2px;
     line-height: 1;
@@ -384,7 +386,7 @@ div#raspi_monitor .hw_monitor_label {
     background-color: navajowhite;
 }
 
-div#raspi_monitor #RASPI {
+div#psu_monitor #PSU {
     background-color: yellow;
 }
 
