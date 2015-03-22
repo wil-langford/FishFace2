@@ -14,6 +14,7 @@ import django.core.files.base as dcfb
 import celery
 from lib.django_celery import celery_app
 
+from lib.fishface_logging import logger
 
 @celery.shared_task(name='results.ping')
 def ping():
@@ -130,12 +131,16 @@ def new_cjr(xp_id, voltage, current, start_timestamp):
 
     cjr.save()
 
-    return cjr.id
+    return (start_timestamp, cjr.id)
 
 
 @celery.shared_task(name='results.job_status_report')
 def job_status_report(status, start_timestamp, stop_timestamp, voltage, current, seconds_left,
                       xp_id, cjr_id, species, total, remaining):
+    if cjr_id is None:
+        logger.debug('Still waiting for the CJR to be created for this job.')
+        return
+
     cjr = ds.get_object_or_404(dm.CaptureJobRecord, pk=int(cjr_id))
 
     cjr.running = (status == "running")

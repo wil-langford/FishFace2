@@ -68,7 +68,7 @@ def main():
 
         config_file_string = textwrap.dedent("""
         [program:{worker}]
-        command=%(ENV_HOME)s/.pyenv/shims/celery worker --app=lib.workers.{worker}_tasks -l {log_level} -Q {worker} -n '{worker}.%%h' --concurrency={concurrency}
+        command=%(ENV_HOME)s/.pyenv/shims/celery worker --app=lib.workers.{worker}_tasks -l {log_level} -Q {worker} -n '{worker}.%%h' --concurrency={concurrency} -O fair {threads}
         directory={root}
         user=fishface
         numprocs=1
@@ -76,7 +76,6 @@ def main():
         stderr_logfile={var_log}/workers/{worker}.err
         autostart=true
         autorestart=true
-        startsecs=10
         stopwaitsecs=600
         killasgroup=true
         priority=100"""
@@ -86,7 +85,8 @@ def main():
             root=ff_conf.ROOT,
             var_log=ff_conf.VAR_LOG,
             worker=queue_name,
-            concurrency=1 if not queue_name in ['results'] else 4,
+            concurrency=4 if queue_name in ['results'] else 1,
+            threads='' if queue_name in ['results'] else '-P threads',
         )
 
         conf_path = os.path.join(ff_conf.ETC, 'supervisor.d', 'available', queue_name + '.conf')

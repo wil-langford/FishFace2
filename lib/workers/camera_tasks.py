@@ -145,29 +145,21 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
                     continue
                 self.queue.task_done()
 
-        self.cam.close()
-        self.cam = None
+        try:
+            self.cam.close()
+            self.cam = None
+        except AttributeError:
+            pass
 
 
-@celery.shared_task(name="camera.queue_capture_request")
+@celery.shared_task(name='camera.queue_capture_request')
 def queue_capture_request(requested_capture_timestamp, meta):
     print requested_capture_timestamp, meta
     global capture_thread, capture_thread_lock
     with capture_thread_lock:
-        if capture_thread is None or not capture_thread.is_alive():
-            startup_event = threading.Event()
-            capture_thread = CaptureThread(
-                startup_event=startup_event,
-                heartbeat_interval=0.2
-            )
-            capture_thread.start()
-            if not startup_event.wait(timeout=6):
-                logger.error("Couldn't create capture thread.")
+        start_capture_thread()
 
-    if capture_thread is not None and capture_thread.ready:
-        capture_thread.push_capture_request((requested_capture_timestamp, meta))
-    else:
-        logger.error("Tried to push request, but capture thread not ready.")
+    capture_thread.push_capture_request((requested_capture_timestamp, meta))
 
     return requested_capture_timestamp, meta
 
@@ -175,11 +167,14 @@ def queue_capture_request(requested_capture_timestamp, meta):
 @celery.shared_task(name='camera.start_capture_thread')
 def start_capture_thread():
     global capture_thread, capture_thread_lock
-    if capture_thread is not None:
+    if capture_thread is not None and capture_thread.is_alive():
         return True
 
     with capture_thread_lock:
-        capture_thread = CaptureThread(startup_event=threading.Event())
+        capture_thread = CaptureThread(
+            heartbeat_interval=0.2,
+            startup_event=threading.Event()
+        )
 
     capture_thread.start()
     try:

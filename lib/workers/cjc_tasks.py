@@ -87,6 +87,15 @@ def complete_status():
         return ecc.complete_status()
 
 
+@celery.shared_task(name='cjc.abort_all')
+def abort_all():
+    global ecc
+    if ecc is None or not ecc.is_alive():
+        return True
+    else:
+        return ecc.abort_all()
+
+
 @celery.shared_task(name='cjc.queues_ping')
 def queues_ping():
     return [(queue_name, celery_app.send_task(queue_name + '.ping'))
@@ -96,6 +105,21 @@ def queues_ping():
 @celery.shared_task(name='cjc.monitor')
 def monitor():
     return celery.group([celery.signature('results.get_result_cache'), celery.signature('cjc.queues_ping')])()
+
+
+@celery.shared_task(name='cjc.cjr_id_catcher')
+def cjr_id_catcher(start_timestamp, cjr_id):
+    global ecc
+    capturejob = ecc.current_job
+
+    if capturejob.start_timestamp == start_timestamp:
+        capturejob.cjr_id = int(cjr_id)
+        capturejob.name = capturejob.name[:-10] + str(capturejob.cjr_id)
+        capturejob.cjr_id_event.set()
+        return capturejob.name
+    else:
+        logger.error('Failed to set CJR id for current job.')
+        return False
 
 
 @celery.shared_task(name='cjc.set_queue')
@@ -133,8 +157,11 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self.start_timestamp = None
         self.stop_timestamp = None
 
+        self.cjr_id_event = threading.Event()
+
     def _pre_run(self):
         self.start_timestamp = time.time()
+        first_capture_at = self.start_timestamp + self.startup_delay
 
         logger.info("starting up job for experiment {}".format(self.xp_id))
         self.status = 'startup_delay'
@@ -146,22 +173,18 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         })
 
         logger.info("Asking server to create new CJR for XP_{}.".format(self.xp_id))
-        r_cjr_id = celery_app.send_task(
-            'results.new_cjr',
-            kwargs={
-                'xp_id': self.xp_id,
-                'voltage': self.voltage,
-                'current': self.current,
-                'start_timestamp': self.start_timestamp
-            }
-        )
+        r_cjr_id = (
+            celery_app.signature('results.new_cjr',
+                                 kwargs={
+                                     'xp_id': self.xp_id,
+                                     'voltage': self.voltage,
+                                     'current': self.current,
+                                     'start_timestamp': self.start_timestamp
+                                 }) |
+            celery_app.signature('cjc.cjr_id_catcher')
+        ).apply_async()
 
-        self.cjr_id = r_cjr_id.get(timeout=ff_conf.CJR_CREATION_TIMEOUT)
-
-        self._set_name(self.name[:-10] + str(self.cjr_id))
-        logger.info('Preparing capture for XP_{}_CJR_{}'.format(self.xp_id, self.cjr_id))
-
-        first_capture_at = self.start_timestamp + self.startup_delay
+        logger.info('Preparing list of captures.'.format(self.xp_id, self.cjr_id))
 
         self.capture_times = [first_capture_at + (j * self.interval)
                               for j in range(int(float(self.duration) / self.interval))]
@@ -170,17 +193,25 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self.total = len(self.capture_times)
         self.remaining = self.total
 
+        logger.error('REMAINING / TOTAL = {} / {}'.format(self.remaining, self.total))
+
         self.set_ready()
+        # Abort if we don't have a CJR id at least 1 second before we're supposed to
+        # start capturing.
+        if not self.cjr_id_event.wait(timeout=first_capture_at - time.time() - 1):
+            self.abort()
+            logger.error('Could not get CJR id from server. Aborting!')
 
     def _post_run(self):
         self.stop_timestamp = time.time()
         if self.status == 'running':
             self.status = 'completed'
 
-        celery_app.send_task('results.job_status_update', self.get_status_dict())
+        celery_app.send_task('results.job_status_report', kwargs=self.get_status_dict())
 
     def _heartbeat_run(self):
         self.status = 'running'
+        logger.error('REMAINING / TOTAL = {} / {}'.format(self.remaining, self.total))
 
         meta = {
             'cjr_id': self.cjr_id,
@@ -198,7 +229,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
 
             celery_app.send_task('camera.queue_capture_request',
                                  kwargs={
-                                     'next_capture_time': next_capture_time,
+                                     'requested_capture_timestamp': next_capture_time,
                                      'meta': meta,
                                  })
 
@@ -220,10 +251,10 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
             'xp_id': self.xp_id,
             'cjr_id': self.cjr_id,
             'species': self.species,
-            'total': self.total,
+            'remaining': self.remaining if self.remaining else 0,
+            'total': self.total if self.total else 0,
             'voltage': self.voltage,
             'current': self.current,
-            'remaining': self.remaining,
             'start_timestamp': self.start_timestamp,
             'stop_timestamp': self.stop_timestamp,
             'seconds_left': int(self.job_ends_in),
@@ -310,12 +341,9 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         return {
             'status': self.status,
             'xp_id': 0,
-            'cjr_id': self.cjr_id,
             'species': 0,
-            'total': self.total,
             'voltage': self.voltage,
             'current': self.current,
-            'remaining': self.remaining,
             'start_timestamp': self.start_timestamp,
             'stop_timestamp': self.stop_timestamp,
             'seconds_left': int(self.job_ends_in),
@@ -362,8 +390,8 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
 
     def complete_status(self):
         return {
-            'current_job': self.current_job if self.current_job else None,
-            'staged_job': self.staged_job if self.staged_job else None,
+            'current_job': self.current_job.get_status_dict() if self.current_job else None,
+            'staged_job': self.staged_job.get_status_dict() if self.staged_job else None,
             'queue': self.job_queue if self.job_queue else [],
         }
 
@@ -374,11 +402,12 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
             self.staged_job = None
         if self.current_job is not None:
             self.current_job.abort_job()
-
             self.current_job = None
 
-        celery_app.send_task('camera.abort').get(timeout=1)
+        celery_app.send_task('camera.abort')
         celery_app.send_task('psu.reset_psu')
+
+        return True
 
     def _pre_run(self):
         super(ExperimentCaptureController, self)._pre_run()

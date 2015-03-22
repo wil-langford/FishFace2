@@ -50,10 +50,7 @@ def _image_response_from_numpy_array(img, extension):
                       your own risk.
     """
     out = cv2.imencode(".{}".format(extension), img)[1].tostring()
-    response = dh.HttpResponse(out, content_type="image/{}".format(
-        extension
-    ))
-    return response
+    return dh.HttpResponse(out, content_type="image/{}".format(extension))
 
 
 def _image_response_from_bytes_io(img, extension):
@@ -130,7 +127,7 @@ def celery_proxy(request):
     result_timeout = payload.get('result_timeout')
     result_timeout = result_timeout if result_timeout else 15
     task_name = payload.get('task_name')
-    kwargs = json.loads(payload.get('kwargs'))
+    kwargs = json.loads(payload.get('kwargs', '{}'))
 
     print 'type {} value {}'.format(type(kwargs), kwargs)
 
