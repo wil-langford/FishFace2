@@ -2,7 +2,7 @@ import threading
 import time
 
 import celery
-# from celery.exceptions import TimeoutError
+from celery.exceptions import TimeoutError
 import redis
 
 import lib.thread_with_heartbeat as thread_with_heartbeat
@@ -14,22 +14,48 @@ import etc.fishface_config as ff_conf
 
 from lib.fishface_logging import logger
 
-thread_registry = thread_with_heartbeat.ThreadRegistry()
 
-ecc = None
-redis_client = redis.Redis(
-    host=ff_conf.REDIS_HOSTNAME,
-    password=ff_conf.REDIS_PASSWORD
-)
+class ECCTask(celery.Task):
+    abstract = True
+    _ecc = {'thread': None}
+    _ecc_thread_lock = threading.Lock()
+    _redis_client = redis.Redis(
+        host=ff_conf.REDIS_HOSTNAME,
+        password=ff_conf.REDIS_PASSWORD
+    )
+    _thread_registry = thread_with_heartbeat.ThreadRegistry()
+
+    @property
+    def ecc(self):
+        if self.extant:
+            return self._ecc['thread']
+        else:
+            if self._ecc['thread'] is not None and self._ecc['thread'].is_alive():
+                if self._ecc['thread'].ready_event.wait(timeout=10):
+                    return self._ecc['thread']
+            else:
+                with self._ecc_thread_lock:
+                    self._ecc['thread'] = ExperimentCaptureController(startup_event=threading.Event())
+
+                self._ecc['thread'].start()
+
+                return self.ecc
+
+    @property
+    def extant(self):
+        return (self._ecc['thread'] is not None and
+                self._ecc['thread'].is_alive() and
+                self._ecc['thread'].ready_event.is_set())
 
 
-def ensure_ecc():
-    global ecc
-    if ecc is None or not ecc.is_alive():
-        ecc_ready_event = threading.Event()
-        ecc = ExperimentCaptureController(startup_event=ecc_ready_event)
-        ecc.start()
-        ecc_ready_event.wait(timeout=5)
+class ResultCacheTask(celery.Task):
+    abstract = True
+    cache = dict()
+
+
+class CeleryNavelGazingTask(celery.Task):
+    controller = celery_app.control
+    inspector = controller.inspect()
 
 
 @celery.shared_task(name='cjc.ping')
@@ -46,54 +72,52 @@ def debug_task(self, *args, **kwargs):
     '''.format(self.request, args, kwargs)
 
 
-@celery.shared_task(name='cjc.thread_states')
+@celery.shared_task(base=ECCTask, name='cjc.thread_states')
 def thread_states():
-    global thread_registry
-    return thread_registry.thread_states
+    return thread_states._thread_registry.thread_states
 
 
-@celery.shared_task(name='cjc.thread_registry')
-def thread_states():
-    global thread_registry
-    return thread_registry.registry
+@celery.shared_task(base=ECCTask, name='cjc.thread_registry')
+def thread_registry():
+    return thread_registry._thread_registry.registry
 
 
-@celery.shared_task(name='cjc.thread_heartbeat')
+@celery.shared_task(base=ECCTask, name='cjc.thread_heartbeat')
 def thread_heartbeat(name, timestamp, count, final=False):
-    global thread_registry
+    if name == 'name':
+        logger.error('name:name detected with count {} timestamp {}'.format(count, timestamp))
+
+    return thread_heartbeat._thread_registry.receive_heartbeat(name, timestamp, count, final)
 
 
-@celery.shared_task(name='cjc.queues_length')
+@celery.shared_task(base=ECCTask, name='cjc.queues_length')
 def queues_length(queue_list=None):
-    global redis_client
     if queue_list is None:
         queue_list = ff_conf.CELERY_QUEUE_NAMES
     elif isinstance(queue_list, basestring):
         queue_list = [queue_list]
 
-    return [(queue_name, redis_client.llen(queue_name)) for queue_name in queue_list]
+    return [(queue_name, queues_length._redis_client.llen(queue_name)) for queue_name in queue_list]
 
 
-@celery.shared_task(name='cjc.complete_status')
+@celery.shared_task(base=ECCTask, name='cjc.complete_status')
 def complete_status():
-    global ecc
-    if ecc is None or not ecc.is_alive():
+    if complete_status.extant:
         return {
             'current_job': None,
             'staged_job': None,
             'queue': [],
         }
     else:
-        return ecc.complete_status()
+        return complete_status.ecc.complete_status()
 
 
-@celery.shared_task(name='cjc.abort_all')
+@celery.shared_task(base=ECCTask, name='cjc.abort_all')
 def abort_all():
-    global ecc
-    if ecc is None or not ecc.is_alive():
+    if abort_all.extant:
         return True
     else:
-        return ecc.abort_all()
+        return abort_all.ecc.abort_all()
 
 
 @celery.shared_task(name='cjc.queues_ping')
@@ -102,31 +126,29 @@ def queues_ping():
             for queue_name in ff_conf.CELERY_QUEUE_NAMES]
 
 
+@celery.shared_task(base=CeleryNavelGazingTask, name='cjc.active_workers')
+def active_workers():
+    return active_workers.inspector.active().keys()
+
+
 @celery.shared_task(name='cjc.monitor')
 def monitor():
-    return celery.group([celery.signature('results.get_result_cache'), celery.signature('cjc.queues_ping')])()
+    return celery.group([celery.signature('psu.cached_report'),
+                         celery.signature('cjc.queues_ping'),
+                         celery.signature('cjc.thread_states')])()
 
 
-@celery.shared_task(name='cjc.cjr_id_catcher')
-def cjr_id_catcher(start_timestamp, cjr_id):
-    global ecc
-    capturejob = ecc.current_job
+@celery.shared_task(base=ECCTask, name='cjc.cjr_id_catcher')
+def cjr_id_catcher(ts_id_pair):
+    start_timestamp, cjr_id = ts_id_pair
+    logger.error('NEW CJR_ID {} and TS {}'.format(cjr_id, start_timestamp))
 
-    if capturejob.start_timestamp == start_timestamp:
-        capturejob.cjr_id = int(cjr_id)
-        capturejob.name = capturejob.name[:-10] + str(capturejob.cjr_id)
-        capturejob.cjr_id_event.set()
-        return capturejob.name
-    else:
-        logger.error('Failed to set CJR id for current job.')
-        return False
+    return cjr_id_catcher.ecc.cjr_id_catcher(start_timestamp, cjr_id)
 
 
-@celery.shared_task(name='cjc.set_queue')
+@celery.shared_task(base=ECCTask, name='cjc.set_queue')
 def set_queue(xp_id, species, queue):
-    global ecc
-    ensure_ecc()
-    return ecc.set_queue(xp_id, species, queue)
+    return set_queue.ecc.set_queue(xp_id, species, queue)
 
 
 class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
@@ -166,14 +188,14 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         logger.info("starting up job for experiment {}".format(self.xp_id))
         self.status = 'startup_delay'
 
-        celery_app.send_task('set_psu', kwargs={
-            'enable_output': bool(self.voltage),
+        celery_app.send_task('psu.set_psu', kwargs={
+            'output': bool(self.voltage),
             'voltage': self.voltage,
             'current': self.current,
         })
 
         logger.info("Asking server to create new CJR for XP_{}.".format(self.xp_id))
-        r_cjr_id = (
+        (
             celery_app.signature('results.new_cjr',
                                  kwargs={
                                      'xp_id': self.xp_id,
@@ -307,7 +329,7 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self.status = 'startup'
 
         self.controller.set_psu({
-            'enable_output': bool(self.voltage),
+            'output': bool(self.voltage),
             'voltage': self.voltage,
             'current': self.current,
         })
@@ -376,7 +398,7 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
 
         self._complete_status = None
 
-        self._queue_set_event = threading.Event()
+        self.queue_set_event = threading.Event()
 
     def set_queue(self, xp_id, species, queue):
         for job in queue:
@@ -384,7 +406,7 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
             job['species'] = species
 
         self.job_queue = queue
-        self._queue_set_event.set()
+        self.queue_set_event.set()
 
         return self.job_queue
 
@@ -409,14 +431,42 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
 
         return True
 
+    def cjr_id_catcher(self, start_timestamp, cjr_id):
+        logger.error('ecc name: {}'.format(self.name))
+        logger.error("ecc queue: {}".format(self.job_queue))
+        logger.error("ecc current: {}".format(self.current_job))
+
+        if self.current_job is None:
+            logger.warning("The ECC's current job is None.")
+            return False
+
+        if self.current_job.start_timestamp == start_timestamp:
+            logger.info('setting CJR_ID for job currently named: {}'.format(self.current_job.name))
+            self.current_job.publish_heartbeat(final=True)
+            self.current_job.cjr_id = int(cjr_id)
+            self.current_job.name = (
+                self.current_job.name[:self.current_job.name.index('CJR_') + 4] +
+                str(self.current_job.cjr_id))
+            logger.info('new job name: {}'.format(self.current_job.name))
+            self.current_job.publish_heartbeat()
+            self.current_job.cjr_id_event.set()
+            return self.current_job.name
+        else:
+            logger.error('Failed to set CJR id for current job.')
+            return False
+
     def _pre_run(self):
         super(ExperimentCaptureController, self)._pre_run()
         # Give the queue time to get set
-        logger.info('Waiting up to 3 seconds for queue to be set initially.')
-        if self._queue_set_event.wait(timeout=3):
-            logger.info("Initial queue setting complete.  Ready to begin looping.")
+        logger.info('{}: Waiting up to 3 seconds for queue to be set initially.'.format(
+            self.name
+        ))
+        if self.queue_set_event.wait(timeout=3):
+            logger.info("{}: Initial queue setting complete.  Ready to begin looping.".format(
+                self.name
+            ))
         else:
-            logger.warning("No initial queue setting.  Aborting ECC.")
+            logger.warning("{}: No initial queue setting.  Aborting ECC.".format(self.name))
             self.abort()
 
     def _heartbeat_run(self):
@@ -438,7 +488,7 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
                     else:
                         self.current_job = NonCaptureJob(**next_job)
                     self.current_job.start()
-                    logger.debug('Started new current job.')
+                    logger.info('Started new current job.')
 
                 else:  # queue is empty
                     logger.info('Shutting down capture controller until the next job arrives.')
@@ -463,3 +513,7 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
                     self.staged_job = CaptureJob(**next_job)
                 else:
                     self.staged_job = NonCaptureJob(**next_job)
+
+
+class ECCError(Exception):
+    pass

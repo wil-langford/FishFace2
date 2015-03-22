@@ -2,11 +2,19 @@ import os
 import time
 
 import celery
+import redis
 
 from lib.fishface_celery import celery_app
 from lib.fishface_logging import logger
 
 import etc.fishface_config as ff_conf
+
+if ff_conf.REAL_POWER_SUPPLY:
+    logger.info('Running with real power supply.')
+    from lib.RobustPowerSupply import RobustPowerSupply as psu_class
+else:
+    logger.warning('Running with fake power supply.')
+    from lib.FakeHardware import HP6652a as psu_class
 
 
 @celery.shared_task(name='psu.ping')
@@ -23,6 +31,22 @@ def debug_task(self, *args, **kwargs):
     '''.format(self.request, args, kwargs)
 
 
+class PSUTask(celery.Task):
+    abstract = True
+    _power_supply = {'psu': None}
+    _redis_client = redis.Redis(
+        host=ff_conf.REDIS_HOSTNAME,
+        password=ff_conf.REDIS_PASSWORD
+    )
+
+    @property
+    def power_supply(self):
+        if self._power_supply['psu'] is None:
+            self._power_supply['psu'] = PowerSupply()
+            self._power_supply['psu'].open()
+        return self._power_supply['psu']
+
+
 class PowerSupply(object):
     def __init__(self):
         self.voltage = None
@@ -34,7 +58,7 @@ class PowerSupply(object):
         if self.psu is not None:
             return False
 
-        self.psu = ff_conf.psu_class()
+        self.psu = psu_class()
         self.voltage = self.psu.voltage
         self.current = self.psu.current
         self.output = self.psu.output
@@ -109,25 +133,26 @@ class PowerSupply(object):
         return state
 
 
-power_supply = PowerSupply()
-power_supply.open()
-
-@celery.shared_task(name="psu.set_psu")
+@celery.shared_task(base=PSUTask, name="psu.set_psu")
 def set_psu(*args, **kwargs):
-    global power_supply
-    power_supply.set_psu(*args, **kwargs)
+    set_psu.power_supply.set_psu(*args, **kwargs)
 
 
-@celery.shared_task(name='psu.reset_psu')
+@celery.shared_task(base=PSUTask, name='psu.reset_psu')
 def reset_psu():
-    global power_supply
-    power_supply.set_psu(reset=True)
+    set_psu.power_supply.set_psu(reset=True)
 
 
-@celery.shared_task(name="psu.report")
+@celery.shared_task(base=PSUTask, name="psu.report")
 def report(extra_report_data=None):
-    global power_supply
-    return power_supply.report(extra_report_data)
+    report_ = report.power_supply.report(extra_report_data)
+    report._redis_client.set('ff_cache_power_supply', report_)
+    return report_
+
+
+@celery.shared_task(base=PSUTask, name="psu.cached_report")
+def cached_report():
+    return cached_report._redis_client.get('ff_cache_power_supply')
 
 
 class PowerSupplyError(Exception):

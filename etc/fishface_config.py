@@ -28,40 +28,28 @@ BIN = path_join(ROOT, 'bin')
 
 DJANGO_DIR = path_join(LIB, 'django')
 
+REAL_POWER_SUPPLY = not is_file(ETC, 'FAKE_POWER_SUPPLY')
+
+REAL_CAMERA = not is_file(ETC, 'FAKE_CAMERA')
 CAMERA_RESOLUTION = (512, 384)
 CAMERA_ROTATION = 180
 
 NORMALIZED_SHAPE = (384, 512)
 NORMALIZED_DTYPE = np.uint8
 
-REAL_CAMERA = not is_file(ETC, 'FAKE_CAMERA')
-if REAL_CAMERA:
-    logging.info('Running with real camera.')
-    from picamera import PiCamera as camera_class
-else:
-    logging.warning('Running with fake camera.')
-    from lib.FakeHardware import PiCamera as camera_class
-
-REAL_POWER_SUPPLY = not is_file(ETC, 'FAKE_POWER_SUPPLY')
-if REAL_POWER_SUPPLY:
-    logging.info('Running with real power supply.')
-    from lib.RobustPowerSupply import RobustPowerSupply as psu_class
-else:
-    logging.warning('Running with fake power supply.')
-    from lib.FakeHardware import HP6652a as psu_class
-
+redis_hostname_file_path = path_join(VAR_RUN, 'redis.hostname')
+REDIS_HOSTNAME = str(return_text_file_contents(redis_hostname_file_path))
+REDIS_HOSTNAME = REDIS_HOSTNAME if REDIS_HOSTNAME else 'localhost'
 
 redis_password_file_path = path_join(ETC, 'redis', 'redis_password')
-redis_hostname_file_path = path_join(VAR_RUN, 'redis.hostname')
 REDIS_PASSWORD = str(return_text_file_contents(redis_password_file_path))
-REDIS_HOSTNAME = str(return_text_file_contents(redis_hostname_file_path))
 
 CELERY_BROKER_URL = 'redis://' + ((':' + REDIS_PASSWORD + '@') if REDIS_PASSWORD else '')
 CELERY_BROKER_URL += REDIS_HOSTNAME
 
 CELERY_RESULT_URL = CELERY_BROKER_URL
 
-CELERY_QUEUE_NAMES = ['drone', 'django', 'learn', 'cjc', 'results', 'psu', 'camera']
+CELERY_QUEUE_NAMES = ['drone', 'django', 'learn', 'cjc', 'results', 'psu', 'camera', 'eph']
 
 
 ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1 = 2

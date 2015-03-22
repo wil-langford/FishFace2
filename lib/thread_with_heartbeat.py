@@ -16,10 +16,10 @@ class ThreadWithHeartbeat(threading.Thread):
                  startup_event=None, *args, **kwargs):
         super(ThreadWithHeartbeat, self).__init__(*args, **kwargs)
 
-        self._name = None
+        self._name = 'NO_THREAD_NAME_SET'
 
         self._ready_event = startup_event
-        self._heartbeat_publish_count = publish_count if publish_count else 1
+        self._heartbeat_log_count = publish_count if publish_count else 1
 
         self._heartbeat_count = 0
         self._heartbeat_timestamp = None
@@ -43,6 +43,8 @@ class ThreadWithHeartbeat(threading.Thread):
                 delay_for_seconds(self._heartbeat_interval)
         finally:
             self._post_run()
+            self.beat_heart()
+            self.publish_heartbeat(final=True)
 
     def set_ready(self):
         logger.info('{} thread reports that it is ready.'.format(self.name))
@@ -64,13 +66,13 @@ class ThreadWithHeartbeat(threading.Thread):
             self._heartbeat_timestamp = time.time()
             self._heartbeat_count += 1
 
-        if self._heartbeat_publish_count is not None:
-            if not self._heartbeat_count % self._heartbeat_publish_count:
+        if self._heartbeat_log_count is not None:
+            if not self._heartbeat_count % self._heartbeat_log_count:
                 logger.debug('{} thread heartbeat count is {}'.format(self.name,
                                                                       self._heartbeat_count))
         self.publish_heartbeat()
 
-    def publish_heartbeat(self):
+    def publish_heartbeat(self, final=False):
         with self._heartbeat_lock:
             timestamp, count = self._heartbeat_timestamp, self._heartbeat_count
 
@@ -78,6 +80,7 @@ class ThreadWithHeartbeat(threading.Thread):
             'name': self.name,
             'timestamp': timestamp,
             'count': count,
+            'final': final
         })
 
     @property
@@ -101,7 +104,7 @@ class ThreadWithHeartbeat(threading.Thread):
 
     @name.setter
     def name(self, new_name):
-        if self._name is None:
+        if self._name == 'NO_THREAD_NAME_SET' or 'pending_id' in self._name:
             self._name = new_name + "." + str(time.time())
         else:
             logger.warning("Tried to rename thread.  Thread names are immutable once set.")
@@ -131,19 +134,16 @@ class ThreadWithHeartbeat(threading.Thread):
 
 class ThreadRegistration(object):
     def __init__(self):
-        self._lock = threading.Lock()
         self._timestamp = None
         self._count = 0
 
     @property
     def state(self):
-        with self._lock:
-            return (self._timestamp, self._count)
+        return (self._timestamp, self._count)
 
     def update(self, timestamp, count):
-        with self._lock:
-            self._timestamp = timestamp
-            self._count = count
+        self._timestamp = timestamp
+        self._count = count
 
 
 class ThreadRegistry(object):
@@ -153,17 +153,25 @@ class ThreadRegistry(object):
 
     def receive_heartbeat(self, name, timestamp, count, final=False):
         with self._lock:
-            reg = self._registry[name]
             if final:
-                del self._registry[name]
+                try:
+                    del self._registry[name]
+                except KeyError:
+                    pass
             else:
-                reg.update(timestamp, count)
+                self._registry[name].update(timestamp, count)
 
-        print self.thread_states
+            if final:
+                return None
+            else:
+                return self._registry[name].state
+
 
     def thread_state(self, name):
         with self._lock:
-            return (name, self._registry['name'].state)
+            state = self._registry['name'].state
+
+        return (name, state[0], state[1])
 
     @property
     def thread_list(self):

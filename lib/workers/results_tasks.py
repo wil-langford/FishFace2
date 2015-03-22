@@ -30,13 +30,6 @@ def debug_task(self, *args, **kwargs):
     '''.format(self.request, args, kwargs)
 
 
-class ResultCache(object):
-    def __init__(self):
-        self.psu_report = None
-
-result_cache = ResultCache()
-
-
 @celery.shared_task(name='results.store_analyses')
 def store_analyses(metas):
     # if we only have one meta, wrap it in a list
@@ -86,12 +79,20 @@ def store_analyses(metas):
 
         analysis = dm.ImageAnalysis(image=image, **analysis_config)
 
-        return analysis.save()
+        analysis.save()
+
+        return analysis.id
 
 
 @celery.shared_task(name='results.post_image')
 def post_image(image_data, meta):
-    xp = ds.get_object_or_404(dm.Experiment, pk=int(meta['xp_id']))
+    xp_id = meta.get('xp_id', False)
+    cjr_id = meta.get('cjr_id', 0)
+    if not xp_id and cjr_id:
+        xp_id = dm.CaptureJobRecord.objects.get(pk=meta['cjr_id']).xp_id
+    elif not xp_id and not cjr_id:
+        raise ImagePostError('Could not determine the experiment associated with the image.')
+    xp = ds.get_object_or_404(dm.Experiment, pk=xp_id)
 
     image_config = dict()
     for key in 'cjr_id is_cal_image capture_timestamp voltage current'.split(' '):
@@ -156,19 +157,10 @@ def job_status_report(status, start_timestamp, stop_timestamp, voltage, current,
 
     cjr.save()
 
+    return cjr.id
 
 @celery.shared_task(name='results.power_supply_report')
 def power_supply_log(timestamp, voltage_meas, current_meas, extra_report_data=None):
-    global result_cache
-    result_cache.psu_report = {
-        'timestamp': timestamp,
-        'voltage_meas': voltage_meas,
-        'current_meas': current_meas
-    }
-
-    if extra_report_data:
-        result_cache.psu_report['extra_report_data'] = extra_report_data
-
     psl = dm.PowerSupplyLog()
     psl.measurement_datetime = dut.datetime.utcfromtimestamp(
         float(timestamp)).replace(tzinfo=dut.utc)
@@ -176,12 +168,12 @@ def power_supply_log(timestamp, voltage_meas, current_meas, extra_report_data=No
     psl.current_meas = current_meas
     psl.save()
 
-
-@celery.shared_task(name='results.get_result_cache')
-def get_result_cache():
-    global result_cache
-    return result_cache
+    return psl.id
 
 
 class AnalysisImportError(Exception):
+    pass
+
+
+class ImagePostError(Exception):
     pass

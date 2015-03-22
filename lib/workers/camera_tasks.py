@@ -13,11 +13,14 @@ from lib.misc_utilities import delay_until
 
 import etc.fishface_config as ff_conf
 
-capture_thread = None
-capture_thread_lock = threading.RLock()
-
 import lib.thread_with_heartbeat as thread_with_heartbeat
 
+if ff_conf.REAL_CAMERA:
+    logger.info('Running with real camera.')
+    from picamera import PiCamera as camera_class
+else:
+    logger.warning('Running with fake camera.')
+    from lib.FakeHardware import PiCamera as camera_class
 
 @celery.shared_task(name='camera.ping')
 def ping():
@@ -39,7 +42,7 @@ class Camera(object):
 
         self.cam = None
 
-        self.cam_class = ff_conf.camera_class
+        self.cam_class = camera_class
         self.resolution = resolution
         self.rotation = rotation
 
@@ -152,59 +155,49 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
             pass
 
 
-@celery.shared_task(name='camera.queue_capture_request')
-def queue_capture_request(requested_capture_timestamp, meta):
-    print requested_capture_timestamp, meta
-    global capture_thread, capture_thread_lock
-    with capture_thread_lock:
-        start_capture_thread()
+class CaptureThreadTask(celery.Task):
+    abstract = True
+    _capture_thread = {'thread': None}
+    _capture_thread_lock = threading.Lock()
 
-    capture_thread.push_capture_request((requested_capture_timestamp, meta))
+    @property
+    def capture_thread(self):
+        if self._capture_thread['thread'] is not None and self._capture_thread['thread'].is_alive():
+            return self._capture_thread['thread']
+        else:
+            with self._capture_thread_lock:
+                self._capture_thread['thread'] = CaptureThread(
+                    heartbeat_interval=0.2,
+                    startup_event=threading.Event()
+                )
+
+            self._capture_thread['thread'].start()
+
+            try:
+                self._capture_thread['thread'].ready_event.wait(timeout=5)
+                return self._capture_thread['thread']
+            except celery.exceptions.TimeoutError:
+                raise CaptureThreadError("Could not start capture thread.")
+
+
+@celery.shared_task(base=CaptureThreadTask, name='camera.queue_capture_request')
+def queue_capture_request(requested_capture_timestamp, meta):
+    queue_capture_request.capture_thread.push_capture_request((requested_capture_timestamp, meta))
 
     return requested_capture_timestamp, meta
 
 
-@celery.shared_task(name='camera.start_capture_thread')
-def start_capture_thread():
-    global capture_thread, capture_thread_lock
-    if capture_thread is not None and capture_thread.is_alive():
+@celery.shared_task(base=CaptureThreadTask, name='camera.abort')
+def abort():
+    if abort._capture_thread is not None:
+        abort._capture_thread.abort()
         return True
-
-    with capture_thread_lock:
-        capture_thread = CaptureThread(
-            heartbeat_interval=0.2,
-            startup_event=threading.Event()
-        )
-
-    capture_thread.start()
-    try:
-        capture_thread.ready_event.wait(timeout=5)
-        return True
-    except celery.exceptions.TimeoutError:
-        return False
-
-
-@celery.shared_task(name='camera.stop_capture_thread')
-def stop_capture_thread(force=False):
-    global capture_thread, capture_thread_lock
-    if capture_thread is None:
-        return True
-
-    if force or capture_thread.queue.empty():
-        capture_thread.abort()
-
-    for i in range(5):
-        time.sleep(0.5)
-        if capture_thread is None:
-            return True
-
     return False
 
 
-@celery.shared_task(name='camera.abort')
-def abort():
-    stop_capture_thread(force=True)
-
-
 class CameraError(Exception):
+    pass
+
+
+class CaptureThreadError(Exception):
     pass

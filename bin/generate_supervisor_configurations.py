@@ -86,7 +86,7 @@ def main():
             var_log=ff_conf.VAR_LOG,
             worker=queue_name,
             concurrency=4 if queue_name in ['results'] else 1,
-            threads='' if queue_name in ['results'] else '-P threads',
+            threads='' if queue_name in ['results'] else '-P solo',
         )
 
         conf_path = os.path.join(ff_conf.ETC, 'supervisor.d', 'available', queue_name + '.conf')
