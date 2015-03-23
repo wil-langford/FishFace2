@@ -115,9 +115,9 @@ def complete_status():
 @celery.shared_task(base=ECCTask, name='cjc.abort_all')
 def abort_all():
     if abort_all.extant:
-        return True
-    else:
         return abort_all.ecc.abort_all()
+    else:
+        return True
 
 
 @celery.shared_task(name='cjc.queues_ping')
