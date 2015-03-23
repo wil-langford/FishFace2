@@ -54,6 +54,8 @@ class Camera(object):
             capture_time = float(time.time())
             self.cam.capture(stream, format='jpeg')
 
+        stream.seek(0)
+
         return (stream.read(), capture_time)
 
     def close(self):
