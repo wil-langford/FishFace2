@@ -61,6 +61,9 @@ class RobustPowerSupply(object):
     def name(self):
         return self.psu.name
 
+    def reset(self):
+        self.psu.reset()
+
     @property
     def output(self):
         # If we haven't commanded the power supply's output state yet this session, try to figure out if its
