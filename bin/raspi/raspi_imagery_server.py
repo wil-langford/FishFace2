@@ -267,13 +267,19 @@ class CaptureJob(RegisteredThreadWithHeartbeat):
 
             first_capture_at = self.start_timestamp + self.startup_delay
 
-            self.capture_times = [first_capture_at]
-            for j in range(1, int(self.duration / self.interval)):
-                self.capture_times.append(first_capture_at + j * self.interval)
+            number_of_images_to_capture = int(float(self.duration) / self.interval)
+
+            self.capture_times = [first_capture_at + (j * self.interval) for j in range(number_of_images_to_capture)]
 
             self.job_ends_after = self.capture_times[-1]
             self.total = len(self.capture_times)
             self.remaining = len(self.capture_times)
+
+            eph_list = [t - self.start_timestamp for t in [self.start_timestamp, self.job_ends_after, time.time()]]
+            logger.debug('EPH: start {} stop {} from_now {}'.format(*eph_list))
+            logger.debug('EPH: images_to_capture {} interval {} total seconds {}'.format(
+                number_of_images_to_capture, self.interval, number_of_images_to_capture * self.interval
+            ))
 
         self.set_ready()
 
