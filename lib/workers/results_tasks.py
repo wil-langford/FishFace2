@@ -148,14 +148,15 @@ def job_status_report(status, start_timestamp, stop_timestamp, voltage, current,
 
     cjr.job_start = dut.datetime.utcfromtimestamp(float(start_timestamp)).replace(tzinfo=dut.utc)
 
-    if stop_timestamp:
-        cjr.job_start = dut.datetime.utcfromtimestamp(
-            float(start_timestamp)).replace(tzinfo=dut.utc)
+    if stop_timestamp is not None:
+        cjr.job_stop = dut.datetime.utcfromtimestamp(float(stop_timestamp)).replace(tzinfo=dut.utc)
 
     cjr.total = int(total)
     cjr.remaining = int(remaining)
 
     cjr.save()
+
+    logger.info("Saved report for {}.".format(cjr.full_slug))
 
     return cjr.id
 

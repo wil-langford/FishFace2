@@ -103,13 +103,13 @@ def queues_length(queue_list=None):
 @celery.shared_task(base=ECCTask, name='cjc.complete_status')
 def complete_status():
     if complete_status.extant:
+        return complete_status.ecc.complete_status()
+    else:
         return {
             'current_job': None,
             'staged_job': None,
             'queue': [],
         }
-    else:
-        return complete_status.ecc.complete_status()
 
 
 @celery.shared_task(base=ECCTask, name='cjc.abort_all')
@@ -153,7 +153,7 @@ def set_queue(xp_id, species, queue):
 
 class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, startup_delay, interval, duration, voltage, current,
-                 xp_id, species):
+                 xp_id, species, thread_delay=False):
         super(CaptureJob, self).__init__()
 
         self.status = 'staged'
@@ -179,11 +179,17 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self.start_timestamp = None
         self.stop_timestamp = None
 
+        self._thread_delay = 5 * int(thread_delay)
+
         self.cjr_id_event = threading.Event()
 
     def _pre_run(self):
         self.start_timestamp = time.time()
-        first_capture_at = self.start_timestamp + self.startup_delay
+        first_capture_at = self.start_timestamp + self.startup_delay + self._thread_delay
+
+        logger.info("Delaying first capture by {} seconds to allow all threads to start.".format(
+            self._thread_delay
+        ))
 
         logger.info("starting up job for experiment {}".format(self.xp_id))
         self.status = 'startup_delay'
@@ -229,7 +235,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         if self.status == 'running':
             self.status = 'completed'
 
-        celery_app.send_task('results.job_status_report', kwargs=self.get_status_dict())
+        self.post_report()
 
     def _heartbeat_run(self):
         self.status = 'running'
@@ -257,6 +263,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
 
             self.remaining = self.total - i - 1
 
+        delay_until(self.capture_times[-1])
         # We handled the heartbeat stuff manually above, so no need to have the
         # ThreadWithHeartbeat class do its own looping.
         self._keep_looping = False
@@ -354,10 +361,10 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         pass
 
     def abort_job(self):
+        self.stop_timestamp = time.time()
         self._keep_looping = False
         logger.info('Job aborted: {}'.format(self.get_status_dict()))
         self.status = 'aborted'
-        self.post_report()
 
     def get_status_dict(self):
         return {
@@ -484,7 +491,7 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
                     next_job = self.job_queue.pop(0)
                     if next_job['interval'] > 0:
                         logger.error(str(next_job))
-                        self.current_job = CaptureJob(**next_job)
+                        self.current_job = CaptureJob(thread_delay=True, **next_job)
                     else:
                         self.current_job = NonCaptureJob(**next_job)
                     self.current_job.start()
