@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+{% load staticfiles %}
+{% load djff_filters %}
+
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="text/css" href="{% static 'djff/base.css' %}" />
+    <link rel="stylesheet" type="text/css" href="{% static 'djff/jquery-ui.min.css' %}" />
+
+    <script type="text/javascript" src="{% static 'djff/jquery-1.11.1.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'djff/jquery-ui.min.js' %}"></script>
+
+    <script type="text/javascript" src="{% static 'djff/moment.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'djff/moment-timezone.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'djff/moment-timezone-with-data-2010-2020.min.js' %}"></script>
+
+    <script type="text/javascript">
+        $(document).ready(function() {
+            if (window.ff == undefined) {
+                window.ff = {
+                    celery_proxy_url: "{% url 'djff:celery_proxy' %}",
+                    cjt_chunk_base_url: "{% url 'djff:cjt_chunk' 1 %}".slice(0,-2),
+                    csrf_token: "{{ csrf_token }}",
+                    date_format: 'YYYY-MM-DD HH:mm:ss.SSZZ'
+                };
+            }
+        });
+    </script>
+
+    <script type="text/javascript" src="{% static 'djff/base.js' %}"></script>
+
+    {% block localscript %}{% endblock %}
+
+    <title>FishFace{% block pagetitle %}{% endblock %}</title>
+</head>
+
+<body>
+
+<header>
+    <div id="header_title_block">
+    <h2><a href="{% url 'djff:xp_index' %}" id="header_title">FishFace</a></h2>
+    <h4>{% block subtitle %}{% endblock %}</h4>
+    </div>
+</header>
+
+<div id="sidebar">
+        <ul id="main_menu">
+        <li class="non_menu_li">Setup</li>
+        <a href="{% url 'djff:xp_index' %}"><li class="menu_li" id="menu_experiments">Experiments</li></a>
+        <a href="{% url 'djff:sp_index' %}"><li class="menu_li" id="menu_species">Species</li></a>
+        <a href="{% url 'djff:cjt_index' %}"><li class="menu_li" id="menu_templates">Individual Job Templates</li></a>
+        <a href="{% url 'djff:cq_builder' %}"><li class="menu_li" id="menu_cq_builder">Queue Builder</li></a>
+        <li class="non_menu_li">Capturing</li>
+        <a href="{% url 'djff:cq_interface' %}"><li class="menu_li" id="menu_job_queue">Run Capture Jobs</li></a>
+        <li class="non_menu_li">Analysis</li>
+        <a href="{% url 'djff:tagging_interface' %}"><li class="menu_li" id="menu_tagging">Tag Data</li></a>
+        <a href="{% url 'djff:verification_interface' %}"><li class="menu_li" id="menu_verification">Verify Tags</li></a>
+        <li class="non_menu_li">Information</li>
+        <a href="{% url 'djff:stats' %}"><li class="menu_li" id="menu_stats">Stats</li></a>
+        </ul>
+    {% block sidebar %}
+    {% endblock %}
+</div>
+
+<div id="preview_area">
+    {% block preview_area %}
+    {% endblock %}
+</div>
+
+<div id="content">
+    {% block content %}{% endblock %}
+</div>
+
+</body>
+</html>

@@ -1,0 +1,2 @@
+# The conf files in this directory should be just symlinks.
+*.conf

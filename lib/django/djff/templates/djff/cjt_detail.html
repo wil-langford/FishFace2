@@ -1,0 +1,83 @@
+{% extends "djff/base.html" %}
+
+{% block subtitle %}Capture Job Template{% endblock %}
+
+{% block localscript %}
+<script type="text/javascript">
+$(document).ready(function() {
+    $('input#delete_button').on('click', function() {
+        if ($('#confirm_delete').prop('checked')) {
+            console.log('deletion!');
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'djff:cjt_delete' context.id %}",  // set by inline javascript on the main page
+                data: {},
+                complete: function (data, status, jqXHR) {
+                    window.location.href="{% url 'djff:cjt_index' %}";
+                },
+                dataType: 'json'
+            });
+
+        }
+    });
+
+    $("input#id_duration, input#id_interval, input#id_startup_delay").on('blur', function() {
+        var element = $(this);
+        element.val(window.ff.text_to_seconds(element.val()));
+    });
+
+    window.ff.enable_disable_startup_delay = function() {
+       var startup_delay = $('input#id_startup_delay');
+       if (Number($(this).val()) <= 0) {
+           window.ff.cached_startup_delay = Number(startup_delay.val());
+           console.log('disabling after cached delay: ' + window.ff.cached_startup_delay);
+           startup_delay.val(0);
+           startup_delay.attr('disabled', 'true');
+       } else {
+           if (window.ff.cached_startup_delay > 0) {
+               startup_delay.val(window.ff.cached_startup_delay);
+               delete window.ff.cached_startup_delay;
+           }
+           startup_delay.removeAttr('disabled');
+       }
+    };
+
+    $("input#id_interval").on('change', window.ff.enable_disable_startup_delay);
+
+    $("input#id_submit_button").on('click', function() {
+        $('input#id_startup_delay').removeAttr('disabled');
+    });
+
+    $("input#id_interval").change();
+
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<h2>Editing Capture Job Template</h2>
+
+    <form action="{% url 'djff:cjt_detail' context.id %}" method="post">
+        {% csrf_token %}
+        <label for="id_voltage">Voltage</label> <input id="id_voltage" name="voltage" step="0.5" type="number" value="{{ context.voltage }}" /><br>
+        <label for="id_current">Max current</label> <input id="id_current" name="current" step="1.0" type="number" value="{{ context.current }}" /><br>
+        <br>
+        <label for="id_startup_delay">Delay between power and capture</label> <input id="id_startup_delay" name="startup_delay" step="any" value="{{ context.startup_delay }}" /><br>
+        <br>
+        <label for="id_duration">Duration to capture</label> <input id="id_duration" name="duration" step="5.0" value="{{ context.duration }}" /><br>
+        <label for="id_interval">Interval between images</label> <input id="id_interval" name="interval" step="1.0" value="{{ context.interval }}" /><br>
+        <label for="id_description">Description (optional):</label><br>
+        <textarea cols="40" id="id_description" name="description" rows="10">{{ context.description }}</textarea><br><br>
+        <input type="submit" id="id_submit_button" value="Save">
+        <span class="padded_boxed">
+            <label>Confirm delete
+                <input type="checkbox" id="confirm_delete">
+            </label>
+            <input type="button" class="deleterbutton" value="Delete" id="delete_button">
+        </span>
+    </form>
+
+    <p>Note: To run the flume for a certain amount of time without capturing any data, use a 0 value for
+    the interval.  For example, you could set the voltage to 0V, the duration to 900s, and the interval
+    to 0 to give the fish a 15-minute rest.</p>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "djff/base.html" %}
+{% load staticfiles %}
+
+{% block subtitle %}Capture Job Template{% endblock %}
+
+{% block localscript %}
+<script type="text/javascript" src="{% static 'djff/cq_utils.js' %}"></script>
+<script type="text/javascript">
+    $(document).ready(function(){
+        var cjt_base_url = "{% url 'djff:cjt_detail' 1 %}".slice(0,-2);
+        var cjt_ids = {{ cjt_ids|safe }};
+
+        if (cjt_ids.length > 0) {
+            $('#cjt_list_placeholder').remove();
+        }
+
+        for (var idx in cjt_ids) {
+            var cjt_id = cjt_ids[idx];
+            window.ff.cq_util.append_cjt_li_chunk(
+                "cjt_list", cjt_id,
+                false,
+                '<a href="' + cjt_base_url + cjt_id + '/">',
+                '</a>'
+            );
+        }
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+    <p>Add a <a href="{% url 'djff:cjt_new' %}">new capture job template</a>.</p>
+
+    <ul id="cjt_list">
+        <li id="cjt_list_placeholder">No stored Capture Job Templates.</li>
+    </ul>
+
+{% endblock %}
