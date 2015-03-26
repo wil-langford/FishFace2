@@ -3,6 +3,7 @@ from __future__ import print_function
 import sys
 import os
 from os.path import join as path_join
+import fractions
 
 import logging
 import numpy as np
@@ -33,6 +34,19 @@ REAL_POWER_SUPPLY = not is_file(ETC, 'FAKE_POWER_SUPPLY')
 REAL_CAMERA = not is_file(ETC, 'FAKE_CAMERA')
 CAMERA_RESOLUTION = (512, 384)
 CAMERA_ROTATION = 180
+CAMERA_CONSISTENCY_SETTINGS = [
+    {
+        'shutter_speed': 25596L,
+        'awb_mode': 'off',
+        'exposure_mode': 'off',
+        'iso': 800,
+    },
+    {
+        'analog_gain': fractions.Fraction(1, 1),
+        'digital_gain': fractions.Fraction(271, 256),
+        'awb_gains': (fractions.Fraction(187, 128), fractions.Fraction(375, 256)),
+    }
+]
 
 NORMALIZED_SHAPE = (384, 512)
 NORMALIZED_DTYPE = np.uint8

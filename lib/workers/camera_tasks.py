@@ -67,6 +67,9 @@ class Camera(object):
         self.cam.resolution = self.resolution
         self.cam.rotation = self.rotation
 
+        for settings_group in ff_conf.CAMERA_CONSISTENCY_SETTINGS:
+            for key, value in settings_group.iteritems():
+                setattr(self.cam, key, value)
 
 class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, *args, **kwargs):
@@ -114,7 +117,7 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
             r = celery_app.send_task('results.post_image',
                                      kwargs={'image_data': image, 'meta': meta})
 
-            print "post post"
+            print "after posting image"
 
             self.queue.task_done()
 
