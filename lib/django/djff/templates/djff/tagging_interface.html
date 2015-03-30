@@ -6,6 +6,7 @@
         if (window.ff == undefined) { window.ff = {}; }
         window.ff.tag_submit_url = "{% url 'djff:tag_submit' %}";
         window.ff.researchers = {{ researchers_json|safe }};
+        window.ff.resolution = {{ resolution_json|safe }};
     </script>
     <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'djff/tagging_interface.js' %}" canvas="tag_canvas"></script>
@@ -18,9 +19,9 @@
     <div id="select_researcher_text">Please select your name from the drop-down list to the right.</div>
 
     <span id="canvas_wrapper">
-        <canvas id="over_canvas" width="400" height="300" class="boxed"></canvas>
+        <canvas id="over_canvas" width="512" height="384" class="boxed"></canvas>
         <br />
-        <canvas id="tag_canvas" width="400" height="300" class="boxed"></canvas>
+        <canvas id="tag_canvas" width="512" height="384" class="boxed"></canvas>
     </span>
 {% endblock %}
 

@@ -20,6 +20,8 @@ import django.views.generic.edit as dvge
 import django.db.models as ddm
 from django.conf import settings
 
+import etc.fishface_config as ff_conf
+
 from lib.django.djff.models import (
     Experiment,
     Image,
@@ -165,6 +167,7 @@ def tagging_interface(request):
     context = {
         'researchers': researchers,
         'researchers_json': json.dumps(researchers),
+        'resolution_json': json.dumps(ff_conf.CAMERA_RESOLUTION),
     }
     return ds.render(request, 'djff/tagging_interface.html', context)
 
@@ -426,6 +429,7 @@ def cq_builder(request):
         'job_specs': job_specs,
         'cjts': cjts,
         'cjt_ids': cjt_ids,
+        'resolution_json': json.dumps(ff_conf.CAMERA_RESOLUTION),
     }
     return ds.render(request, 'djff/cq_builder.html', context)
 
