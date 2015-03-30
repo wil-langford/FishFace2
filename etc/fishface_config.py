@@ -40,10 +40,11 @@ CAMERA_CONSISTENCY_SETTINGS = [
         'awb_mode': 'off',
         'exposure_mode': 'off',
         'iso': 800,
+        'saturation': -100,
+        'contrast': 50,
+        'brightness': 70,
     },
     {
-        'analog_gain': fractions.Fraction(1, 1),
-        'digital_gain': fractions.Fraction(271, 256),
         'awb_gains': (fractions.Fraction(187, 128), fractions.Fraction(375, 256)),
     }
 ]

@@ -69,7 +69,10 @@ class Camera(object):
 
         for settings_group in ff_conf.CAMERA_CONSISTENCY_SETTINGS:
             for key, value in settings_group.iteritems():
-                setattr(self.cam, key, value)
+                try:
+                    setattr(self.cam, key, value)
+                except AttributeError:
+                    logger.error("Can't set attribute/property {} on camera object.".format(key))
 
 class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, *args, **kwargs):
@@ -123,6 +126,8 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
 
             self._next_capture_time = None
             self._next_capture_meta = None
+
+            return {'image_post_task_id': r.id}
 
     def _pre_run(self):
         self.set_ready()
