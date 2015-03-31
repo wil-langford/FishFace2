@@ -65,7 +65,7 @@
             Captured {{ imageset.count }} images at {{ cjr.voltage }}
             volts (max {{ cjr.current }} amps):<br>
             {% for img in imageset %}
-                [ {{ img.linked_angle_bullet|safe }} ]
+                {{ img.linked_angle_bullet|safe }}
             {% endfor %}
             <hr width="30%" />
         {% empty %}
