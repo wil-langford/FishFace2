@@ -10,9 +10,9 @@ urlpatterns = patterns(
     # url(r'^$', 'django_fishface.views.home', name='home'),
     # url(r'^blog/', include('blog.urls')),
 
-    url(r'^$', 'djff.views.xp_index', name='home'),
+    url(r'^$', 'lib.django.djff.views.xp_index', name='home'),
     url(r'^admin/', include(admin.site.urls)),
-    url(r'^fishface/', include('djff.urls', namespace='djff')),
+    url(r'^fishface/', include('lib.django.djff.urls', namespace='djff')),
 )
 
 

@@ -106,9 +106,9 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 )
 
-ROOT_URLCONF = 'django_fishface.urls'
+ROOT_URLCONF = 'lib.django.django_fishface.urls'
 
-WSGI_APPLICATION = 'django_fishface.wsgi.application'
+WSGI_APPLICATION = 'lib.django.django_fishface.wsgi.application'
 
 
 # Internationalization

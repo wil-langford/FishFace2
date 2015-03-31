@@ -6,9 +6,9 @@
     <script type="text/javascript">
         $(document).ready(function() {
             window.ff.xp_detail_cals_url = "{% url 'djff:xp_detail_cals' xp.id %}";
+            window.ff.angle_bullet_base_url = "{% static 'djff/rots/' %}";
         });
     </script>
-    <script type="text/javascript" src="{% static 'djff/fabric_text_interaction.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'djff/xp_detail.js' %}"></script>
 
 
@@ -65,7 +65,7 @@
             Captured {{ imageset.count }} images at {{ cjr.voltage }}
             volts (max {{ cjr.current }} amps):<br>
             {% for img in imageset %}
-                {{ img.linked_angle_bullet|safe }}
+                [ {{ img.linked_angle_bullet|safe }} ]
             {% endfor %}
             <hr width="30%" />
         {% empty %}
@@ -73,8 +73,6 @@
         {% endfor %}
         </div>
     {% endif %}
-
-    <canvas id="builder_canvas" width="20" height="20"></canvas>
 
 {% endblock %}
 

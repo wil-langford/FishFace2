@@ -239,6 +239,10 @@ class Image(models.Model):
 
         return angle
 
+    @property
+    def degrees(self):
+        return None if self.angle is None else int(round(math.degrees(self.angle),0))
+
     def inline_image(self, thumb=False):
         width = [200, 40][thumb]
         return '<img width={} class="inline_image" src="{}{}" />'.format(
@@ -262,7 +266,7 @@ class Image(models.Model):
     def linked_angle_bullet(self):
         return '<a href="/media/{}" class="angle_bullet" target="_newtab" data-angle="{}">X</a>'.format(
             self.image_file,
-            self.angle
+            self.degrees if self.degrees is not None else 'None',
         )
     linked_angle_bullet.allow_tags = True
 
