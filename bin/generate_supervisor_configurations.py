@@ -45,14 +45,14 @@ def main():
 
     redis_config_string = textwrap.dedent("""
         [program:redis]
-        command=/home/fishface/bin/redis-server {etc}/redis/redis.conf
+        command=%(ENV_HOME)s/bin/redis-server {etc}/redis/redis.conf
         autostart=true
         autorestart=true
         user=fishface
         stdout_logfile={var_log}/redis.log
         stderr_logfile={var_log}/redis.err
         priority=50
-        directory=/home/fishface/etc/redis"""
+        directory={etc}/redis"""
     ).format(
         bin=ff_conf.BIN,
         etc=ff_conf.ETC,
