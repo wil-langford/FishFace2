@@ -141,7 +141,8 @@ def monitor():
 @celery.shared_task(base=ECCTask, name='cjc.cjr_id_catcher')
 def cjr_id_catcher(ts_id_pair):
     start_timestamp, cjr_id = ts_id_pair
-    logger.error('NEW CJR_ID {} and TS {}'.format(cjr_id, start_timestamp))
+    logger.info('New CJR ID {} received from server for job with start timestamp {}'.format(
+        cjr_id, start_timestamp))
 
     return cjr_id_catcher.ecc.cjr_id_catcher(start_timestamp, cjr_id)
 
@@ -200,17 +201,22 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
             'current': self.current,
         })
 
-        logger.info("Asking server to create new CJR for XP_{}.".format(self.xp_id))
-        (
-            celery_app.signature('results.new_cjr',
-                                 kwargs={
-                                     'xp_id': self.xp_id,
-                                     'voltage': self.voltage,
-                                     'current': self.current,
-                                     'start_timestamp': self.start_timestamp
-                                 }) |
-            celery_app.signature('cjc.cjr_id_catcher')
-        ).apply_async()
+        if self.cjr_id is None:
+            (
+                celery_app.signature('results.new_cjr',
+                                     kwargs={
+                                         'xp_id': self.xp_id,
+                                         'voltage': self.voltage,
+                                         'current': self.current,
+                                         'start_timestamp': self.start_timestamp
+                                     }) |
+                celery_app.signature('cjc.cjr_id_catcher')
+            ).apply_async()
+            logger.warning("Asking server to create new CJR for XP_{} on the fly.".format(
+                self.xp_id))
+            logger.warning("Adjusting first capture forward by 3 seconds to allow time for the " +
+                           "server to create the new CJR.")
+            first_capture_at += 3
 
         logger.info('Preparing list of captures.'.format(self.xp_id, self.cjr_id))
 
@@ -302,8 +308,8 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
 
 
 class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
-    def __init__(self, duration, voltage, current, start_timestamp=None):
-        super(NonCaptureJob, self).__init__()
+    def __init__(self, duration, voltage, current, start_timestamp=None, **kwargs):
+        super(NonCaptureJob, self).__init__(heartbeat_interval=0.5)
 
         self.status = 'staged'
 
@@ -314,7 +320,6 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self.name = 'job_without_capture_{}_seconds_at_{}_volts'.format(
             self.duration, self.voltage
         )
-        self._heartbeat_interval = 0
 
         self.cjr_id = None
 
@@ -332,10 +337,10 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
 
         delay_until(self.start_timestamp)
 
-        logger.info("starting up job for experiment {}".format(self.xp_id))
+        logger.info("starting up non-capture job")
         self.status = 'startup'
 
-        self.controller.set_psu({
+        celery_app.send_task('psu.set_psu', kwargs={
             'output': bool(self.voltage),
             'voltage': self.voltage,
             'current': self.current,
@@ -343,7 +348,7 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
 
         self.total = 0
         self.remaining = 0
-        self.job_ends_after = time.time() + self.duration
+        self.job_ends_after = self.start_timestamp + self.duration
 
         self.status = 'running'
         logger.info('starting captureless wait period')
@@ -439,28 +444,32 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
         return True
 
     def cjr_id_catcher(self, start_timestamp, cjr_id):
-        logger.error('ecc name: {}'.format(self.name))
-        logger.error("ecc queue: {}".format(self.job_queue))
-        logger.error("ecc current: {}".format(self.current_job))
-
         if self.current_job is None:
-            logger.warning("The ECC's current job is None.")
+            logger.warning("Caught CJR ID, but the ECC's current job is None.")
             return False
 
         if self.current_job.start_timestamp == start_timestamp:
-            logger.info('setting CJR_ID for job currently named: {}'.format(self.current_job.name))
-            self.current_job.publish_heartbeat(final=True)
-            self.current_job.cjr_id = int(cjr_id)
-            self.current_job.name = (
-                self.current_job.name[:self.current_job.name.index('CJR_') + 4] +
-                str(self.current_job.cjr_id))
-            logger.info('new job name: {}'.format(self.current_job.name))
-            self.current_job.publish_heartbeat()
-            self.current_job.cjr_id_event.set()
-            return self.current_job.name
+            job_for_cjr = self.current_job
+            logger.info('Setting CJR ID for current job.')
+        elif self.staged_job is not None and start_timestamp == -1:
+            job_for_cjr = self.staged_job
+            logger.info('Setting CJR ID for staged job.')
         else:
-            logger.error('Failed to set CJR id for current job.')
+            logger.error("Caught CJR ID, but the ID isn't for a staged job and the current " +
+                         "job's start_timestamp doesn't match.")
             return False
+
+
+        logger.info('old job thread name: {}'.format(job_for_cjr.name))
+        job_for_cjr.publish_heartbeat(final=True)
+        job_for_cjr.cjr_id = int(cjr_id)
+        job_for_cjr.name = (
+            job_for_cjr.name[:job_for_cjr.name.index('CJR_') + 4] +
+            str(job_for_cjr.cjr_id))
+        logger.info('new job thread name: {}'.format(job_for_cjr.name))
+        job_for_cjr.publish_heartbeat()
+        job_for_cjr.cjr_id_event.set()
+        return job_for_cjr.name
 
     def _pre_run(self):
         super(ExperimentCaptureController, self)._pre_run()
@@ -489,8 +498,7 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
                 if self.job_queue:  # there are jobs in queue
                     logger.info('No jobs active or staged, but jobs in queue.')
                     next_job = self.job_queue.pop(0)
-                    if next_job['interval'] > 0:
-                        logger.error(str(next_job))
+                    if float(next_job['interval']) > 0:
                         self.current_job = CaptureJob(thread_delay=True, **next_job)
                     else:
                         self.current_job = NonCaptureJob(**next_job)
@@ -516,10 +524,24 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
             elif self.job_queue and self.staged_job is None and self.current_job.job_ends_in < 10:
                 logger.info("Current job ends soon; promoting queued job to staged job.")
                 next_job = self.job_queue.pop(0)
-                if next_job['interval'] > 0:
+                if float(next_job['interval']) > 0:
                     self.staged_job = CaptureJob(**next_job)
+                    logger.info("Asking server to create new CJR for staged job.".format(
+                        next_job['xp_id']))
+                    (
+                        celery_app.signature('results.new_cjr',
+                                             kwargs={
+                                                 'xp_id': next_job['xp_id'],
+                                                 'voltage': next_job['voltage'],
+                                                 'current': next_job['current'],
+                                                 'start_timestamp': -1,
+                                             }) |
+                        celery_app.signature('cjc.cjr_id_catcher')
+                    ).apply_async()
                 else:
                     self.staged_job = NonCaptureJob(**next_job)
+
+
 
 
 class ECCError(Exception):

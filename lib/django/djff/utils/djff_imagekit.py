@@ -12,16 +12,6 @@ class RotateImage(object):
         return image.rotate(self.angle)
 
 
-class ConvertToGrayscale(object):
-    @staticmethod
-    def process(image):
-        # im_mode = image.mode
-        new_image = image.convert('L')
-        # print "image mode changed from {} to {}".format(im_mode, new_image.mode)
-
-        return new_image
-
-
 class ManualTagVerificationThumbnail(ik.ImageSpec):
     format = 'JPEG'
     options = {'quality': 60}
