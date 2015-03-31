@@ -51,7 +51,8 @@ def main():
         user=fishface
         stdout_logfile={var_log}/redis.log
         stderr_logfile={var_log}/redis.err
-        priority=50"""
+        priority=50
+        directory=/home/fishface/etc/redis"""
     ).format(
         bin=ff_conf.BIN,
         etc=ff_conf.ETC,
