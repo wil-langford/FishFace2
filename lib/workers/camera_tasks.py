@@ -164,7 +164,7 @@ class CaptureThreadTask(celery.Task):
 
     @property
     def capture_thread(self):
-        if self._capture_thread['thread'] is not None and self._capture_thread['thread'].is_alive():
+        if self.extant:
             return self._capture_thread['thread']
         else:
             with self._capture_thread_lock:
@@ -181,6 +181,11 @@ class CaptureThreadTask(celery.Task):
             except celery.exceptions.TimeoutError:
                 raise CaptureThreadError("Could not start capture thread.")
 
+    @property
+    def extant(self):
+        return (self._capture_thread['thread'] is not None
+                and self._capture_thread['thread'].is_alive())
+
 
 @celery.shared_task(base=CaptureThreadTask, name='camera.queue_capture_request')
 def queue_capture_request(requested_capture_timestamp, meta):
@@ -191,8 +196,8 @@ def queue_capture_request(requested_capture_timestamp, meta):
 
 @celery.shared_task(base=CaptureThreadTask, name='camera.abort')
 def abort():
-    if abort._capture_thread is not None:
-        abort._capture_thread.abort()
+    if abort.extant:
+        abort.capture_thread.abort()
         return True
     return False
 
