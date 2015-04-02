@@ -54,31 +54,19 @@ except ImportError:
     generate_and_collect_secret_keys()
     from secret_keys import *
 
-try:
-    from dev_settings import (
-        DEBUG,
-        TEMPLATE_DEBUG,
-        DATABASES,
-        # IMAGERY_SERVER_HOST,
-        # IMAGERY_SERVER_PORT,
-    )
-except ImportError:
-    DEBUG = False
-    TEMPLATE_DEBUG = False
+DEBUG = False
+TEMPLATE_DEBUG = False
 
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': 'fishfacedb',
-            'USER': 'fishfacedbuser',
-            'PASSWORD': DB_PASSWD,
-            'HOST': 'localhost',
-            'PORT': '',
-        },
-    }
-
-    # IMAGERY_SERVER_HOST = 'raspi'
-    # IMAGERY_SERVER_PORT = 18765
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'fishfacedb',
+        'USER': 'fishfacedbuser',
+        'PASSWORD': DB_PASSWD,
+        'HOST': 'localhost',
+        'PORT': '',
+    },
+}
 
 # Set to wildcard pending fixed IP assignment
 # TODO: After fixed IP assignment, put real value here.
@@ -133,9 +121,10 @@ STATIC_URL = '/static/'
 MEDIA_ROOT = '/mnt/server_storage/media/'
 MEDIA_URL = '/media/'
 
-# DJFF settings
-
+#
 # Logging
+#
+
 PRIMARY_LOGGER = logging.getLogger('djff')
 PRIMARY_LOGGER.setLevel(logging.DEBUG)
 
@@ -169,3 +158,5 @@ if LOG_TO_FILE:
     file_handler.setFormatter(formatter)
 
     PRIMARY_LOGGER.addHandler(file_handler)
+
+from local_settings import *
