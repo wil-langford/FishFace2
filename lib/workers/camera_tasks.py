@@ -137,9 +137,9 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
             return (None, None)
 
     def abort(self, complete=False):
-        print "aborting thread.  complete? {}".format(complete)
+        logger.info("aborting capture thread.  complete? {}".format(complete))
         # we don't want to accept any more imagery requests after we start the abort
-        self.push_capture_request = lambda x: True
+        self.push_capture_request = lambda x: False
 
         super(CaptureThread, self).abort(complete=complete)
         if not complete:
