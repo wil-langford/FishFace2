@@ -4,7 +4,7 @@ import collections
 
 from lib.fishface_logging import logger
 from lib.fishface_celery import celery_app
-from lib.misc_utilities import delay_for_seconds
+from lib.misc_utilities import delay_until
 
 
 class ThreadWithHeartbeat(threading.Thread):
@@ -38,9 +38,10 @@ class ThreadWithHeartbeat(threading.Thread):
             self._pre_run()
 
             while self._keep_looping:
+                heartbeat_end = time.time() + self._heartbeat_interval
                 self._heartbeat_run()
                 self.beat_heart()
-                delay_for_seconds(self._heartbeat_interval)
+                delay_until(heartbeat_end)
         finally:
             self._post_run()
             self.beat_heart()
@@ -164,7 +165,7 @@ class ThreadRegistry(object):
             if final:
                 return None
             else:
-                return self._registry[name].state
+                return (name, self._registry[name].state)
 
 
     def thread_state(self, name):
