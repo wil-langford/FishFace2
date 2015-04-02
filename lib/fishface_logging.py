@@ -1,5 +1,6 @@
 import os
 import logging
+import json
 
 logger = logging.getLogger('fishface')
 logger.setLevel(logging.DEBUG)
@@ -23,3 +24,10 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 if LOG_TO_CONSOLE:
     logger.addHandler(console_handler)
+
+
+def dense_log(tag, dict_to_log):
+    return 'DENSE_LOG#' + str(tag) + '#' + json.dumps(
+        dict_to_log,
+        separators=(',', ':'),
+    )

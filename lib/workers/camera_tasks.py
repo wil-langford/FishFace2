@@ -74,6 +74,7 @@ class Camera(object):
                 except AttributeError:
                     logger.error("Can't set attribute/property {} on camera object.".format(key))
 
+
 class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, *args, **kwargs):
         super(CaptureThread, self).__init__(*args, **kwargs)
@@ -92,35 +93,26 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
 
     def _heartbeat_run(self):
         if self._next_capture_time is None:
-            print 'Popping next.'
             self._next_capture_time, self._next_capture_meta = self.pop_next_request()
             if self._next_capture_meta is None:
                 if self.thread_age > 3:
                     self.abort(complete=True)
                 return
 
-        print self._next_capture_time
-        print self._next_capture_meta
-
         if not self._keep_looping:
-            print 'returning early'
             return
 
         if self._next_capture_time - time.time() < self._wait_for_capture_when_less_than:
             delay_until(self._next_capture_time)
             image, timestamp = self.cam.get_image_with_capture_time()
 
-            print "image created with size [{}]".format(len(image))
-
             meta = self._next_capture_meta
             meta['capture_timestamp'] = timestamp
-
-            print "meta updated"
+            meta['requested_timestamp'] = self._next_capture_time
+            meta['delta'] = timestamp - self._next_capture_time
 
             r = celery_app.send_task('results.post_image',
                                      kwargs={'image_data': image, 'meta': meta})
-
-            print "after posting image"
 
             self.queue.task_done()
 

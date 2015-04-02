@@ -14,7 +14,7 @@ import django.core.files.base as dcfb
 import celery
 from lib.django_celery import celery_app
 
-from lib.fishface_logging import logger
+from lib.fishface_logging import logger, dense_log
 
 @celery.shared_task(name='results.ping')
 def ping():
@@ -104,8 +104,16 @@ def post_image(image_data, meta):
     if image_config['is_cal_image']:
         image_config['cjr_id'] = None
 
-    print 'image size:', len(image_data)
-    print 'image type:', type(image_data)
+
+
+    logger.debug(
+        dense_log('', {
+            'delta': round(meta.get('delta', 0), 3),
+            'size': len(image_data),
+            'requested_timestamp': meta.get('requested_timestamp', False),
+            'capture_timestamp': meta.get('capture_timestamp', False),
+        })
+    )
 
     image = dm.Image(xp=xp, **image_config)
     image.image_file.save(image.image_file.name, dcfb.ContentFile(image_data))
