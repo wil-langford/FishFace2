@@ -227,7 +227,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self.total = len(self.capture_times)
         self.remaining = self.total
 
-        logger.error('REMAINING / TOTAL = {} / {}'.format(self.remaining, self.total))
+        logger.debug('REMAINING / TOTAL = {} / {}'.format(self.remaining, self.total))
 
         self.set_ready()
         # Abort if we don't have a CJR id at least 1 second before we're supposed to
@@ -245,7 +245,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
 
     def _heartbeat_run(self):
         self.status = 'running'
-        logger.error('REMAINING / TOTAL = {} / {}'.format(self.remaining, self.total))
+        logger.debug('REMAINING / TOTAL = {} / {}'.format(self.remaining, self.total))
 
         meta = {
             'cjr_id': self.cjr_id,
@@ -482,11 +482,10 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
                 self.name
             ))
         else:
-            logger.warning("{}: No initial queue setting.  Aborting ECC.".format(self.name))
+            logger.error("{}: No initial queue setting.  Aborting ECC.".format(self.name))
             self.abort()
 
     def _heartbeat_run(self):
-
         # there is no currently running job
         if self.current_job is None:
             if self.staged_job is not None:  # there is a staged job
@@ -540,8 +539,6 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
                     ).apply_async()
                 else:
                     self.staged_job = NonCaptureJob(**next_job)
-
-
 
 
 class ECCError(Exception):
