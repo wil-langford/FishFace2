@@ -379,15 +379,14 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
             self.status = 'completed'
 
     def _heartbeat_run(self):
-        # We don't need to do anything periodically except check to see if the job has been
-        # aborted, and that is handled by the ThreadWithHeartbeat class.
-        pass
+        if self.job_ends_in < 0:
+            self.abort_job(complete=True)
 
-    def abort_job(self):
+    def abort_job(self, complete=False):
         self.stop_timestamp = time.time()
-        self._keep_looping = False
-        logger.info('Job aborted: {}'.format(self.get_status_dict()))
-        self.status = 'aborted'
+        self.status = 'complete' if complete else 'aborted'
+        logger.info('Job {} aborted with status: {}'.format(self.name, self.get_status_dict()))
+        super(NonCaptureJob, self).abort(complete)
 
     def get_status_dict(self):
         return {
@@ -458,6 +457,8 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
 
         celery_app.send_task('camera.abort')
         celery_app.send_task('psu.reset_psu')
+
+        self.abort()
 
         return True
 
