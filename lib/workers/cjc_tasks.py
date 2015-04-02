@@ -2,7 +2,6 @@ import threading
 import time
 
 import celery
-from celery.exceptions import TimeoutError
 import redis
 
 import lib.thread_with_heartbeat as thread_with_heartbeat
@@ -12,7 +11,7 @@ from lib.misc_utilities import delay_until
 
 import etc.fishface_config as ff_conf
 
-from lib.fishface_logging import logger
+from lib.fishface_logging import logger, dense_log
 
 
 class ECCTask(celery.Task):
@@ -24,6 +23,10 @@ class ECCTask(celery.Task):
         password=ff_conf.REDIS_PASSWORD
     )
     _thread_registry = thread_with_heartbeat.ThreadRegistry()
+
+    @property
+    def redis_client(self):
+        return self._redis_client
 
     @property
     def ecc(self):
@@ -47,15 +50,28 @@ class ECCTask(celery.Task):
                 self._ecc['thread'].is_alive() and
                 self._ecc['thread'].ready_event.is_set())
 
+    @property
+    def thread_registry(self):
+        return self._thread_registry
+
+    def run(self):
+        pass
+
 
 class ResultCacheTask(celery.Task):
     abstract = True
     cache = dict()
 
+    def run(self):
+        pass
+
 
 class CeleryNavelGazingTask(celery.Task):
     controller = celery_app.control
     inspector = controller.inspect()
+
+    def run(self):
+        pass
 
 
 @celery.shared_task(name='cjc.ping')
@@ -74,12 +90,12 @@ def debug_task(self, *args, **kwargs):
 
 @celery.shared_task(base=ECCTask, name='cjc.thread_states')
 def thread_states():
-    return thread_states._thread_registry.thread_states
+    return thread_states.thread_registry.thread_states
 
 
 @celery.shared_task(base=ECCTask, name='cjc.thread_registry')
 def thread_registry():
-    return thread_registry._thread_registry.registry
+    return thread_registry.thread_registry.registry
 
 
 @celery.shared_task(base=ECCTask, name='cjc.thread_heartbeat')
@@ -87,7 +103,7 @@ def thread_heartbeat(name, timestamp, count, final=False):
     if name == 'name':
         logger.error('name:name detected with count {} timestamp {}'.format(count, timestamp))
 
-    return thread_heartbeat._thread_registry.receive_heartbeat(name, timestamp, count, final)
+    return thread_heartbeat.thread_registry.receive_heartbeat(name, timestamp, count, final)
 
 
 @celery.shared_task(base=ECCTask, name='cjc.queues_length')
@@ -97,7 +113,7 @@ def queues_length(queue_list=None):
     elif isinstance(queue_list, basestring):
         queue_list = [queue_list]
 
-    return [(queue_name, queues_length._redis_client.llen(queue_name)) for queue_name in queue_list]
+    return [(queue_name, queues_length.redis_client.llen(queue_name)) for queue_name in queue_list]
 
 
 @celery.shared_task(base=ECCTask, name='cjc.complete_status')
@@ -311,6 +327,8 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, duration, voltage, current, start_timestamp=None, **kwargs):
         super(NonCaptureJob, self).__init__(heartbeat_interval=0.5)
 
+        logger.debug(dense_log('EXTRA_KWARGS_IN_NONCAPTUREJOB', kwargs))
+
         self.status = 'staged'
 
         self.duration = float(duration)
@@ -458,7 +476,6 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
             logger.error("Caught CJR ID, but the ID isn't for a staged job and the current " +
                          "job's start_timestamp doesn't match.")
             return False
-
 
         logger.info('old job thread name: {}'.format(job_for_cjr.name))
         job_for_cjr.publish_heartbeat(final=True)

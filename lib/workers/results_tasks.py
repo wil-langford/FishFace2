@@ -104,8 +104,6 @@ def post_image(image_data, meta):
     if image_config['is_cal_image']:
         image_config['cjr_id'] = None
 
-
-
     logger.debug(
         dense_log('', {
             'delta': round(meta.get('delta', 0), 3),
