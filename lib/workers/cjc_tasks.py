@@ -2,7 +2,6 @@ import threading
 import time
 
 import celery
-from celery.exceptions import TimeoutError
 import redis
 
 import lib.thread_with_heartbeat as thread_with_heartbeat
@@ -12,7 +11,7 @@ from lib.misc_utilities import delay_until
 
 import etc.fishface_config as ff_conf
 
-from lib.fishface_logging import logger
+from lib.fishface_logging import logger, dense_log
 
 
 class ECCTask(celery.Task):
@@ -24,6 +23,10 @@ class ECCTask(celery.Task):
         password=ff_conf.REDIS_PASSWORD
     )
     _thread_registry = thread_with_heartbeat.ThreadRegistry()
+
+    @property
+    def redis_client(self):
+        return self._redis_client
 
     @property
     def ecc(self):
@@ -47,15 +50,28 @@ class ECCTask(celery.Task):
                 self._ecc['thread'].is_alive() and
                 self._ecc['thread'].ready_event.is_set())
 
+    @property
+    def thread_registry(self):
+        return self._thread_registry
+
+    def run(self):
+        pass
+
 
 class ResultCacheTask(celery.Task):
     abstract = True
     cache = dict()
 
+    def run(self):
+        pass
+
 
 class CeleryNavelGazingTask(celery.Task):
     controller = celery_app.control
     inspector = controller.inspect()
+
+    def run(self):
+        pass
 
 
 @celery.shared_task(name='cjc.ping')
@@ -74,12 +90,12 @@ def debug_task(self, *args, **kwargs):
 
 @celery.shared_task(base=ECCTask, name='cjc.thread_states')
 def thread_states():
-    return thread_states._thread_registry.thread_states
+    return thread_states.thread_registry.thread_states
 
 
 @celery.shared_task(base=ECCTask, name='cjc.thread_registry')
 def thread_registry():
-    return thread_registry._thread_registry.registry
+    return thread_registry.thread_registry.registry
 
 
 @celery.shared_task(base=ECCTask, name='cjc.thread_heartbeat')
@@ -87,7 +103,7 @@ def thread_heartbeat(name, timestamp, count, final=False):
     if name == 'name':
         logger.error('name:name detected with count {} timestamp {}'.format(count, timestamp))
 
-    return thread_heartbeat._thread_registry.receive_heartbeat(name, timestamp, count, final)
+    return thread_heartbeat.thread_registry.receive_heartbeat(name, timestamp, count, final)
 
 
 @celery.shared_task(base=ECCTask, name='cjc.queues_length')
@@ -97,7 +113,7 @@ def queues_length(queue_list=None):
     elif isinstance(queue_list, basestring):
         queue_list = [queue_list]
 
-    return [(queue_name, queues_length._redis_client.llen(queue_name)) for queue_name in queue_list]
+    return [(queue_name, queues_length.redis_client.llen(queue_name)) for queue_name in queue_list]
 
 
 @celery.shared_task(base=ECCTask, name='cjc.complete_status')
@@ -227,7 +243,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
         self.total = len(self.capture_times)
         self.remaining = self.total
 
-        logger.error('REMAINING / TOTAL = {} / {}'.format(self.remaining, self.total))
+        logger.debug('REMAINING / TOTAL = {} / {}'.format(self.remaining, self.total))
 
         self.set_ready()
         # Abort if we don't have a CJR id at least 1 second before we're supposed to
@@ -245,7 +261,7 @@ class CaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
 
     def _heartbeat_run(self):
         self.status = 'running'
-        logger.error('REMAINING / TOTAL = {} / {}'.format(self.remaining, self.total))
+        logger.debug('REMAINING / TOTAL = {} / {}'.format(self.remaining, self.total))
 
         meta = {
             'cjr_id': self.cjr_id,
@@ -311,6 +327,8 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, duration, voltage, current, start_timestamp=None, **kwargs):
         super(NonCaptureJob, self).__init__(heartbeat_interval=0.5)
 
+        logger.debug(dense_log('EXTRA_KWARGS_IN_NONCAPTUREJOB', kwargs))
+
         self.status = 'staged'
 
         self.duration = float(duration)
@@ -361,15 +379,14 @@ class NonCaptureJob(thread_with_heartbeat.ThreadWithHeartbeat):
             self.status = 'completed'
 
     def _heartbeat_run(self):
-        # We don't need to do anything periodically except check to see if the job has been
-        # aborted, and that is handled by the ThreadWithHeartbeat class.
-        pass
+        if self.job_ends_in < 0:
+            self.abort_job(complete=True)
 
-    def abort_job(self):
+    def abort_job(self, complete=False):
         self.stop_timestamp = time.time()
-        self._keep_looping = False
-        logger.info('Job aborted: {}'.format(self.get_status_dict()))
-        self.status = 'aborted'
+        self.status = 'complete' if complete else 'aborted'
+        logger.info('Job {} aborted with status: {}'.format(self.name, self.get_status_dict()))
+        super(NonCaptureJob, self).abort(complete)
 
     def get_status_dict(self):
         return {
@@ -441,6 +458,8 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
         celery_app.send_task('camera.abort')
         celery_app.send_task('psu.reset_psu')
 
+        self.abort()
+
         return True
 
     def cjr_id_catcher(self, start_timestamp, cjr_id):
@@ -458,7 +477,6 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
             logger.error("Caught CJR ID, but the ID isn't for a staged job and the current " +
                          "job's start_timestamp doesn't match.")
             return False
-
 
         logger.info('old job thread name: {}'.format(job_for_cjr.name))
         job_for_cjr.publish_heartbeat(final=True)
@@ -482,11 +500,10 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
                 self.name
             ))
         else:
-            logger.warning("{}: No initial queue setting.  Aborting ECC.".format(self.name))
+            logger.error("{}: No initial queue setting.  Aborting ECC.".format(self.name))
             self.abort()
 
     def _heartbeat_run(self):
-
         # there is no currently running job
         if self.current_job is None:
             if self.staged_job is not None:  # there is a staged job
@@ -540,8 +557,6 @@ class ExperimentCaptureController(thread_with_heartbeat.ThreadWithHeartbeat):
                     ).apply_async()
                 else:
                     self.staged_job = NonCaptureJob(**next_job)
-
-
 
 
 class ECCError(Exception):

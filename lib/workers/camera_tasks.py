@@ -74,6 +74,7 @@ class Camera(object):
                 except AttributeError:
                     logger.error("Can't set attribute/property {} on camera object.".format(key))
 
+
 class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
     def __init__(self, *args, **kwargs):
         super(CaptureThread, self).__init__(*args, **kwargs)
@@ -92,35 +93,26 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
 
     def _heartbeat_run(self):
         if self._next_capture_time is None:
-            print 'Popping next.'
             self._next_capture_time, self._next_capture_meta = self.pop_next_request()
             if self._next_capture_meta is None:
                 if self.thread_age > 3:
                     self.abort(complete=True)
                 return
 
-        print self._next_capture_time
-        print self._next_capture_meta
-
         if not self._keep_looping:
-            print 'returning early'
             return
 
         if self._next_capture_time - time.time() < self._wait_for_capture_when_less_than:
             delay_until(self._next_capture_time)
             image, timestamp = self.cam.get_image_with_capture_time()
 
-            print "image created with size [{}]".format(len(image))
-
             meta = self._next_capture_meta
             meta['capture_timestamp'] = timestamp
-
-            print "meta updated"
+            meta['requested_timestamp'] = self._next_capture_time
+            meta['delta'] = timestamp - self._next_capture_time
 
             r = celery_app.send_task('results.post_image',
                                      kwargs={'image_data': image, 'meta': meta})
-
-            print "after posting image"
 
             self.queue.task_done()
 
@@ -145,9 +137,9 @@ class CaptureThread(thread_with_heartbeat.ThreadWithHeartbeat):
             return (None, None)
 
     def abort(self, complete=False):
-        print "aborting thread.  complete? {}".format(complete)
+        logger.info("aborting capture thread.  complete? {}".format(complete))
         # we don't want to accept any more imagery requests after we start the abort
-        self.push_capture_request = lambda x: True
+        self.push_capture_request = lambda x: False
 
         super(CaptureThread, self).abort(complete=complete)
         if not complete:
@@ -172,7 +164,7 @@ class CaptureThreadTask(celery.Task):
 
     @property
     def capture_thread(self):
-        if self._capture_thread['thread'] is not None and self._capture_thread['thread'].is_alive():
+        if self.extant:
             return self._capture_thread['thread']
         else:
             with self._capture_thread_lock:
@@ -189,6 +181,11 @@ class CaptureThreadTask(celery.Task):
             except celery.exceptions.TimeoutError:
                 raise CaptureThreadError("Could not start capture thread.")
 
+    @property
+    def extant(self):
+        return (self._capture_thread['thread'] is not None
+                and self._capture_thread['thread'].is_alive())
+
 
 @celery.shared_task(base=CaptureThreadTask, name='camera.queue_capture_request')
 def queue_capture_request(requested_capture_timestamp, meta):
@@ -199,8 +196,8 @@ def queue_capture_request(requested_capture_timestamp, meta):
 
 @celery.shared_task(base=CaptureThreadTask, name='camera.abort')
 def abort():
-    if abort._capture_thread is not None:
-        abort._capture_thread.abort()
+    if abort.extant:
+        abort.capture_thread.abort()
         return True
     return False
 

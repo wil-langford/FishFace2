@@ -135,7 +135,7 @@ class PowerSupply(object):
 
 @celery.shared_task(base=PSUTask, name="psu.set_psu")
 def set_psu(*args, **kwargs):
-    set_psu.power_supply.set_psu(*args, **kwargs)
+    return set_psu.power_supply.set_psu(*args, **kwargs)
 
 
 @celery.shared_task(base=PSUTask, name='psu.reset_psu')

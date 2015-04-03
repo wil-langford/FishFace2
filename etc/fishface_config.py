@@ -14,6 +14,17 @@ HOME = os.path.expanduser('~')
 VENV = path_join(HOME, 'venvs', 'FishFace2.venv')
 LOG_LEVEL = 'INFO'
 
+OVERALL_LOG_LEVEL = logging.DEBUG
+FILE_LOG_LEVEL = logging.DEBUG
+LOG_TO_CONSOLE = False
+CONSOLE_LOG_LEVEL = logging.INFO
+LOG_TO_EMAIL = False
+EMAIL_LOG_LEVEL = logging.ERROR
+EMAIL_LOG_SMTP_HOST = 'smtp.server.domain.fake'
+EMAIL_LOG_FROM_ADDR = 'fishface@application.admin'
+EMAIL_LOG_TO_ADDRS = ['fishface@application.admin']
+EMAIL_LOG_SUBJECT = '[FISHFACE_LOG] Generic message'
+
 try:
     ROOT = os.environ['FF_ROOT']
 except KeyError:
@@ -26,6 +37,7 @@ VAR_LOG = path_join(VAR, 'log')
 LIB = path_join(ROOT, 'lib')
 BIN = path_join(ROOT, 'bin')
 
+LOG_FILE_PATH = os.path.join(VAR_LOG, 'fishface.log')
 
 DJANGO_DIR = path_join(LIB, 'django')
 
@@ -74,11 +86,19 @@ ML_STAGE_1_IMAGES_PER_CHUNK = 25
 CJR_CREATION_TIMEOUT = 30
 CAMERA_QUEUE_PRELOAD = 15
 
+try:
+    from local_settings.py import *
+except ImportError:
+    pass
+
 
 def bash_exports():
-    return 'export ' + ' '.join(['FF_{export_me}={value}'.format(export_me=export_me,
-                                                                   value=globals()[export_me])
-        for export_me in 'ROOT ETC VAR VAR_RUN VAR_LOG LIB BIN VENV LOG_LEVEL'.split(' ')])
+    return 'export ' + ' '.join(['FF_{export_me}={value}'.format(
+        export_me=export_me,
+        value=globals()[export_me])
+        for export_me in
+        'ROOT ETC VAR VAR_RUN VAR_LOG LIB BIN VENV LOG_LEVEL'.split(' ')]
+    )
 
 
 def main():
