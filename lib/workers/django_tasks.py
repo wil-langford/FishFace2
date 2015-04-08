@@ -12,6 +12,7 @@ from lib.django_celery import celery_app
 from lib.misc_utilities import chunkify
 
 import etc.fishface_config as ff_conf
+from lib.fishface_logging import logger
 
 
 @celery.shared_task(name='django.ping')
@@ -86,9 +87,16 @@ def train_classifier(minimum_verifications=ff_conf.ML_MINIMUM_TAG_VERIFICATIONS_
         )
     ))
 
-    split_point = int(float(len(eligible_tags)) * reserve_for_ml_verification)
+    if eligible_tags:
+        split_point = int(float(len(eligible_tags)) * reserve_for_ml_verification)
+    else:
+        logger.warning("No eligible tags found during classifier training.")
+        return False
 
     verification_set, training_set = eligible_tags[:split_point], eligible_tags[split_point:]
+
+    return verification_set, training_set
+
 
 
 class AnalysisImportError(Exception):
