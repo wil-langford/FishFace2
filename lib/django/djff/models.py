@@ -1,5 +1,6 @@
 import math
 import datetime
+import json
 
 from django.db import models
 import django.dispatch.dispatcher
@@ -454,6 +455,11 @@ class KMeansEstimator(models.Model):
     labels = jsonfield.JSONField('used to reconstruct the estimator')
     inertia = jsonfield.JSONField('used to reconstruct the estimator')
 
+    comment = models.TextField('general comments about this estimator (optional)',
+                               null=True, blank=True)
+
+    metadata = jsonfield.JSONField('extra data about this stored estimator')
+
     def rebuild_estimator(self):
         estimator = skc.KMeans()
         estimator.set_params(self.params)
@@ -462,6 +468,14 @@ class KMeansEstimator(models.Model):
         estimator.inertia_ = self.inertia
 
         return estimator
+
+    def json_reconstruction_data(self):
+        return json.dumps({
+            'params': self.params,
+            'cluster_centers': self.cluster_centers,
+            'labels': self.labels,
+            'intertia': self.inertia,
+        })
 
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
