@@ -5,8 +5,9 @@ import numpy as np
 from scipy import ndimage
 from scipy import stats
 
-
 import celery
+from lib.fishface_celery import celery_app
+
 from lib.fishface_image import FFImage, ff_operation, ff_annotation
 
 #
