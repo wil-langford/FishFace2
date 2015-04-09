@@ -18,7 +18,6 @@ import etc.fishface_config as ff_conf
 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
-
 APP_ROOT = ff_conf.ROOT
 
 # TODO: change for full production
@@ -153,7 +152,7 @@ if LOG_TO_CONSOLE:
     PRIMARY_LOGGER.addHandler(console_handler)
 
 if LOG_TO_FILE:
-    file_handler = logging.FileHandler('django_fishface.log')
+    file_handler = logging.FileHandler(os.path.join(ff_conf.VAR_LOG, 'django_fishface.log'))
     file_handler.setLevel(FILE_LOG_LEVEL)
     file_handler.setFormatter(formatter)
 
