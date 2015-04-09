@@ -78,6 +78,10 @@ CELERY_RESULT_URL = CELERY_BROKER_URL
 
 CELERY_QUEUE_NAMES = ['drone', 'django', 'learn', 'cjc', 'results', 'psu', 'camera', 'eph']
 
+CELERY_WORKER_CONCURRENCY = {
+    'drone': 8,
+    'results': 4,
+}
 
 ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1 = 2
 ML_RESERVE_DATA_FRACTION_FOR_VERIFICATION = 0.1
