@@ -28,6 +28,8 @@ def create_estimator(hu_moments, n_clusters=80, n_init=10, init='k-means++'):
     data = skp.scale(hu_moments)
     estimator = skc.KMeans(init=init, n_clusters=n_clusters, n_init=n_init)
 
+    estimator.fit(data)
+
     return estimator
 
 
