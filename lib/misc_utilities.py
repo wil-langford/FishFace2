@@ -1,6 +1,8 @@
 import time
 import logging
 import os
+import celery.result as cel_res
+import celery.exceptions as cel_ex
 
 
 def delay_until(unix_timestamp):
@@ -55,3 +57,14 @@ def n_chunkify(n, chunkable):
         stop = int((i+1)*chunk_length)
         yield chunkable[start:stop]
     yield chunkable[int((n-1)*chunk_length):]
+
+
+def recursive_get(result, timeout=1, overall_timeout=5):
+    end_by = time.time() + overall_timeout
+    try:
+        while isinstance(result, cel_res.AsyncResult) and time.time() < end_by:
+            result = result.get(timeout=timeout)
+    except cel_ex.TimeoutError:
+        pass
+
+    return result

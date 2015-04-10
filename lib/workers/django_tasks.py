@@ -6,6 +6,7 @@ import lib.django.djff.models as dm
 import django.db.models as ddm
 
 from lib.fishface_image import FFImage
+
 import celery
 from lib.django_celery import celery_app
 
@@ -31,12 +32,8 @@ def debug_task(self, *args, **kwargs):
 
 @celery.shared_task(name='django.analyze_images_from_cjr_list')
 def analyze_images_from_cjr_list(cjr_ids):
-    results = list()
-
-    for cjr_id in cjr_ids:
-        results.append(celery_app.send_task('django.analyze_images_from_cjr', args=(cjr_id,)))
-
-    return results
+    return [celery_app.send_task('django.analyze_images_from_cjr', args=(cjr_id,))
+            for cjr_id in cjr_ids]
 
 
 @celery.shared_task(name='django.analyze_images_from_cjr')
@@ -69,34 +66,72 @@ def analyze_image_list(data_list, cal_image):
     ]
 
 
-@celery.shared_task(name='django.train_classifier')
-def train_classifier(minimum_verifications=ff_conf.ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1,
-                     reserve_for_ml_verification=ff_conf.ML_RESERVE_DATA_FRACTION_FOR_VERIFICATION):
-    eligible_image_ids = frozenset([i.id for i in dm.Image.objects.annotate(
+@celery.shared_task(name='django.training_eligible_data')
+def training_eligible_data(
+        minimum_verifications=ff_conf.ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1):
+    analyzed_image_ids = frozenset([i.id for i in dm.Image.objects.annotate(
         analysis_count=ddm.Count('imageanalysis')
     ).filter(
         analysis_count__gte=1
     )])
 
-    eligible_tags = random.shuffle(list(
+    if analyzed_image_ids:
+        logger.debug('found {} analyzed image IDs'.format(len(analyzed_image_ids)))
+    else:
+        logger.warning('Found no analyzed images.')
+        return False
+
+    eligible_tags = list(
         dm.ManualTag.objects.annotate(
             verify_count=ddm.Count('manualverification'),
         ).filter(
             verify_count__gte=minimum_verifications,
-            image_id__in=eligible_image_ids
+            image_id__in=analyzed_image_ids
         )
-    ))
+    )
+    random.shuffle(eligible_tags)
 
     if eligible_tags:
-        split_point = int(float(len(eligible_tags)) * reserve_for_ml_verification)
+        logger.debug('found {} eligible tags'.format(len(eligible_tags)))
+        data = list()
+
+        for tag in eligible_tags:
+            # finding this is relatively expensive, so let's name it locally
+            tag_latest_analysis = tag.latest_analysis
+            data.append({
+                'hu_moments': tag_latest_analysis.hu_moments,
+                'delta': tag.degrees - tag_latest_analysis.orientation_from_moments,
+            })
+
+        return data
     else:
-        logger.warning("No eligible tags found during classifier training.")
+        logger.warning("No eligible tags found.")
         return False
 
-    verification_set, training_set = eligible_tags[:split_point], eligible_tags[split_point:]
 
-    return verification_set, training_set
+@celery.shared_task(name='django.create_and_store_estimator')
+def create_and_store_estimator(hu_moments):
+    return (
+        celery.signature('learn.create_estimator', args=(hu_moments,)) |
+        celery.signature('results.store_estimator')
+    ).apply_async()
 
+
+@celery.shared_task(name='django.extract_hu_moments_from_eligible_data')
+def extract_hu_moments_from_eligible_data(eligible_data):
+        return [datum['hu_moments'] for datum in eligible_data]
+
+
+@celery.shared_task(name='django.create_and_store_estimator_from_all_eligible_data')
+def create_and_store_estimator_from_all_eligible(
+        minimum_verifications=ff_conf.ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1):
+        return (
+            celery.signature('django.training_eligible_data',
+                             args=(minimum_verifications,)) |
+            celery.signature('django.extract_hu_moments_from_eligible_data') |
+            celery.signature('learn.create_estimator') |
+            celery.signature('results.store_estimator')
+        ).apply_async()
 
 
 class AnalysisImportError(Exception):

@@ -178,6 +178,15 @@ def power_supply_log(timestamp, voltage_meas, current_meas, extra_report_data=No
     return psl.id
 
 
+@celery.shared_task(name='results.store_estimator')
+def store_estimator(new_estimator):
+    estimator = dm.KMeansEstimator()
+    estimator.extract_and_store_details_from_estimator(new_estimator)
+    estimator.save()
+
+    return estimator.id
+
+
 class AnalysisImportError(Exception):
     pass
 

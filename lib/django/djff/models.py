@@ -12,6 +12,8 @@ import django.utils.timezone as dut
 
 from django.conf import settings
 
+import numpy as np
+
 import jsonfield
 
 import sklearn.cluster as skc
@@ -365,6 +367,15 @@ class ManualTag(models.Model):
         image = generator.generate()
         return image
 
+    @property
+    def delta_against_latest_analysis(self):
+        return self.degrees - self.latest_analysis.orientation_from_moments
+
+    @property
+    def latest_analysis(self):
+        return ImageAnalysis.objects.filter(image_id=self.image_id
+            ).order_by('analysis_datetime').last()
+
 
 class ManualVerification(models.Model):
     tag = models.ForeignKey(ManualTag)
@@ -460,16 +471,18 @@ class KMeansEstimator(models.Model):
 
     metadata = jsonfield.JSONField('extra data about this stored estimator')
 
-    def rebuild_estimator(self):
+    @property
+    def rebuilt_estimator(self):
         estimator = skc.KMeans()
-        estimator.set_params(self.params)
-        estimator.cluster_centers_ = self.cluster_centers
-        estimator.labels_ = self.labels
+        estimator.set_params(**self.params)
+        estimator.cluster_centers_ = np.array(self.cluster_centers)
+        estimator.labels_ = np.array(self.labels)
         estimator.inertia_ = self.inertia
 
         return estimator
 
-    def json_reconstruction_data(self):
+    @property
+    def json_rebuild_data(self):
         return json.dumps({
             'params': self.params,
             'cluster_centers': self.cluster_centers,
@@ -477,6 +490,18 @@ class KMeansEstimator(models.Model):
             'intertia': self.inertia,
         })
 
+    def extract_and_store_details_from_estimator(self, estimator):
+        self.params = estimator.get_params()
+        self.cluster_centers = estimator.cluster_centers_.tolist()
+        self.labels = estimator.labels_.tolist()
+        self.inertia = estimator.inertia_
+
+
+class ClassificationDeltaSet(models.Model):
+    estimator = models.ForeignKey(KMeansEstimator)
+    timestamp = models.DateTimeField('the datetime that this set of deltas was stored',
+                                     auto_now_add=True)
+    deltas = jsonfield.JSONField('the set of deltas')
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
 def image_delete(sender, instance, **kwargs):
