@@ -3,6 +3,9 @@ import sklearn.cluster as skc
 import celery
 from lib.fishface_celery import celery_app
 
+import etc.fishface_config as ff_conf
+from lib.misc_utilities import n_chunkify
+
 @celery.shared_task(bind=True, name='learn.debug_task')
 def debug_task(self, *args, **kwargs):
     return '''
@@ -12,8 +15,8 @@ def debug_task(self, *args, **kwargs):
     '''.format(self.request, args, kwargs)
 
 
-@celery.shared_task(name="learn.cluster_hu_moments")
-def cluster_hu_moments(hu_moments, n_clusters=80, n_init=10, init='k-means++'):
+@celery.shared_task(name="learn.create_estimator")
+def create_estimator(hu_moments, n_clusters=80, n_init=10, init='k-means++'):
     try:
         if len(hu_moments[0]) != 7:
             raise ClusteringError("Hu moments contain 7 elements - the passed object doesn't fit" +
@@ -25,9 +28,7 @@ def cluster_hu_moments(hu_moments, n_clusters=80, n_init=10, init='k-means++'):
     data = skp.scale(hu_moments)
     estimator = skc.KMeans(init=init, n_clusters=n_clusters, n_init=n_init)
 
-    predictions = estimator.fit_predict(data)
-
-    return predictions, estimator
+    return estimator
 
 
 class ClusteringError(Exception):
