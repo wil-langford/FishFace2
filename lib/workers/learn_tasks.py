@@ -16,7 +16,8 @@ def debug_task(self, *args, **kwargs):
 
 
 @celery.shared_task(name="learn.create_estimator")
-def create_estimator(hu_moments, n_clusters=80, n_init=10, init='k-means++'):
+def create_estimator(hu_moments, n_clusters=80, n_init=10, init='k-means++',
+                     tolerance=1E-6):
     try:
         if len(hu_moments[0]) != 7:
             raise ClusteringError("Hu moments contain 7 elements - the passed object doesn't fit" +
@@ -26,7 +27,8 @@ def create_estimator(hu_moments, n_clusters=80, n_init=10, init='k-means++'):
                               "Is it iterable?")
 
     data = skp.scale(hu_moments)
-    estimator = skc.KMeans(init=init, n_clusters=n_clusters, n_init=n_init)
+    estimator = skc.KMeans(init=init, n_clusters=n_clusters, n_init=n_init,
+                           tol=tolerance)
 
     estimator.fit(data)
 
