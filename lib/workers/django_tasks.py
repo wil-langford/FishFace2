@@ -99,6 +99,7 @@ def training_eligible_data(
             # finding this is relatively expensive, so let's name it locally
             tag_latest_analysis = tag.latest_analysis
             data.append({
+                'analysis_id': tag_latest_analysis.id,
                 'hu_moments': tag_latest_analysis.hu_moments,
                 'delta': tag.degrees - tag_latest_analysis.orientation_from_moments,
             })
@@ -127,6 +128,28 @@ def create_and_store_estimator_from_all_eligible(
             celery.signature('results.store_estimator')
         ).apply_async()
 
+
+@celery.shared_task(name='django.automatically_tag_by_analysis')
+def automatically_tag_images(all_analysis_ids, stored_estimator_id):
+    for analysis_ids in chunkify(all_analysis_ids, 100):
+        analyses = [(
+            analysis.id,
+            analysis.hu_moments,
+            analysis.centroid,
+            analysis.orientation_from_moments,
+        ) for analysis in dm.ImageAnalysis.objects.filter(id__in=analysis_ids)]
+
+        estimator_object = dm.KMeansEstimator.objects.get(pk=stored_estimator_id)
+
+        estimator = estimator_object.rebuilt_estimator
+        scaler = estimator_object.rebuilt_scaler
+        label_deltas = estimator_object.label_deltas_defaultdict
+
+        return (
+            celery.signature('drone.compute_automatic_tags',
+                                 args=(analyses, estimator, scaler, label_deltas)) |
+            celery.signature('results.store_automatic_tags')
+        ).apply_async()
 
 class AnalysisImportError(Exception):
     pass

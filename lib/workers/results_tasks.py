@@ -190,6 +190,17 @@ def store_estimator(ml_combo_data):
     return estimator_object.id
 
 
+@celery.shared_task(name='results.store_automatic_tags')
+def store_automatic_tags(automatic_tags):
+    for tag in automatic_tags:
+        auto_tag = dm.AutomaticTag()
+        auto_tag.image_analysis = dm.ImageAnalysis.objects.get(pk=tag['analysis_id'])
+        auto_tag.image_id = auto_tag.image_analysis.image_id
+        auto_tag.centroid = tag['centroid']
+        auto_tag.orientation = tag['orientation']
+        auto_tag.save()
+
+
 class AnalysisImportError(Exception):
     pass
 

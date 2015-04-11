@@ -1,6 +1,6 @@
 import math
 import datetime
-import json
+import collections
 
 from django.db import models
 import django.dispatch.dispatcher
@@ -314,6 +314,17 @@ class ImageAnalysis(models.Model):
         except ZeroDivisionError:
             return False
 
+    @property
+    def centroid(self):
+        m00 = float(self.moments['m00'])
+        m10 = float(self.moments['m10'])
+        m01 = float(self.moments['m01'])
+
+        x = int(m10/m00)
+        y = int(m01/m00)
+
+        return (x,y)
+
 
 class AutomaticTag(models.Model):
     image = models.ForeignKey(Image)
@@ -323,6 +334,10 @@ class AutomaticTag(models.Model):
     centroid = jsonfield.JSONField('The center of mass of the fish')
     orientation = jsonfield.JSONField("Angle of the fish referenced against oncoming water flow")
 
+    def __unicode__(self):
+        return u'image_analysis_id({}) centroid({}) orientation({})'.format(
+            self.image_analysis_id, self.centroid, self.orientation
+        )
 
 class ManualTag(models.Model):
     image = models.ForeignKey(Image)
@@ -507,6 +522,10 @@ class KMeansEstimator(models.Model):
         self.cluster_centers = estimator.cluster_centers_.tolist()
         self.labels = estimator.labels_.tolist()
         self.inertia = estimator.inertia_
+
+    @property
+    def label_deltas_defaultdict(self):
+        return collections.defaultdict(int, self.label_deltas)
 
 
 class ClassificationDeltaSet(models.Model):
