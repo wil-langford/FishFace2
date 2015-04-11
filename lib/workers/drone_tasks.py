@@ -263,5 +263,21 @@ def classify_data(data, estimator, scaler):
     return zip(data, estimator.predict(scaled_data))
 
 
+@celery.shared_task(name='drone.compute_automatic_tags')
+def compute_automatic_tags(analyses, estimator, scaler, label_deltas):
+    automatic_tags = list()
+    for id, hu, centroid, orientation in analyses:
+        cluster_label = str(estimator.predict(scaler.transform(hu))[0])
+
+        adjustment = label_deltas[cluster_label]
+
+        automatic_tags.append({
+            'analysis_id': id,
+            'centroid': centroid,
+            'orientation': orientation + adjustment,
+        })
+
+    return automatic_tags
+
 class ImageProcessingException(Exception):
     pass
