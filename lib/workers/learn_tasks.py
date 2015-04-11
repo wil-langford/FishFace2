@@ -22,7 +22,7 @@ def debug_task(self, *args, **kwargs):
 def create_estimator(ted, n_clusters=80, n_init=10,
                                   init='random', max_iter=1000):
 
-    hu_moments, deltas = [(datum['hu_moments'], datum['delta']) for datum in ted]
+    hu_moments, deltas = zip(*[(datum['hu_moments'], datum['delta']) for datum in ted])
 
     scaler = skp.StandardScaler()
     scaled_data = scaler.fit_transform(hu_moments)
