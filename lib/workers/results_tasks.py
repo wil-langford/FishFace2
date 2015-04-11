@@ -166,6 +166,7 @@ def job_status_report(status, start_timestamp, stop_timestamp, voltage, current,
 
     return cjr.id
 
+
 @celery.shared_task(name='results.power_supply_report')
 def power_supply_log(timestamp, voltage_meas, current_meas, extra_report_data=None):
     psl = dm.PowerSupplyLog()
@@ -176,6 +177,28 @@ def power_supply_log(timestamp, voltage_meas, current_meas, extra_report_data=No
     psl.save()
 
     return psl.id
+
+
+@celery.shared_task(name='results.store_estimator')
+def store_estimator(ml_combo_data):
+    estimator_object = dm.KMeansEstimator()
+    estimator_object.extract_and_store_details_from_estimator(ml_combo_data['estimator'])
+    estimator_object.extract_and_store_details_from_scaler(ml_combo_data['scaler'])
+    estimator_object.label_deltas = ml_combo_data['label_deltas']
+    estimator_object.save()
+
+    return estimator_object.id
+
+
+@celery.shared_task(name='results.store_automatic_tags')
+def store_automatic_tags(automatic_tags):
+    for tag in automatic_tags:
+        auto_tag = dm.AutomaticTag()
+        auto_tag.image_analysis = dm.ImageAnalysis.objects.get(pk=tag['analysis_id'])
+        auto_tag.image_id = auto_tag.image_analysis.image_id
+        auto_tag.centroid = tag['centroid']
+        auto_tag.orientation = tag['orientation']
+        auto_tag.save()
 
 
 class AnalysisImportError(Exception):

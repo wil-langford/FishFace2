@@ -6,12 +6,14 @@ import lib.django.djff.models as dm
 import django.db.models as ddm
 
 from lib.fishface_image import FFImage
+
 import celery
 from lib.django_celery import celery_app
 
 from lib.misc_utilities import chunkify
 
 import etc.fishface_config as ff_conf
+from lib.fishface_logging import logger
 
 
 @celery.shared_task(name='django.ping')
@@ -30,12 +32,8 @@ def debug_task(self, *args, **kwargs):
 
 @celery.shared_task(name='django.analyze_images_from_cjr_list')
 def analyze_images_from_cjr_list(cjr_ids):
-    results = list()
-
-    for cjr_id in cjr_ids:
-        results.append(celery_app.send_task('django.analyze_images_from_cjr', args=(cjr_id,)))
-
-    return results
+    return [celery_app.send_task('django.analyze_images_from_cjr', args=(cjr_id,))
+            for cjr_id in cjr_ids]
 
 
 @celery.shared_task(name='django.analyze_images_from_cjr')
@@ -68,28 +66,90 @@ def analyze_image_list(data_list, cal_image):
     ]
 
 
-@celery.shared_task(name='django.train_classifier')
-def train_classifier(minimum_verifications=ff_conf.ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1,
-                     reserve_for_ml_verification=ff_conf.ML_RESERVE_DATA_FRACTION_FOR_VERIFICATION):
-    eligible_image_ids = frozenset([i.id for i in dm.Image.objects.annotate(
+@celery.shared_task(name='django.training_eligible_data')
+def training_eligible_data(
+        minimum_verifications=ff_conf.ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1):
+    analyzed_image_ids = frozenset([i.id for i in dm.Image.objects.annotate(
         analysis_count=ddm.Count('imageanalysis')
     ).filter(
         analysis_count__gte=1
     )])
 
-    eligible_tags = random.shuffle(list(
+    if analyzed_image_ids:
+        logger.debug('found {} analyzed image IDs'.format(len(analyzed_image_ids)))
+    else:
+        logger.warning('Found no analyzed images.')
+        return False
+
+    eligible_tags = list(
         dm.ManualTag.objects.annotate(
             verify_count=ddm.Count('manualverification'),
         ).filter(
             verify_count__gte=minimum_verifications,
-            image_id__in=eligible_image_ids
+            image_id__in=analyzed_image_ids
         )
-    ))
+    )
+    random.shuffle(eligible_tags)
 
-    split_point = int(float(len(eligible_tags)) * reserve_for_ml_verification)
+    if eligible_tags:
+        logger.debug('found {} eligible tags'.format(len(eligible_tags)))
+        data = list()
 
-    verification_set, training_set = eligible_tags[:split_point], eligible_tags[split_point:]
+        for tag in eligible_tags:
+            # finding this is relatively expensive, so let's name it locally
+            tag_latest_analysis = tag.latest_analysis
+            data.append({
+                'analysis_id': tag_latest_analysis.id,
+                'hu_moments': tag_latest_analysis.hu_moments,
+                'delta': tag.degrees - tag_latest_analysis.orientation_from_moments,
+            })
 
+        return data
+    else:
+        logger.warning("No eligible tags found.")
+        return False
+
+
+@celery.shared_task(name='django.create_and_store_estimator')
+def create_and_store_estimator(ted):
+    return (
+        celery.signature('learn.create_estimator', args=(ted,)) |
+        celery.signature('results.store_estimator')
+    ).apply_async()
+
+
+@celery.shared_task(name='django.create_and_store_estimator_from_all_eligible_data')
+def create_and_store_estimator_from_all_eligible(
+        minimum_verifications=ff_conf.ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1):
+        return (
+            celery.signature('django.training_eligible_data',
+                             args=(minimum_verifications,)) |
+            celery.signature('learn.create_estimator') |
+            celery.signature('results.store_estimator')
+        ).apply_async()
+
+
+@celery.shared_task(name='django.automatically_tag_by_analysis')
+def automatically_tag_images(all_analysis_ids, stored_estimator_id):
+    for analysis_ids in chunkify(all_analysis_ids, 100):
+        analyses = [(
+            analysis.id,
+            analysis.hu_moments,
+            analysis.centroid,
+            analysis.orientation_from_moments,
+        ) for analysis in dm.ImageAnalysis.objects.filter(id__in=analysis_ids)]
+
+        estimator_object = dm.KMeansEstimator.objects.get(pk=stored_estimator_id)
+
+        estimator = estimator_object.rebuilt_estimator
+        scaler = estimator_object.rebuilt_scaler
+        label_deltas = estimator_object.label_deltas_defaultdict
+
+        return (
+            celery.signature('drone.compute_automatic_tags',
+                                 args=(analyses, estimator, scaler, label_deltas)) |
+            celery.signature('results.store_automatic_tags')
+        ).apply_async()
 
 class AnalysisImportError(Exception):
     pass

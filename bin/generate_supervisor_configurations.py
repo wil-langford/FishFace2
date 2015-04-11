@@ -86,8 +86,8 @@ def main():
             root=ff_conf.ROOT,
             var_log=ff_conf.VAR_LOG,
             worker=queue_name,
-            concurrency=4 if queue_name in ['results'] else 1,
-            threads='' if queue_name in ['results'] else '-P solo',
+            concurrency=ff_conf.CELERY_WORKER_CONCURRENCY.get(queue_name, 1),
+            threads=('' if ff_conf.CELERY_WORKER_CONCURRENCY.get(queue_name, 1) > 1 else '-P solo'),
         )
 
         conf_path = os.path.join(ff_conf.ETC, 'supervisor.d', 'available', queue_name + '.conf')

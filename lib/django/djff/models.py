@@ -1,5 +1,6 @@
 import math
 import datetime
+import collections
 
 from django.db import models
 import django.dispatch.dispatcher
@@ -11,9 +12,12 @@ import django.utils.timezone as dut
 
 from django.conf import settings
 
+import numpy as np
+
 import jsonfield
 
 import sklearn.cluster as skc
+import sklearn.preprocessing as skp
 
 import lib.django.djff.utils.djff_imagekit as ffik
 
@@ -310,6 +314,17 @@ class ImageAnalysis(models.Model):
         except ZeroDivisionError:
             return False
 
+    @property
+    def centroid(self):
+        m00 = float(self.moments['m00'])
+        m10 = float(self.moments['m10'])
+        m01 = float(self.moments['m01'])
+
+        x = int(m10/m00)
+        y = int(m01/m00)
+
+        return (x,y)
+
 
 class AutomaticTag(models.Model):
     image = models.ForeignKey(Image)
@@ -319,6 +334,10 @@ class AutomaticTag(models.Model):
     centroid = jsonfield.JSONField('The center of mass of the fish')
     orientation = jsonfield.JSONField("Angle of the fish referenced against oncoming water flow")
 
+    def __unicode__(self):
+        return u'image_analysis_id({}) centroid({}) orientation({})'.format(
+            self.image_analysis_id, self.centroid, self.orientation
+        )
 
 class ManualTag(models.Model):
     image = models.ForeignKey(Image)
@@ -363,6 +382,15 @@ class ManualTag(models.Model):
         )
         image = generator.generate()
         return image
+
+    @property
+    def delta_against_latest_analysis(self):
+        return self.degrees - self.latest_analysis.orientation_from_moments
+
+    @property
+    def latest_analysis(self):
+        return ImageAnalysis.objects.filter(image_id=self.image_id
+            ).order_by('analysis_datetime').last()
 
 
 class ManualVerification(models.Model):
@@ -449,20 +477,62 @@ class CaptureJobQueue(models.Model):
 class KMeansEstimator(models.Model):
     timestamp = models.DateTimeField('when this estimator was produced', auto_now_add=True)
 
-    params = jsonfield.JSONField('used to reconstruct the estimator')
+    estimator_params = jsonfield.JSONField('used to reconstruct the estimator')
     cluster_centers = jsonfield.JSONField('used to reconstruct the estimator')
     labels = jsonfield.JSONField('used to reconstruct the estimator')
     inertia = jsonfield.JSONField('used to reconstruct the estimator')
 
-    def rebuild_estimator(self):
+    scaler_params = jsonfield.JSONField('used to reconstruct scaler')
+    scaler_mean = jsonfield.JSONField('used to reconstruct scaler')
+    scaler_std = jsonfield.JSONField('used to reconstruct scaler')
+
+    label_deltas = jsonfield.JSONField('a map from labels to deltas')
+
+    comment = models.TextField('general comments about this estimator (optional)',
+                               null=True, blank=True)
+
+    metadata = jsonfield.JSONField('extra data about this stored estimator')
+
+    @property
+    def rebuilt_estimator(self):
         estimator = skc.KMeans()
-        estimator.set_params(self.params)
-        estimator.cluster_centers_ = self.cluster_centers
-        estimator.labels_ = self.labels
+        estimator.set_params(**self.estimator_params)
+        estimator.cluster_centers_ = np.array(self.cluster_centers)
+        estimator.labels_ = np.array(self.labels)
         estimator.inertia_ = self.inertia
 
         return estimator
 
+    @property
+    def rebuilt_scaler(self):
+        scaler = skp.StandardScaler()
+        scaler.set_params(**self.scaler_params)
+        scaler.mean_ = np.array(self.scaler_mean)
+        scaler.std_ = np.array(self.scaler_std)
+
+        return scaler
+
+    def extract_and_store_details_from_scaler(self, scaler):
+        self.scaler_params = scaler.get_params()
+        self.scaler_mean = scaler.mean_.tolist()
+        self.scaler_std = scaler.std_.tolist()
+
+    def extract_and_store_details_from_estimator(self, estimator):
+        self.estimator_params = estimator.get_params()
+        self.cluster_centers = estimator.cluster_centers_.tolist()
+        self.labels = estimator.labels_.tolist()
+        self.inertia = estimator.inertia_
+
+    @property
+    def label_deltas_defaultdict(self):
+        return collections.defaultdict(int, self.label_deltas)
+
+
+class ClassificationDeltaSet(models.Model):
+    estimator = models.ForeignKey(KMeansEstimator)
+    timestamp = models.DateTimeField('the datetime that this set of deltas was stored',
+                                     auto_now_add=True)
+    deltas = jsonfield.JSONField('the set of deltas')
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
 def image_delete(sender, instance, **kwargs):
