@@ -471,6 +471,8 @@ class KMeansEstimator(models.Model):
     scaler_mean = jsonfield.JSONField('used to reconstruct scaler')
     scaler_std = jsonfield.JSONField('used to reconstruct scaler')
 
+    label_deltas = jsonfield.JSONField('a map from labels to deltas')
+
     comment = models.TextField('general comments about this estimator (optional)',
                                null=True, blank=True)
 

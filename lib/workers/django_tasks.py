@@ -110,16 +110,11 @@ def training_eligible_data(
 
 
 @celery.shared_task(name='django.create_and_store_estimator')
-def create_and_store_estimator(hu_moments):
+def create_and_store_estimator(ted):
     return (
-        celery.signature('learn.create_estimator', args=(hu_moments,)) |
+        celery.signature('learn.create_estimator', args=(ted,)) |
         celery.signature('results.store_estimator')
     ).apply_async()
-
-
-@celery.shared_task(name='django.extract_hu_moments_from_eligible_data')
-def extract_hu_moments_from_eligible_data(eligible_data):
-        return [datum['hu_moments'] for datum in eligible_data]
 
 
 @celery.shared_task(name='django.create_and_store_estimator_from_all_eligible_data')
@@ -128,7 +123,6 @@ def create_and_store_estimator_from_all_eligible(
         return (
             celery.signature('django.training_eligible_data',
                              args=(minimum_verifications,)) |
-            celery.signature('django.extract_hu_moments_from_eligible_data') |
             celery.signature('learn.create_estimator') |
             celery.signature('results.store_estimator')
         ).apply_async()

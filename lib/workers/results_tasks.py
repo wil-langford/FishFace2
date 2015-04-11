@@ -180,13 +180,14 @@ def power_supply_log(timestamp, voltage_meas, current_meas, extra_report_data=No
 
 
 @celery.shared_task(name='results.store_estimator')
-def store_estimator(new_estimator, new_scaler):
-    estimator = dm.KMeansEstimator()
-    estimator.extract_and_store_details_from_estimator(new_estimator)
-    estimator.extract_and_store_details_from_scaler(new_scaler)
-    estimator.save()
+def store_estimator(ml_combo_data):
+    estimator_object = dm.KMeansEstimator()
+    estimator_object.extract_and_store_details_from_estimator(ml_combo_data['estimator'])
+    estimator_object.extract_and_store_details_from_scaler(ml_combo_data['scaler'])
+    estimator_object.label_deltas = ml_combo_data['label_deltas']
+    estimator_object.save()
 
-    return estimator.id
+    return estimator_object.id
 
 
 class AnalysisImportError(Exception):
