@@ -166,6 +166,7 @@ def job_status_report(status, start_timestamp, stop_timestamp, voltage, current,
 
     return cjr.id
 
+
 @celery.shared_task(name='results.power_supply_report')
 def power_supply_log(timestamp, voltage_meas, current_meas, extra_report_data=None):
     psl = dm.PowerSupplyLog()
@@ -179,9 +180,10 @@ def power_supply_log(timestamp, voltage_meas, current_meas, extra_report_data=No
 
 
 @celery.shared_task(name='results.store_estimator')
-def store_estimator(new_estimator):
+def store_estimator(new_estimator, new_scaler):
     estimator = dm.KMeansEstimator()
     estimator.extract_and_store_details_from_estimator(new_estimator)
+    estimator.extract_and_store_details_from_scaler(new_scaler)
     estimator.save()
 
     return estimator.id

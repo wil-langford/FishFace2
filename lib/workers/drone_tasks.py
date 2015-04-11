@@ -257,5 +257,11 @@ def get_fish_contour(data, cal):
     return image.meta
 
 
+@celery.shared_task(name='drone.classify_data')
+def classify_data(data, estimator, scaler):
+    scaled_data = scaler.transform(data)
+    return zip(data, estimator.predict(scaled_data))
+
+
 class ImageProcessingException(Exception):
     pass

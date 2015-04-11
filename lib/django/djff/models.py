@@ -17,6 +17,7 @@ import numpy as np
 import jsonfield
 
 import sklearn.cluster as skc
+import sklearn.preprocessing as skp
 
 import lib.django.djff.utils.djff_imagekit as ffik
 
@@ -461,10 +462,14 @@ class CaptureJobQueue(models.Model):
 class KMeansEstimator(models.Model):
     timestamp = models.DateTimeField('when this estimator was produced', auto_now_add=True)
 
-    params = jsonfield.JSONField('used to reconstruct the estimator')
+    estimator_params = jsonfield.JSONField('used to reconstruct the estimator')
     cluster_centers = jsonfield.JSONField('used to reconstruct the estimator')
     labels = jsonfield.JSONField('used to reconstruct the estimator')
     inertia = jsonfield.JSONField('used to reconstruct the estimator')
+
+    scaler_params = jsonfield.JSONField('used to reconstruct scaler')
+    scaler_mean = jsonfield.JSONField('used to reconstruct scaler')
+    scaler_std = jsonfield.JSONField('used to reconstruct scaler')
 
     comment = models.TextField('general comments about this estimator (optional)',
                                null=True, blank=True)
@@ -474,7 +479,7 @@ class KMeansEstimator(models.Model):
     @property
     def rebuilt_estimator(self):
         estimator = skc.KMeans()
-        estimator.set_params(**self.params)
+        estimator.set_params(**self.estimator_params)
         estimator.cluster_centers_ = np.array(self.cluster_centers)
         estimator.labels_ = np.array(self.labels)
         estimator.inertia_ = self.inertia
@@ -482,16 +487,21 @@ class KMeansEstimator(models.Model):
         return estimator
 
     @property
-    def json_rebuild_data(self):
-        return json.dumps({
-            'params': self.params,
-            'cluster_centers': self.cluster_centers,
-            'labels': self.labels,
-            'intertia': self.inertia,
-        })
+    def rebuilt_scaler(self):
+        scaler = skp.StandardScaler()
+        scaler.set_params(**self.scaler_params)
+        scaler.mean_ = np.array(self.scaler_mean)
+        scaler.std_ = np.array(self.scaler_std)
+
+        return scaler
+
+    def extract_and_store_details_from_scaler(self, scaler):
+        self.scaler_params = scaler.get_params()
+        self.scaler_mean = scaler.mean_.tolist()
+        self.scaler_std = scaler.std_.tolist()
 
     def extract_and_store_details_from_estimator(self, estimator):
-        self.params = estimator.get_params()
+        self.estimator_params = estimator.get_params()
         self.cluster_centers = estimator.cluster_centers_.tolist()
         self.labels = estimator.labels_.tolist()
         self.inertia = estimator.inertia_
