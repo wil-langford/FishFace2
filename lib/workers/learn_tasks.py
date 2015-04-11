@@ -17,8 +17,8 @@ def debug_task(self, *args, **kwargs):
     '''.format(self.request, args, kwargs)
 
 
-@celery.shared_task(name="learn.scikit_learn_create_estimator")
-def scikit_learn_create_estimator(hu_moments, n_clusters=80, n_init=10,
+@celery.shared_task(name="learn.create_estimator")
+def create_estimator(hu_moments, n_clusters=80, n_init=10,
                                   init='random', max_iter=1000):
     try:
         if len(hu_moments[0]) != 7:
