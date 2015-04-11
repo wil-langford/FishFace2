@@ -38,7 +38,7 @@ def create_estimator(ted, n_clusters=80, n_init=10,
     label_deltas = dict()
 
     for key, delta_list in agg.iteritems():
-        label_deltas[key] = float(sum(delta_list)) / len(delta_list)
+        label_deltas[key] = np.average(np.array(delta_list))
 
     return {
         'estimator': estimator,
