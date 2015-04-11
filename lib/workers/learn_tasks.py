@@ -33,7 +33,7 @@ def create_estimator(ted, n_clusters=80, n_init=10,
     agg = collections.defaultdict(list)
 
     for label, delta in zip(labels, deltas):
-        agg[label].append(delta)
+        agg[str(label)].append(delta)
 
     label_deltas = dict()
 
