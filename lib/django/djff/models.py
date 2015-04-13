@@ -245,7 +245,7 @@ class Image(models.Model):
 
     @property
     def degrees(self):
-        return None if self.angle is None else int(round(math.degrees(self.angle),0))
+        return None if self.angle is None else int(round(math.degrees(self.angle), 0))
 
     def inline_image(self, thumb=False):
         width = [200, 40][thumb]
@@ -320,10 +320,10 @@ class ImageAnalysis(models.Model):
         m10 = float(self.moments['m10'])
         m01 = float(self.moments['m01'])
 
-        x = int(m10/m00)
-        y = int(m01/m00)
+        x = int(m10 / m00)
+        y = int(m01 / m00)
 
-        return (x,y)
+        return (x, y)
 
 
 class AutomaticTag(models.Model):
@@ -338,6 +338,7 @@ class AutomaticTag(models.Model):
         return u'image_analysis_id({}) centroid({}) orientation({})'.format(
             self.image_analysis_id, self.centroid, self.orientation
         )
+
 
 class ManualTag(models.Model):
     image = models.ForeignKey(Image)
@@ -389,8 +390,8 @@ class ManualTag(models.Model):
 
     @property
     def latest_analysis(self):
-        return ImageAnalysis.objects.filter(image_id=self.image_id
-            ).order_by('analysis_datetime').last()
+        return ImageAnalysis.objects.filter(
+            image_id=self.image_id).order_by('analysis_datetime').last()
 
 
 class ManualVerification(models.Model):
@@ -533,6 +534,7 @@ class ClassificationDeltaSet(models.Model):
     timestamp = models.DateTimeField('the datetime that this set of deltas was stored',
                                      auto_now_add=True)
     deltas = jsonfield.JSONField('the set of deltas')
+
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
 def image_delete(sender, instance, **kwargs):
