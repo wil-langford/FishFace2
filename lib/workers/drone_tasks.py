@@ -7,6 +7,7 @@ from scipy import stats
 
 import celery
 from lib.fishface_celery import celery_app
+from lib.misc_utilities import is_file
 
 from lib.fishface_image import FFImage, ff_operation, ff_annotation
 
@@ -227,26 +228,63 @@ def draw_contours(image, contours, line_color=255, line_thickness=3, filled=True
 
 @celery.shared_task(name='drone.get_fish_contour')
 def get_fish_contour(data, cal):
+    global checkpoint_count
+    checkpoint_count = 0
+    image_id = '{:08d}'.format(data.meta.get('image_id',0))
+
+    def checkpoint(image_array, tag=''):
+        global checkpoint_count
+        if tag != '':
+            tag = '_' + tag
+
+        if isinstance(image_array, FFImage):
+            image_array = image_array.array
+        filename = '/home/fishface/eph/drone_checkpoints/{}_{:05d}{}.jpg'.format(
+            image_id, checkpoint_count, tag)
+        cv2.imwrite(filename, image_array)
+        if not is_file(filename):
+            raise Exception("Couldn't write file.")
+        checkpoint_count += 1
+
+
     color_image = cv2.cvtColor(data.array, cv2.COLOR_GRAY2BGR)
 
+    checkpoint(data.array, 'data')
+    checkpoint(cal, 'calibration')
+
     delta_image(data, cal)
+
+    checkpoint(data.array, 'absdiff')
+
     threshold_by_type(data)
+
+    checkpoint(data.array, 'threshold')
+
     erode(data)
+
+    checkpoint(data.array, 'eroded')
+
     distance_transform(data)
+
     threshold_by_type(data, otsu=False, thresh=5)
+    checkpoint(data.array, 'threshold_by_5')
 
     markers = data.array.copy()
     dilate(data, iterations=7)
+    checkpoint(data.array, 'dilate')
     border = data.array.copy()
     border = border - cv2.erode(border, None)
+    checkpoint(border, 'borders_for_watershed')
 
     markers, num_blobs = ndimage.measurements.label(markers)
     markers[border == 255] = 255
 
     markers = markers.astype(np.int32)
     cv2.watershed(image=color_image, markers=markers)
+    checkpoint(markers, 'watershed')
     markers[markers == -1] = 0
     markers = 255 - markers.astype(np.uint8)
+    checkpoint(markers, 'blobs')
 
     image = FFImage(markers, meta=data.meta, log=data.log)
 
