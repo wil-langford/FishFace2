@@ -151,5 +151,16 @@ def automatically_tag_images(all_analysis_ids, stored_estimator_id):
             celery.signature('results.store_automatic_tags')
         ).apply_async()
 
+
+@celery.shared_task(name='django.update_ellipse_parameters_with_tag')
+def automatically_tag_images(tag_id, radius_of_roi=100):
+    tag = dm.ManualTag.objects.get(pk=tag_id)
+    with open(tag.image.image_file.file.name, 'rb') as data_file:
+        data = data_file.read()
+    with open(tag.image.cjr.cal_image.image_file.file.name, 'rb') as cal_file:
+        cal = cal_file.read()
+
+    return (tag_id, data, cal, tag.int_start, tag.degrees, radius_of_roi)
+
 class AnalysisImportError(Exception):
     pass

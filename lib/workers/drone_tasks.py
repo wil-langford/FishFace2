@@ -279,5 +279,52 @@ def compute_automatic_tags(analyses, estimator, scaler, label_deltas):
 
     return automatic_tags
 
+
+@celery.shared_task(name='drone.tagged_delta_to_ellipse')
+def tagged_delta_to_ellipse_box(args):
+    tag_id, data_jpeg, cal_jpeg, start, degrees, radius_of_roi = args
+
+    data = cv2.imdecode(np.fromstring(data_jpeg, np.uint8), cv2.CV_LOAD_IMAGE_GRAYSCALE)
+    cal = cv2.imdecode(np.fromstring(cal_jpeg, np.uint8), cv2.CV_LOAD_IMAGE_GRAYSCALE)
+
+    delta = cv2.subtract(cal, data)
+    start = np.array(start)
+
+    adjust = np.array([int(radius_of_roi), int(radius_of_roi/2)], dtype=np.int32)
+
+    retval, roi_corner, roi_far_corner = cv2.clipLine(
+        (0, 0, 512, 384),
+        tuple(start - adjust),
+        tuple(start + adjust),
+    )
+
+    rotate_matrix = cv2.getRotationMatrix2D(tuple(start), degrees, 1)
+    roi = cv2.warpAffine(delta, rotate_matrix, (512, 384))[
+        roi_corner[1]:roi_far_corner[1],
+        roi_corner[0]:roi_far_corner[0]
+    ]
+    roi = cv2.cvtColor(roi, cv2.COLOR_GRAY2RGB)
+
+    roi_corner = np.array(roi_corner)
+    start = start - roi_corner
+
+    color = int(np.average(roi[start[1]-2:start[1]+2, start[0]-2:start[0]+2].astype(np.float32)))
+
+    scores = list()
+    for x in range(20, 60):
+        y_min = int(x/2.3)
+        y_max = int(x/1.5)
+        for y in range(y_min, y_max):
+            template = np.zeros((y, x, 3), dtype=np.uint8)
+            cv2.ellipse(img=template, box=((x//2, y//2), (x, y), 0), color=(color,color,color), thickness=-1)
+            match = cv2.minMaxLoc(cv2.matchTemplate(roi, template, cv2.TM_SQDIFF_NORMED))
+            scores.append((match[0], (x,y), match[2]))
+
+    good_scores = sorted(scores)[:10]
+    best_score, ellipse_size, ellipse_corner = sorted(good_scores, key=lambda x: -x[1][0]*x[1][1])[0]
+
+    return tag_id, ellipse_size
+
+
 class ImageProcessingException(Exception):
     pass
