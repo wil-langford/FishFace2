@@ -11,6 +11,7 @@ import django.utils.dateformat as dud
 import django.utils.timezone as dut
 
 from django.conf import settings
+from lib.fishface_logging import logger
 
 import numpy as np
 
@@ -134,7 +135,7 @@ class Experiment(models.Model):
     def search_min(self):
         cjrs_with_mins = self.capturejobrecord_set.filter(search_min__isnull=False)
         if cjrs_with_mins.count()>0:
-            return int(cjrs_with_mins.aggregate(ddm.Avg('search_min'))['search_min__avg'])
+            return int(cjrs_with_mins.aggregate(ddm.Avg('major_min'))['search_min__avg'])
         else:
             return None
 
@@ -142,7 +143,7 @@ class Experiment(models.Model):
     def search_max(self):
         cjrs_with_maxes = self.capturejobrecord_set.filter(search_max__isnull=False)
         if cjrs_with_maxes.count()>0:
-            return int(cjrs_with_maxes.aggregate(ddm.Avg('search_max'))['search_max__avg'])
+            return int(cjrs_with_maxes.aggregate(ddm.Avg('major_max'))['search_max__avg'])
         else:
             return None
 
@@ -176,10 +177,10 @@ class CaptureJobRecord(models.Model):
     remaining = models.IntegerField(null=True, blank=True)
     job_stop = models.DateTimeField(null=True, blank=True)
 
-    search_min = models.IntegerField('the minimum length of the major axis of the ellipse' +
+    major_min = models.IntegerField('the minimum length of the major axis of the ellipse' +
                                      'to search for during ellipse search tagging',
                                      null=True, blank=True)
-    search_max = models.IntegerField('the maximum length of the major axis of the ellipse' +
+    major_max = models.IntegerField('the maximum length of the major axis of the ellipse' +
                                      'to search for during ellipse search tagging',
                                      null=True, blank=True)
 
@@ -188,9 +189,36 @@ class CaptureJobRecord(models.Model):
     color_max = models.IntegerField('the maximum color to search for during ellipse search tagging',
                                     null=True, blank=True)
 
+    ratio_min = models.FloatField('the minimum axes length ratio of the ellipse' +
+                                     'to search for during ellipse search tagging',
+                                     null=True, blank=True)
+    ratio_max = models.FloatField('the minimum axes length ratio of the ellipse' +
+                                     'to search for during ellipse search tagging',
+                                     null=True, blank=True)
 
     comment = models.TextField('general comments about this Capture Job Record (optional)',
                                null=True, blank=True, )
+
+    @property
+    def search_envelope(self):
+        envelope = dict()
+        attribs = 'major color ratio'.split(' ')
+        names = ([x + '_min' for x in attribs] + [x + '_max' for x in attribs])
+        for name in names:
+            envelope[name] = getattr(self, name, None)
+            if envelope[name] is None:
+                eligible_cjrs = self.xp.capturejobrecord_set.filter(major_min__isnull=False)
+                if eligible_cjrs.count() > 0:
+                    envelope[name] = eligible_cjrs.aggregate(ddm.Avg(name))[name + '__avg']
+
+                    if name.split('_')[0] in 'search color'.split(' '):
+                        envelope[name] = int(envelope[name])
+
+            if envelope[name] is None:
+                logger.error("Couldn't get the search envelope for CJR ID: {}".format(self.id))
+                return None
+
+        return envelope
 
     def __unicode__(self):
         return u'CaptureJobRecord {} (XP-{}_CJR_{})'.format(self.id,
@@ -333,6 +361,26 @@ class Image(models.Model):
         except IndexError:
             return None
 
+    @property
+    def jpeg(self):
+        with open(self.image_file.file.name, 'rb') as data_file:
+            data = data_file.read()
+        return data
+
+    @property
+    def cal_jpeg(self):
+        with open(self.cjr.cal_image.image_file.file.name, 'rb') as cal_file:
+            cal = cal_file.read()
+        return cal
+
+    @property
+    def search_envelope(self):
+        if not self.is_cal_image:
+            return self.cjr.search_envelope
+        else:
+            logger.error("Cal images have no search envelopes.")
+            return False
+
 
 class ImageAnalysis(models.Model):
     # link to a specific image
@@ -402,6 +450,16 @@ class ManualTag(models.Model):
     def int_end(self):
         return tuple(int(x) for x in self.end.split(','))
 
+    @int_start.setter
+    def int_start(self, value):
+        self.start = ','.join(map(str, value))
+        self.save()
+
+    @int_end.setter
+    def int_end(self, value):
+        self.end = ','.join(map(str, value))
+        self.save()
+
     @property
     def vector(self):
         return tuple(e - s for s, e in zip(self.int_start, self.int_end))
@@ -455,6 +513,16 @@ class EllipseSearchTag(models.Model):
     def int_end(self):
         return tuple(int(x) for x in self.end.split(','))
 
+    @int_start.setter
+    def int_start(self, value):
+        self.start = ','.join(map(str, value))
+        self.save()
+
+    @int_end.setter
+    def int_end(self, value):
+        self.end = ','.join(map(str, value))
+        self.save()
+
     @property
     def vector(self):
         return tuple(e - s for s, e in zip(self.int_start, self.int_end))
@@ -481,15 +549,6 @@ class EllipseSearchTag(models.Model):
         )
         image = generator.generate()
         return image
-
-    @property
-    def delta_against_latest_analysis(self):
-        return self.degrees - self.latest_analysis.orientation_from_moments
-
-    @property
-    def latest_analysis(self):
-        return ImageAnalysis.objects.filter(
-            image_id=self.image_id).order_by('analysis_datetime').last()
 
 
 class ManualVerification(models.Model):

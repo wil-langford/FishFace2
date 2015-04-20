@@ -3,6 +3,8 @@ import logging
 import os
 import celery.result as cel_res
 import celery.exceptions as cel_ex
+import numpy as np
+import cv2
 
 
 def delay_until(unix_timestamp):
@@ -59,12 +61,11 @@ def n_chunkify(n, chunkable):
     yield chunkable[int((n-1)*chunk_length):]
 
 
-def recursive_get(result, timeout=1, overall_timeout=5):
-    end_by = time.time() + overall_timeout
-    try:
-        while isinstance(result, cel_res.AsyncResult) and time.time() < end_by:
-            result = result.get(timeout=timeout)
-    except cel_ex.TimeoutError:
-        pass
-
-    return result
+def image_string_to_array(image_string):
+    if isinstance(image_string, basestring):
+        image_array = np.fromstring(image_string, dtype=np.uint8)
+    elif isinstance(image_string, np.ndarray):
+        image_array = image_string
+    else:
+        raise Exception('Need string or numpy array, not {}'.format(image_string.__class__))
+    return cv2.imdecode(image_array, 0)

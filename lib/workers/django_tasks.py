@@ -153,33 +153,27 @@ def automatically_tag_with_stored_estimator(all_analysis_ids, stored_estimator_i
 
 
 @celery.shared_task(name='django.automatically_tag_by_ellipse_search')
-def automatically_tag_by_ellipse_search(all_image_ids):
-    for image_ids in chunkify(all_image_ids, 10):
-        taggable = list()
+def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=10):
+    results = list()
+    for image_ids in chunkify(all_image_ids, per_chunk):
+        taggables = list()
         cals = dict()
-        for image in list(dm.ImageAnalysis.objects.filter(id__in=image_ids)):
-            with open(image.image_file.file.name, 'rb') as data_file:
-                data = data_file.read()
+        for image in list(dm.Image.objects.filter(id__in=image_ids)):
+            data = image.jpeg
 
             cal_name = image.cjr.cal_image.image_file.file.name
             if cal_name not in cals:
-                with open(cal_name, 'rb') as cal_file:
-                    cals[cal_name] = cal_file.read()
+                cals[cal_name] = image.cal_jpeg
 
-            taggable.append((
-                image.id,
-                data,
-                cal_name,
-                image.cjr.search_min,
-                image.cjr.search_max
-            ))
+            taggables.append((image.id, data, cal_name, image.search_envelope))
 
-        (
+        results.append((
             celery.signature('drone.compute_automatic_tags_with_ellipse_search',
-                                 args=(taggable, cals)) |
+                                 args=(taggables, cals)) |
             celery.signature('results.store_ellipse_search_tags')
-        ).apply_async()
+        ).apply_async())
 
+    return results
 
 @celery.shared_task(name='django.update_ellipse_parameters_with_tag')
 def update_ellipse_parameters_with_tag(tag_id, radius_of_roi=100):

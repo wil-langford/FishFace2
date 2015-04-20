@@ -1,13 +1,14 @@
 import time
 
 import cv2
+import math
 import numpy as np
 from scipy import ndimage
 from scipy import stats
 
 import celery
 from lib.fishface_celery import celery_app
-
+from lib.misc_utilities import image_string_to_array
 from lib.fishface_image import FFImage, ff_operation, ff_annotation
 
 #
@@ -234,6 +235,23 @@ def better_delta(data, cal):
     return dodge_cod_ge.astype(np.uint8)
 
 
+def min_avg_max(min_val, max_val, ints=True):
+    result = [
+        min_val,
+        (float(min_val) + max_val) / 2,
+        max_val,
+        ]
+
+    if ints:
+        result = map(int, result)
+
+    return result
+
+
+def mam_envelope(envelope, name, ints=True):
+    return min_avg_max(envelope[name + '_min'], envelope[name + '_max'], ints=ints)
+
+
 @celery.shared_task(name='drone.get_fish_contour')
 def get_fish_contour(data, cal):
     color_image = cv2.cvtColor(data.array, cv2.COLOR_GRAY2BGR)
@@ -289,6 +307,8 @@ def compute_automatic_tags_with_estimator(analyses, estimator, scaler, label_del
     return automatic_tags
 
 
+
+
 @celery.shared_task(name='drone.tagged_data_to_ellipse_box')
 def tagged_data_to_ellipse_box(args):
     tag_id, data_jpeg, cal_jpeg, start, degrees, radius_of_roi = args
@@ -317,7 +337,9 @@ def tagged_data_to_ellipse_box(args):
     roi_corner = np.array(roi_corner)
     start = start - roi_corner
 
-    color = int(np.average(roi[start[1]-2:start[1]+2, start[0]-2:start[0]+2].astype(np.float32)))
+    color = int(np.average(
+        roi[start[1] - 2:start[1] + 2, start[0] - 2:start[0] + 2].astype(np.float32)
+    ))
 
     scores = list()
     for x in range(20, 60):
@@ -325,7 +347,8 @@ def tagged_data_to_ellipse_box(args):
         y_max = int(x/1.5)
         for y in range(y_min, y_max):
             template = np.zeros((y, x, 3), dtype=np.uint8)
-            cv2.ellipse(img=template, box=((x//2, y//2), (x, y), 0), color=(color,color,color), thickness=-1)
+            cv2.ellipse(img=template, box=((x // 2, y // 2), (x, y), 0),
+                        color=(color, color, color), thickness=-1)
             match = cv2.minMaxLoc(cv2.matchTemplate(roi, template, cv2.TM_SQDIFF_NORMED))
             scores.append((match[0], (x,y), match[2]))
 
@@ -336,8 +359,97 @@ def tagged_data_to_ellipse_box(args):
 
 
 @celery.shared_task(name='drone.compute_automatic_tags_with_ellipse_search')
-def compute_automatic_tags_with_ellipse_search(taggable, cals):
-    pass
+def compute_automatic_tags_with_ellipse_search(taggables, cals):
+    image_tags = list()
+    for (image_id, data_jpeg, cal_name, envelope) in taggables:
+
+        delta = better_delta(image_string_to_array(data_jpeg),
+                             image_string_to_array(cals[cal_name]))
+
+        colors = mam_envelope(envelope, 'color')
+        majors = mam_envelope(envelope, 'major')
+        ratios = mam_envelope(envelope, 'ratio', ints=False)
+
+        results = list()
+        for color in colors:
+            for angle in range(0, 180, 10):
+                for ratio in ratios:
+                    for major in majors:
+                        template = np.zeros([int(envelope['major_max'])+2] * 2, dtype=np.uint8)
+                        axes = (int(0.5*major), int(0.5*major/ratio))
+                        ellipse_params = {
+                            'img': template,
+                            'center': tuple([int(envelope['major_max']//2)] * 2),
+                            'axes': axes,
+                            'angle': angle,
+                            'startAngle': 0,
+                            'endAngle': 360,
+                            'color': int(color),
+                            'thickness': -1,
+                        }
+                        cv2.ellipse(**ellipse_params)
+                        non_zeroes = np.where(template!=0)
+                        nz_mins = np.amin(non_zeroes, axis=1)
+                        nz_maxes = np.amax(non_zeroes, axis=1)
+                        template = template[nz_mins[0]:nz_maxes[0]+1, nz_mins[1]:nz_maxes[1]+1]
+                        match = cv2.minMaxLoc(cv2.matchTemplate(delta, template, cv2.TM_SQDIFF_NORMED))
+                        results.append((match[0], (color, angle, ratio, major),
+                                        (match[2][0] + axes[1], match[2][1] + axes[0])
+                                       ))
+
+        intermediate_result = min(results)
+        (color, angle_approx, ratio, major) = intermediate_result[1]
+
+        # for the second part of the algorithm, prefer a bit fatter ellipse
+        ratio -= - 0.1
+
+        results = list()
+        for angle in range(angle_approx - 11, angle_approx + 12):
+            template = np.zeros([major+2] * 2, dtype=np.uint8)
+            axes = (int(major/2), int(0.5*major/ratio))
+            ellipse_params = {
+                'img': template,
+                'center': tuple([int(envelope['major_max']//2)] * 2),
+                'axes': axes,
+                'angle': angle,
+                'startAngle': 0,
+                'endAngle': 360,
+                'color': color,
+                'thickness': -1,
+            }
+            cv2.ellipse(**ellipse_params)
+            non_zeroes = np.where(template!=0)
+            nz_mins = np.amin(non_zeroes, axis=1)
+            nz_maxes = np.amax(non_zeroes, axis=1)
+            template = template[nz_mins[0]:nz_maxes[0]+1, nz_mins[1]:nz_maxes[1]+1]
+            match = cv2.minMaxLoc(cv2.matchTemplate(delta, template, cv2.TM_SQDIFF_NORMED))
+            results.append((
+                match[0],
+                angle,
+                (match[2][0] + axes[1], match[2][1] + axes[0])
+            ))
+
+        result = min(results)
+        score, angle, center = result
+
+        length = major / 2
+
+        sin_a = math.sin(math.radians(angle))
+        cos_a = math.cos(math.radians(angle))
+
+        start = tuple(map(int, (center[0] - length * 0.25 * cos_a,
+                                center[1] - length * sin_a)))
+        end = tuple(map(int, (center[0] - length * cos_a,
+                              center[1] - length * sin_a)))
+
+        image_tags.append({
+            'image_id': image_id,
+            'start': start,
+            'end': end,
+            'score': score
+        })
+
+    return image_tags
 
 
 class ImageProcessingException(Exception):
