@@ -129,8 +129,8 @@ def create_and_store_estimator_from_all_eligible(
         ).apply_async()
 
 
-@celery.shared_task(name='django.automatically_tag_by_analysis')
-def automatically_tag_images(all_analysis_ids, stored_estimator_id):
+@celery.shared_task(name='django.automatically_tag_with_stored_estimator')
+def automatically_tag_with_stored_estimator(all_analysis_ids, stored_estimator_id):
     for analysis_ids in chunkify(all_analysis_ids, 100):
         analyses = [(
             analysis.id,
@@ -145,15 +145,44 @@ def automatically_tag_images(all_analysis_ids, stored_estimator_id):
         scaler = estimator_object.rebuilt_scaler
         label_deltas = estimator_object.label_deltas_defaultdict
 
-        return (
-            celery.signature('drone.compute_automatic_tags',
+        (
+            celery.signature('drone.compute_automatic_tags_with_estimator',
                                  args=(analyses, estimator, scaler, label_deltas)) |
-            celery.signature('results.store_automatic_tags')
+            celery.signature('results.store_automatic_analysis_tags')
+        ).apply_async()
+
+
+@celery.shared_task(name='django.automatically_tag_by_ellipse_search')
+def automatically_tag_by_ellipse_search(all_image_ids):
+    for image_ids in chunkify(all_image_ids, 10):
+        taggable = list()
+        cals = dict()
+        for image in list(dm.ImageAnalysis.objects.filter(id__in=image_ids)):
+            with open(image.image_file.file.name, 'rb') as data_file:
+                data = data_file.read()
+
+            cal_name = image.cjr.cal_image.image_file.file.name
+            if cal_name not in cals:
+                with open(cal_name, 'rb') as cal_file:
+                    cals[cal_name] = cal_file.read()
+
+            taggable.append((
+                image.id,
+                data,
+                cal_name,
+                image.cjr.search_min,
+                image.cjr.search_max
+            ))
+
+        (
+            celery.signature('drone.compute_automatic_tags_with_ellipse_search',
+                                 args=(taggable, cals)) |
+            celery.signature('results.store_ellipse_search_tags')
         ).apply_async()
 
 
 @celery.shared_task(name='django.update_ellipse_parameters_with_tag')
-def automatically_tag_images(tag_id, radius_of_roi=100):
+def update_ellipse_parameters_with_tag(tag_id, radius_of_roi=100):
     tag = dm.ManualTag.objects.get(pk=tag_id)
     with open(tag.image.image_file.file.name, 'rb') as data_file:
         data = data_file.read()
@@ -161,6 +190,7 @@ def automatically_tag_images(tag_id, radius_of_roi=100):
         cal = cal_file.read()
 
     return (tag_id, data, cal, tag.int_start, tag.degrees, radius_of_roi)
+
 
 class AnalysisImportError(Exception):
     pass

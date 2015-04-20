@@ -225,6 +225,15 @@ def draw_contours(image, contours, line_color=255, line_thickness=3, filled=True
     return image
 
 
+def better_delta(data, cal):
+    cal_over_data = (256*data / (cal.astype(np.uint16) + 1)).clip(0,255)
+    grain_extract_cal_data = (data - cal + 128).clip(0,255)
+    dodge_cod_ge = 255 - (cv2.divide((256 * grain_extract_cal_data),
+                                     cv2.subtract(255, cal_over_data) + 1)).clip(0,255)
+
+    return dodge_cod_ge.astype(np.uint8)
+
+
 @celery.shared_task(name='drone.get_fish_contour')
 def get_fish_contour(data, cal):
     color_image = cv2.cvtColor(data.array, cv2.COLOR_GRAY2BGR)
@@ -263,8 +272,8 @@ def classify_data(data, estimator, scaler):
     return zip(data, estimator.predict(scaled_data))
 
 
-@celery.shared_task(name='drone.compute_automatic_tags')
-def compute_automatic_tags(analyses, estimator, scaler, label_deltas):
+@celery.shared_task(name='drone.compute_automatic_tags_with_estimator')
+def compute_automatic_tags_with_estimator(analyses, estimator, scaler, label_deltas):
     automatic_tags = list()
     for id, hu, centroid, orientation in analyses:
         cluster_label = str(estimator.predict(scaler.transform(hu))[0])
@@ -280,14 +289,14 @@ def compute_automatic_tags(analyses, estimator, scaler, label_deltas):
     return automatic_tags
 
 
-@celery.shared_task(name='drone.tagged_delta_to_ellipse')
-def tagged_delta_to_ellipse_box(args):
+@celery.shared_task(name='drone.tagged_data_to_ellipse_box')
+def tagged_data_to_ellipse_box(args):
     tag_id, data_jpeg, cal_jpeg, start, degrees, radius_of_roi = args
 
     data = cv2.imdecode(np.fromstring(data_jpeg, np.uint8), cv2.CV_LOAD_IMAGE_GRAYSCALE)
     cal = cv2.imdecode(np.fromstring(cal_jpeg, np.uint8), cv2.CV_LOAD_IMAGE_GRAYSCALE)
 
-    delta = cv2.subtract(cal, data)
+    delta = better_delta(data, cal)
     start = np.array(start)
 
     adjust = np.array([int(radius_of_roi), int(radius_of_roi/2)], dtype=np.int32)
@@ -323,7 +332,12 @@ def tagged_delta_to_ellipse_box(args):
     good_scores = sorted(scores)[:10]
     best_score, ellipse_size, ellipse_corner = sorted(good_scores, key=lambda x: -x[1][0]*x[1][1])[0]
 
-    return tag_id, ellipse_size
+    return (tag_id, ellipse_size, color)
+
+
+@celery.shared_task(name='drone.compute_automatic_tags_with_ellipse_search')
+def compute_automatic_tags_with_ellipse_search(taggable, cals):
+    pass
 
 
 class ImageProcessingException(Exception):

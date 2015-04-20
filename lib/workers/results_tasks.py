@@ -190,8 +190,8 @@ def store_estimator(ml_combo_data):
     return estimator_object.id
 
 
-@celery.shared_task(name='results.store_automatic_tags')
-def store_automatic_tags(automatic_tags):
+@celery.shared_task(name='results.store_automatic_analysis_tags')
+def store_automatic_analysis_tags(automatic_tags):
     for tag in automatic_tags:
         auto_tag = dm.AutomaticTag()
         auto_tag.image_analysis = dm.ImageAnalysis.objects.get(pk=tag['analysis_id'])
@@ -199,6 +199,40 @@ def store_automatic_tags(automatic_tags):
         auto_tag.centroid = tag['centroid']
         auto_tag.orientation = tag['orientation']
         auto_tag.save()
+
+
+@celery.shared_task(name='results.store_ellipse_search_tags')
+def store_automatic_tags(ellipse_tags):
+    for tag in ellipse_tags:
+        ellipse_tag = dm.EllipseSearchTag()
+        ellipse_tag.image_id = tag['image_id']
+        ellipse_tag.start = tag['start']
+        ellipse_tag.end = tag['end']
+        ellipse_tag.save()
+
+
+@celery.shared_task(name='results.update_cjr_ellipse_envelope')
+def update_cjr_ellipse_envelope(args):
+    tag_id, ellipse_size, color = args
+
+    tag = dm.ManualTag.objects.get(pk=tag_id)
+    cjr = tag.image.cjr
+
+    major = max(ellipse_size)
+
+    if cjr.search_max is None or major > cjr.search_max:
+        cjr.search_max = major
+
+    if cjr.search_min is None or major < cjr.search_min:
+        cjr.search_min = major
+
+    if cjr.color_max is None or color > cjr.color_max:
+        cjr.color_max = color
+
+    if cjr.color_min is None or color < cjr.color_min:
+        cjr.color_min = color
+
+    cjr.save()
 
 
 class AnalysisImportError(Exception):

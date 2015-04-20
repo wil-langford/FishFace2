@@ -130,6 +130,38 @@ class Experiment(models.Model):
     def slug(self):
         return u"XP_{}".format(self.id)
 
+    @property
+    def search_min(self):
+        cjrs_with_mins = self.capturejobrecord_set.filter(search_min__isnull=False)
+        if cjrs_with_mins.count()>0:
+            return int(cjrs_with_mins.aggregate(ddm.Avg('search_min'))['search_min__avg'])
+        else:
+            return None
+
+    @property
+    def search_max(self):
+        cjrs_with_maxes = self.capturejobrecord_set.filter(search_max__isnull=False)
+        if cjrs_with_maxes.count()>0:
+            return int(cjrs_with_maxes.aggregate(ddm.Avg('search_max'))['search_max__avg'])
+        else:
+            return None
+
+    @property
+    def color_min(self):
+        cjrs_with_mins = self.capturejobrecord_set.filter(color_min__isnull=False)
+        if cjrs_with_mins.count()>0:
+            return int(cjrs_with_mins.aggregate(ddm.Avg('color_min'))['color_min__avg'])
+        else:
+            return None
+
+    @property
+    def color_max(self):
+        cjrs_with_maxes = self.capturejobrecord_set.filter(color_max__isnull=False)
+        if cjrs_with_maxes.count()>0:
+            return int(cjrs_with_maxes.aggregate(ddm.Avg('color_max'))['color_max__avg'])
+        else:
+            return None
+
 
 class CaptureJobRecord(models.Model):
     xp = models.ForeignKey(Experiment)
@@ -143,6 +175,19 @@ class CaptureJobRecord(models.Model):
     total = models.IntegerField(null=True, blank=True)
     remaining = models.IntegerField(null=True, blank=True)
     job_stop = models.DateTimeField(null=True, blank=True)
+
+    search_min = models.IntegerField('the minimum length of the major axis of the ellipse' +
+                                     'to search for during ellipse search tagging',
+                                     null=True, blank=True)
+    search_max = models.IntegerField('the maximum length of the major axis of the ellipse' +
+                                     'to search for during ellipse search tagging',
+                                     null=True, blank=True)
+
+    color_min = models.IntegerField('the minimum color to search for during ellipse search tagging',
+                                    null=True, blank=True)
+    color_max = models.IntegerField('the maximum color to search for during ellipse search tagging',
+                                    null=True, blank=True)
+
 
     comment = models.TextField('general comments about this Capture Job Record (optional)',
                                null=True, blank=True, )
@@ -348,6 +393,59 @@ class ManualTag(models.Model):
     end = models.CommaSeparatedIntegerField('the point in the image where the tag arrow ends',
                                             max_length=20)
     researcher = models.ForeignKey(Researcher)
+
+    @property
+    def int_start(self):
+        return tuple(int(x) for x in self.start.split(','))
+
+    @property
+    def int_end(self):
+        return tuple(int(x) for x in self.end.split(','))
+
+    @property
+    def vector(self):
+        return tuple(e - s for s, e in zip(self.int_start, self.int_end))
+
+    @property
+    def angle(self):
+        start = self.int_start
+        end = self.int_end
+
+        return math.atan2(
+            end[1] - start[1],
+            end[0] - start[0]
+        )
+
+    @property
+    def degrees(self):
+        return math.degrees(self.angle)
+
+    @property
+    def verification_image(self):
+        generator = ffik.ManualTagVerificationThumbnail(
+            tag=self,
+            source=self.image.image_file
+        )
+        image = generator.generate()
+        return image
+
+    @property
+    def delta_against_latest_analysis(self):
+        return self.degrees - self.latest_analysis.orientation_from_moments
+
+    @property
+    def latest_analysis(self):
+        return ImageAnalysis.objects.filter(
+            image_id=self.image_id).order_by('analysis_datetime').last()
+
+
+class EllipseSearchTag(models.Model):
+    image = models.ForeignKey(Image)
+    timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
+    start = models.CommaSeparatedIntegerField('the approximated arrow start',
+                                              max_length=20)
+    end = models.CommaSeparatedIntegerField('the approximated arrow end',
+                                            max_length=20)
 
     @property
     def int_start(self):
