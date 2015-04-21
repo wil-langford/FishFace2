@@ -307,8 +307,6 @@ def compute_automatic_tags_with_estimator(analyses, estimator, scaler, label_del
     return automatic_tags
 
 
-
-
 @celery.shared_task(name='drone.tagged_data_to_ellipse_box')
 def tagged_data_to_ellipse_box(args):
     tag_id, data_jpeg, cal_jpeg, start, degrees, radius_of_roi = args
@@ -432,13 +430,29 @@ def compute_automatic_tags_with_ellipse_search(taggables, cals):
         result = min(results)
         score, angle, center = result
 
+        tail_search_radius = 0.75 * major
+
+        tail_center = tuple(map(int,
+                                (center[0] - tail_search_radius * math.sin(math.radians(angle)),
+                                 center[1] - tail_search_radius * math.cos(math.radians(angle)))))
+
+        angle2 = (angle + 180) % 360
+
+        tail_center2 = tuple(map(int,
+                                 (center[0] - tail_search_radius * math.sin(math.radians(angle2)),
+                                  center[1] - tail_search_radius * math.cos(math.radians(angle2)))))
+
+        mask = np.ones((15, 15), dtype=np.uint8) * color
+
+        # TODO: finish the tail finder bit tomorrow
+
         length = major / 2
 
         sin_a = math.sin(math.radians(angle))
         cos_a = math.cos(math.radians(angle))
 
         start = tuple(map(int, (center[0] - length * 0.25 * cos_a,
-                                center[1] - length * sin_a)))
+                                center[1] - length * 0.25 * sin_a)))
         end = tuple(map(int, (center[0] - length * cos_a,
                               center[1] - length * sin_a)))
 
