@@ -430,21 +430,28 @@ def compute_automatic_tags_with_ellipse_search(taggables, cals):
         result = min(results)
         score, angle, center = result
 
+        mask = np.ones((15, 15), dtype=np.uint8) * color
+
         tail_search_radius = 0.75 * major
 
         tail_center = tuple(map(int,
                                 (center[0] - tail_search_radius * math.sin(math.radians(angle)),
                                  center[1] - tail_search_radius * math.cos(math.radians(angle)))))
+        tail_candidate = delta[tail_center[0] - 7:tail_center[0] + 8,
+                               tail_center[1] - 7:tail_center[1] + 8]
 
         angle2 = (angle + 180) % 360
-
         tail_center2 = tuple(map(int,
                                  (center[0] - tail_search_radius * math.sin(math.radians(angle2)),
                                   center[1] - tail_search_radius * math.cos(math.radians(angle2)))))
+        tail_candidate2 = delta[tail_center2[0] - 7:tail_center2[0] + 8,
+                                tail_center2[1] - 7:tail_center2[1] + 8]
 
-        mask = np.ones((15, 15), dtype=np.uint8) * color
+        diff = np.sum(cv2.absdiff(mask, tail_candidate) ** 2)
+        diff2 = np.sum(cv2.absdiff(mask, tail_candidate2) ** 2)
 
-        # TODO: finish the tail finder bit tomorrow
+        if diff2 < diff:
+            angle = angle2
 
         length = major / 2
 
