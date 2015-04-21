@@ -11,6 +11,7 @@ import django.utils.dateformat as dud
 import django.utils.timezone as dut
 
 from django.conf import settings
+from lib.fishface_logging import logger
 
 import numpy as np
 
@@ -130,6 +131,38 @@ class Experiment(models.Model):
     def slug(self):
         return u"XP_{}".format(self.id)
 
+    @property
+    def search_min(self):
+        cjrs_with_mins = self.capturejobrecord_set.filter(search_min__isnull=False)
+        if cjrs_with_mins.count()>0:
+            return int(cjrs_with_mins.aggregate(ddm.Avg('major_min'))['search_min__avg'])
+        else:
+            return None
+
+    @property
+    def search_max(self):
+        cjrs_with_maxes = self.capturejobrecord_set.filter(search_max__isnull=False)
+        if cjrs_with_maxes.count()>0:
+            return int(cjrs_with_maxes.aggregate(ddm.Avg('major_max'))['search_max__avg'])
+        else:
+            return None
+
+    @property
+    def color_min(self):
+        cjrs_with_mins = self.capturejobrecord_set.filter(color_min__isnull=False)
+        if cjrs_with_mins.count()>0:
+            return int(cjrs_with_mins.aggregate(ddm.Avg('color_min'))['color_min__avg'])
+        else:
+            return None
+
+    @property
+    def color_max(self):
+        cjrs_with_maxes = self.capturejobrecord_set.filter(color_max__isnull=False)
+        if cjrs_with_maxes.count()>0:
+            return int(cjrs_with_maxes.aggregate(ddm.Avg('color_max'))['color_max__avg'])
+        else:
+            return None
+
 
 class CaptureJobRecord(models.Model):
     xp = models.ForeignKey(Experiment)
@@ -144,8 +177,48 @@ class CaptureJobRecord(models.Model):
     remaining = models.IntegerField(null=True, blank=True)
     job_stop = models.DateTimeField(null=True, blank=True)
 
+    major_min = models.IntegerField('the minimum length of the major axis of the ellipse' +
+                                     'to search for during ellipse search tagging',
+                                     null=True, blank=True)
+    major_max = models.IntegerField('the maximum length of the major axis of the ellipse' +
+                                     'to search for during ellipse search tagging',
+                                     null=True, blank=True)
+
+    color_min = models.IntegerField('the minimum color to search for during ellipse search tagging',
+                                    null=True, blank=True)
+    color_max = models.IntegerField('the maximum color to search for during ellipse search tagging',
+                                    null=True, blank=True)
+
+    ratio_min = models.FloatField('the minimum axes length ratio of the ellipse' +
+                                     'to search for during ellipse search tagging',
+                                     null=True, blank=True)
+    ratio_max = models.FloatField('the minimum axes length ratio of the ellipse' +
+                                     'to search for during ellipse search tagging',
+                                     null=True, blank=True)
+
     comment = models.TextField('general comments about this Capture Job Record (optional)',
                                null=True, blank=True, )
+
+    @property
+    def search_envelope(self):
+        envelope = dict()
+        attribs = 'major color ratio'.split(' ')
+        names = ([x + '_min' for x in attribs] + [x + '_max' for x in attribs])
+        for name in names:
+            envelope[name] = getattr(self, name, None)
+            if envelope[name] is None:
+                eligible_cjrs = self.xp.capturejobrecord_set.filter(major_min__isnull=False)
+                if eligible_cjrs.count() > 0:
+                    envelope[name] = eligible_cjrs.aggregate(ddm.Avg(name))[name + '__avg']
+
+                    if name.split('_')[0] in 'search color'.split(' '):
+                        envelope[name] = int(envelope[name])
+
+            if envelope[name] is None:
+                logger.error("Couldn't get the search envelope for CJR ID: {}".format(self.id))
+                return None
+
+        return envelope
 
     def __unicode__(self):
         return u'CaptureJobRecord {} (XP-{}_CJR_{})'.format(self.id,
@@ -245,7 +318,7 @@ class Image(models.Model):
 
     @property
     def degrees(self):
-        return None if self.angle is None else int(round(math.degrees(self.angle),0))
+        return None if self.angle is None else int(round(math.degrees(self.angle), 0))
 
     def inline_image(self, thumb=False):
         width = [200, 40][thumb]
@@ -288,6 +361,26 @@ class Image(models.Model):
         except IndexError:
             return None
 
+    @property
+    def jpeg(self):
+        with open(self.image_file.file.name, 'rb') as data_file:
+            data = data_file.read()
+        return data
+
+    @property
+    def cal_jpeg(self):
+        with open(self.cjr.cal_image.image_file.file.name, 'rb') as cal_file:
+            cal = cal_file.read()
+        return cal
+
+    @property
+    def search_envelope(self):
+        if not self.is_cal_image:
+            return self.cjr.search_envelope
+        else:
+            logger.error("Cal images have no search envelopes.")
+            return False
+
 
 class ImageAnalysis(models.Model):
     # link to a specific image
@@ -320,10 +413,10 @@ class ImageAnalysis(models.Model):
         m10 = float(self.moments['m10'])
         m01 = float(self.moments['m01'])
 
-        x = int(m10/m00)
-        y = int(m01/m00)
+        x = int(m10 / m00)
+        y = int(m01 / m00)
 
-        return (x,y)
+        return (x, y)
 
 
 class AutomaticTag(models.Model):
@@ -338,6 +431,7 @@ class AutomaticTag(models.Model):
         return u'image_analysis_id({}) centroid({}) orientation({})'.format(
             self.image_analysis_id, self.centroid, self.orientation
         )
+
 
 class ManualTag(models.Model):
     image = models.ForeignKey(Image)
@@ -355,6 +449,16 @@ class ManualTag(models.Model):
     @property
     def int_end(self):
         return tuple(int(x) for x in self.end.split(','))
+
+    @int_start.setter
+    def int_start(self, value):
+        self.start = ','.join(map(str, value))
+        self.save()
+
+    @int_end.setter
+    def int_end(self, value):
+        self.end = ','.join(map(str, value))
+        self.save()
 
     @property
     def vector(self):
@@ -389,8 +493,67 @@ class ManualTag(models.Model):
 
     @property
     def latest_analysis(self):
-        return ImageAnalysis.objects.filter(image_id=self.image_id
-            ).order_by('analysis_datetime').last()
+        return ImageAnalysis.objects.filter(
+            image_id=self.image_id).order_by('analysis_datetime').last()
+
+    @property
+    def length(self):
+        vector = np.array(self.int_start) - np.array(self.int_end)
+        length = math.sqrt(np.sum(vector ** 2))
+        return round(length, 2)
+
+class EllipseSearchTag(models.Model):
+    image = models.ForeignKey(Image)
+    timestamp = models.DateTimeField('DTG of image capture', auto_now_add=True)
+    start = models.CommaSeparatedIntegerField('the approximated arrow start',
+                                              max_length=20)
+    end = models.CommaSeparatedIntegerField('the approximated arrow end',
+                                            max_length=20)
+
+    @property
+    def int_start(self):
+        return tuple(int(x) for x in self.start.split(','))
+
+    @property
+    def int_end(self):
+        return tuple(int(x) for x in self.end.split(','))
+
+    @int_start.setter
+    def int_start(self, value):
+        self.start = ','.join(map(str, value))
+        self.save()
+
+    @int_end.setter
+    def int_end(self, value):
+        self.end = ','.join(map(str, value))
+        self.save()
+
+    @property
+    def vector(self):
+        return tuple(e - s for s, e in zip(self.int_start, self.int_end))
+
+    @property
+    def angle(self):
+        start = self.int_start
+        end = self.int_end
+
+        return math.atan2(
+            end[1] - start[1],
+            end[0] - start[0]
+        )
+
+    @property
+    def degrees(self):
+        return math.degrees(self.angle)
+
+    @property
+    def verification_image(self):
+        generator = ffik.ManualTagVerificationThumbnail(
+            tag=self,
+            source=self.image.image_file
+        )
+        image = generator.generate()
+        return image
 
 
 class ManualVerification(models.Model):
@@ -533,6 +696,7 @@ class ClassificationDeltaSet(models.Model):
     timestamp = models.DateTimeField('the datetime that this set of deltas was stored',
                                      auto_now_add=True)
     deltas = jsonfield.JSONField('the set of deltas')
+
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
 def image_delete(sender, instance, **kwargs):
