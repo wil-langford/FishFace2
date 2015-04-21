@@ -10,6 +10,7 @@ import celery
 from lib.fishface_celery import celery_app
 from lib.misc_utilities import image_string_to_array
 from lib.fishface_image import FFImage, ff_operation, ff_annotation
+from lib.fishface_logging import logger
 
 #
 # Convenience functions
@@ -373,8 +374,8 @@ def compute_automatic_tags_with_ellipse_search(taggables, cals):
             for angle in range(0, 180, 10):
                 for ratio in ratios:
                     for major in majors:
-                        template = np.zeros([int(envelope['major_max'])+2] * 2, dtype=np.uint8)
-                        axes = (int(0.5*major), int(0.5*major/ratio))
+                        template = np.zeros([int(envelope['major_max']) + 2] * 2, dtype=np.uint8)
+                        axes = (int(0.5 * major), int(0.5 * major / ratio))
                         ellipse_params = {
                             'img': template,
                             'center': tuple([int(envelope['major_max']//2)] * 2),
@@ -389,22 +390,23 @@ def compute_automatic_tags_with_ellipse_search(taggables, cals):
                         non_zeroes = np.where(template!=0)
                         nz_mins = np.amin(non_zeroes, axis=1)
                         nz_maxes = np.amax(non_zeroes, axis=1)
-                        template = template[nz_mins[0]:nz_maxes[0]+1, nz_mins[1]:nz_maxes[1]+1]
-                        match = cv2.minMaxLoc(cv2.matchTemplate(delta, template, cv2.TM_SQDIFF_NORMED))
+                        template = template[nz_mins[0]:nz_maxes[0] + 1, nz_mins[1]:nz_maxes[1] + 1]
+                        match = cv2.minMaxLoc(cv2.matchTemplate(
+                            delta, template, cv2.TM_SQDIFF_NORMED))
                         results.append((match[0], (color, angle, ratio, major),
                                         (match[2][0] + axes[1], match[2][1] + axes[0])
                                        ))
 
         intermediate_result = min(results)
         (color, angle_approx, ratio, major) = intermediate_result[1]
+        axes = (int(major/2), int(0.5*major/ratio))
 
         # for the second part of the algorithm, prefer a bit fatter ellipse
-        ratio -= - 0.1
+        ratio -= - 0.2
 
         results = list()
         for angle in range(angle_approx - 11, angle_approx + 12):
             template = np.zeros([major+2] * 2, dtype=np.uint8)
-            axes = (int(major/2), int(0.5*major/ratio))
             ellipse_params = {
                 'img': template,
                 'center': tuple([int(envelope['major_max']//2)] * 2),
@@ -435,17 +437,17 @@ def compute_automatic_tags_with_ellipse_search(taggables, cals):
         tail_search_radius = 0.75 * major
 
         tail_center = tuple(map(int,
-                                (center[0] - tail_search_radius * math.sin(math.radians(angle)),
-                                 center[1] - tail_search_radius * math.cos(math.radians(angle)))))
-        tail_candidate = delta[tail_center[0] - 7:tail_center[0] + 8,
-                               tail_center[1] - 7:tail_center[1] + 8]
+                                (center[0] - tail_search_radius * math.cos(math.radians(angle)),
+                                 center[1] - tail_search_radius * math.sin(math.radians(angle)))))
+        tail_candidate = delta[tail_center[1] - 7:tail_center[1] + 8,
+                               tail_center[0] - 7:tail_center[0] + 8]
 
         angle2 = (angle + 180) % 360
         tail_center2 = tuple(map(int,
-                                 (center[0] - tail_search_radius * math.sin(math.radians(angle2)),
-                                  center[1] - tail_search_radius * math.cos(math.radians(angle2)))))
-        tail_candidate2 = delta[tail_center2[0] - 7:tail_center2[0] + 8,
-                                tail_center2[1] - 7:tail_center2[1] + 8]
+                                 (center[0] - tail_search_radius * math.cos(math.radians(angle2)),
+                                  center[1] - tail_search_radius * math.sin(math.radians(angle2)))))
+        tail_candidate2 = delta[tail_center2[1] - 7:tail_center2[1] + 8,
+                                tail_center2[0] - 7:tail_center2[0] + 8]
 
         diff = np.sum(cv2.absdiff(mask, tail_candidate) ** 2)
         diff2 = np.sum(cv2.absdiff(mask, tail_candidate2) ** 2)
