@@ -496,6 +496,11 @@ class ManualTag(models.Model):
         return ImageAnalysis.objects.filter(
             image_id=self.image_id).order_by('analysis_datetime').last()
 
+    @property
+    def length(self):
+        vector = np.array(self.int_start) - np.array(self.int_end)
+        length = math.sqrt(np.sum(vector ** 2))
+        return round(length, 2)
 
 class EllipseSearchTag(models.Model):
     image = models.ForeignKey(Image)
