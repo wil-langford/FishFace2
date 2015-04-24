@@ -10,16 +10,28 @@ In the current state, data collection is semi-automatic and fairly robust.  User
 images with data to be consumed later by machine learning algorithms.  They can also verify the
 accuracy of those manual tags.
 
+There are two primary algorithms implemented currently for automatic tagging of data.
+
 The preprocessing of the imagery has been automated in parallel.  At this stage, a naive, rough
-orientation is available by manipulation of OpenCV-provided image moments.  The image moments are
-further refined into Hu invariants, and those invariants are clustered using k-means.
+orientation is available by algebraic manipulation of OpenCV-provided image moments.  The image
+moments are further refined into Hu invariants, and those invariants are clustered using k-means.
 
-The next feature will be using the clusters to estimate the required adjustment for each "shape"
-the fish can assume when viewed from above.  This adjustment will be applied to the raw orientation
-arrived at in the earlier stage to obtain a cooked, more accurate orientation. 
+The clusters are then used to estimate the required adjustment for each "shape" the fish can
+assume when viewed from above.  This adjustment is applied to the raw orientation arrived at in
+the earlier stage to obtain a cooked, more accurate orientation.
+ 
+This algorithm is more general than the second, but it requires a relatively large number of manual
+human tags to drive the clustering and subsequent stages.  It also doesn't deal as well with fish
+in a flume due to water surface ripples causing segmentation issues.  The advantages of this
+algorithm are its generality and relatively low CPU requirements when compared to the second.
 
-There's a [rough video demo](http://youtu.be/WdZm49Jv0d4) of the front end of an early state of the
-app.
+The second algorithm can get by with relatively few human-supplied tags, but because it uses
+ellipses for template matching, it's probably not suitable for locating animals that aren't
+roughly elliptical with tails.  This algorithm also requires a relatively large amount of
+computation time to tag imagery; a cluster is recommended.
+
+There's a [rough and fairly old video demo](http://youtu.be/WdZm49Jv0d4) of the front end of an
+early state of the application.
 
 
 Thanks
