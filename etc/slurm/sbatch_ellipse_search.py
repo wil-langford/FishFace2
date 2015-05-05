@@ -16,13 +16,22 @@ import etc.cluster_config as cl_conf
 #SBATCH --output=/home/wsl/var/log/cluster/ellipse_search_%j.out
 #SBATCH --time=01:00
 #SBATCH --nodes=1
-#SBATCH --share
+#SBATCH --exclusive
 
 if len(sys.argv) > 1:
     job_spec_filename = sys.argv[1]
-    with open(job_spec_filename, 'rt') as job_spec_file:
-        job_list = json.loads(job_spec_file.read())
+    job_id = os.environ['SLURM_JOB_ID']
+    result_filename = job_spec_filename + '.result'
+    result_partial_filename = result_filename + '.part'
+    jid_filename = job_spec_filename + '.jid'
 
+    with open(jid_filename, 'wt') as jid_file:
+        jid_file.write(job_id)
+
+    with open(job_spec_filename, 'rt') as job_spec_file:
+        job_list_json = job_spec_file.read()
+
+    job_list = json.loads(job_list_json)
 else:
     print 'You need to specify a job_spec_filename on the command line as the sole argument.'
     sys.exit()
@@ -167,14 +176,18 @@ try:
     tags = p.map(find_ellipse_and_return_tag, job_list)
 
     # write file and make sure it's completely written
-    with open(job_spec_filename + '.result.part', 'wt') as result_file:
+    with open(result_partial_filename, 'wt') as result_file:
         result_file.write(json.dumps(tags))
         result_file.flush()
         os.fsync(result_file.fileno())
 
     # rename the file so that the result collector will pick it up
-    os.rename(job_spec_filename + '.result.part', job_spec_filename + '.result')
+    os.rename(result_partial_filename, result_filename)
+    os.remove(job_spec_filename)
+    os.remove(jid_filename)
 
     sys.exit(0)
 except:
+    with open(job_spec_filename + '.error') as error_file:
+        error_file.write(job_list_json)
     sys.exit(1)
