@@ -147,7 +147,7 @@ def automatically_tag_with_stored_estimator(all_analysis_ids, stored_estimator_i
 
         (
             celery.signature('drone.compute_automatic_tags_with_estimator',
-                                 args=(analyses, estimator, scaler, label_deltas)) |
+                             args=(analyses, estimator, scaler, label_deltas)) |
             celery.signature('results.store_automatic_analysis_tags')
         ).apply_async()
 
@@ -169,11 +169,12 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=10):
 
         results.append((
             celery.signature('drone.compute_automatic_tags_with_ellipse_search',
-                                 args=(taggables, cals)) |
+                             args=(taggables, cals)) |
             celery.signature('results.store_ellipse_search_tags')
         ).apply_async())
 
     return results
+
 
 @celery.shared_task(name='django.update_ellipse_parameters_with_tag')
 def update_ellipse_parameters_with_tag(tag_id, radius_of_roi=100):
