@@ -162,10 +162,19 @@ def find_ellipse_and_return_tag(args):
     return tag
 
 
-# apply work function in parallel
-tags = p.map(find_ellipse_and_return_tag, job_list)
+try:
+    # apply work function in parallel
+    tags = p.map(find_ellipse_and_return_tag, job_list)
 
-with open(job_spec_filename + '.result', 'wt') as result_file:
-    result_file.write(json.dumps(tags))
+    # write file and make sure it's completely written
+    with open(job_spec_filename + '.result.part', 'wt') as result_file:
+        result_file.write(json.dumps(tags))
+        result_file.flush()
+        os.fsync(result_file.fileno())
 
-sys.exit(0)
+    # rename the file so that the result collector will pick it up
+    os.rename(job_spec_filename + '.result.part', job_spec_filename + '.result')
+
+    sys.exit(0)
+except:
+    sys.exit(1)
