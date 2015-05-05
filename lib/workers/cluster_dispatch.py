@@ -8,6 +8,11 @@ import celery
 import etc.cluster_config as cl_conf
 import etc.fishface_config as ff_conf
 
+@celery.shared_task(name='dispatch.ping')
+def ping():
+    return True
+
+
 @celery.shared_task(name='dispatch.ellipse_search')
 def ellipse_search(taggables):
     with tempfile.NamedTemporaryFile(mode='wt', delete=False, dir=cl_conf.JOB_FILE_DIR,
