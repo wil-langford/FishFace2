@@ -1,16 +1,16 @@
 import time
-
-import cv2
 import math
+
 import numpy as np
+
 from scipy import ndimage
 from scipy import stats
 
+import cv2
+
 import celery
-from lib.fishface_celery import celery_app
 from lib.misc_utilities import image_string_to_array
 from lib.fishface_image import FFImage, ff_operation, ff_annotation
-from lib.fishface_logging import logger
 
 #
 # Convenience functions
@@ -39,6 +39,11 @@ def debug_task(self, *args, **kwargs):
 
 def image_from_file(file_path):
     return FFImage(cv2.imread(file_path, 0))
+
+
+#
+# Image operations
+#
 
 
 @ff_operation
@@ -251,6 +256,11 @@ def min_avg_max(min_val, max_val, ints=True):
 
 def mam_envelope(envelope, name, ints=True):
     return min_avg_max(envelope[name + '_min'], envelope[name + '_max'], ints=ints)
+
+
+#
+# Celery tasks
+#
 
 
 @celery.shared_task(name='drone.get_fish_contour')
