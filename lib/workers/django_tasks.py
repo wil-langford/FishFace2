@@ -147,13 +147,13 @@ def automatically_tag_with_stored_estimator(all_analysis_ids, stored_estimator_i
 
         (
             celery.signature('drone.compute_automatic_tags_with_estimator',
-                                 args=(analyses, estimator, scaler, label_deltas)) |
+                             args=(analyses, estimator, scaler, label_deltas)) |
             celery.signature('results.store_automatic_analysis_tags')
         ).apply_async()
 
 
 @celery.shared_task(name='django.automatically_tag_by_ellipse_search')
-def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=10):
+def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=16):
     results = list()
     for image_ids in chunkify(all_image_ids, per_chunk):
         taggables = list()
@@ -169,11 +169,12 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=10):
 
         results.append((
             celery.signature('drone.compute_automatic_tags_with_ellipse_search',
-                                 args=(taggables, cals)) |
+                             args=(taggables, cals)) |
             celery.signature('results.store_ellipse_search_tags')
         ).apply_async())
 
     return results
+
 
 @celery.shared_task(name='django.update_ellipse_parameters_with_tag')
 def update_ellipse_parameters_with_tag(tag_id, radius_of_roi=100):
@@ -184,6 +185,37 @@ def update_ellipse_parameters_with_tag(tag_id, radius_of_roi=100):
         cal = cal_file.read()
 
     return (tag_id, data, cal, tag.int_start, tag.degrees, radius_of_roi)
+
+
+@celery.shared_task(name='django.slurm_update_ellipse_parameters_with_tags')
+def update_ellipse_parameters_with_tags(tag_ids, radius_of_roi=100):
+    jobs = list()
+
+    for tag_id in tag_ids:
+        tag = dm.ManualTag.objects.get(pk=tag_id)
+        data_filename = tag.image.image_file.file.name
+        cal_filename = tag.image.cjr.cal_image.image_file.file.name
+
+        jobs.append((tag_id, data_filename, cal_filename, tag.int_start, tag.degrees, radius_of_roi))
+
+    return jobs
+
+
+@celery.shared_task(name='django.slurm_automatically_tag_by_ellipse_search')
+def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=16):
+    results = list()
+    for image_ids in chunkify(all_image_ids, per_chunk):
+        taggables = list()
+        for image in list(dm.Image.objects.filter(id__in=image_ids)):
+            data_filename = image.image_file.file.name
+
+            cal_filename = image.cjr.cal_image.image_file.file.name
+
+            taggables.append((image.id, data_filename, cal_filename, image.search_envelope))
+
+        results.append(celery_app.send_task('dispatch.ellipse_search', args=(taggables, )))
+
+    return results
 
 
 class AnalysisImportError(Exception):

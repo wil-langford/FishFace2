@@ -215,6 +215,7 @@ def store_ellipse_search_tags(ellipse_tags):
 
     return tag_ids
 
+
 @celery.shared_task(name='results.update_cjr_ellipse_envelope')
 def update_cjr_ellipse_envelope(args):
     tag_id, ellipse_size, color = args
@@ -244,6 +245,12 @@ def update_cjr_ellipse_envelope(args):
         cjr.ratio_min = ratio
 
     cjr.save()
+
+
+@celery.shared_task(name='results.update_multiple_envelopes')
+def update_multiple_envelopes(envelope_list):
+    for envelope in envelope_list:
+        update_cjr_ellipse_envelope(envelope)
 
 
 class AnalysisImportError(Exception):
