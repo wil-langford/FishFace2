@@ -23,7 +23,7 @@ def ellipse_search(taggables):
         os.fsync(job_file.fileno())
 
     subprocess.call(['sbatch',
-                     os.path.join(ff_conf.ETC, 'slurm', 'sbatch_ellipse_search.py'),
+                     os.path.join(ff_conf.BIN, 'cluster', 'sbatch_ellipse_search.py'),
                      job_filename])
 
 
@@ -37,6 +37,6 @@ def tagged_data_to_ellipse_envelope(jobs):
         os.fsync(job_file.fileno())
 
     subprocess.call(['sbatch',
-                     os.path.join(ff_conf.ETC, 'slurm',
+                     os.path.join(ff_conf.BIN, 'cluster',
                                   'sbatch_tagged_data_to_ellipse_envelope.py'),
                      job_filename])
