@@ -190,15 +190,24 @@ def update_ellipse_parameters_with_tag(tag_id, radius_of_roi=100):
 @celery.shared_task(name='django.slurm_update_ellipse_parameters_with_tags')
 def update_ellipse_parameters_with_tags(tag_ids, radius_of_roi=100):
     jobs = list()
+    cachable_filenames = set()
+
 
     for tag_id in tag_ids:
         tag = dm.ManualTag.objects.get(pk=tag_id)
         data_filename = tag.image.image_file.file.name
         cal_filename = tag.image.cjr.cal_image.image_file.file.name
 
+        cachable_filenames.add(data_filename)
+        cachable_filenames.add(cal_filename)
+
         jobs.append((tag_id, data_filename, cal_filename, tag.int_start, tag.degrees, radius_of_roi))
 
-    return jobs
+    return (
+            celery_app.signature('johnny_cache.ellipse_search', args=(list(cachable_filenames),
+                                                                      jobs)) |
+            celery_app.signature('cluster_dispatch.ellipse_search')
+    ).apply_async()
 
 
 @celery.shared_task(name='django.slurm_automatically_tag_by_ellipse_search')
@@ -206,14 +215,24 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=16):
     results = list()
     for image_ids in chunkify(all_image_ids, per_chunk):
         taggables = list()
+        cachable_filenames = set()
         for image in list(dm.Image.objects.filter(id__in=image_ids)):
             data_filename = image.image_file.file.name
 
             cal_filename = image.cjr.cal_image.image_file.file.name
 
+            cachable_filenames.add(data_filename)
+            cachable_filenames.add(cal_filename)
+
             taggables.append((image.id, data_filename, cal_filename, image.search_envelope))
 
-        results.append(celery_app.send_task('dispatch.ellipse_search', args=(taggables, )))
+        results.append(
+            (
+                celery_app.signature('johnny_cache.ellipse_search', args=(list(cachable_filenames),
+                                                                          taggables)) |
+                celery_app.signature('cluster_dispatch.ellipse_search')
+            ).apply_async()
+        )
 
     return results
 
