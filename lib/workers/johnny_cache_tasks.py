@@ -39,7 +39,7 @@ def fetch_files(file_list):
                             l_file.write(r_file.read())
 
 
-@celery.shared_task(name='cache.cache_files')
+@celery.shared_task(name='johnny_cache.cache_files')
 def cache_files(file_list, extra, parallel_processes=4):
     pool = multiprocessing.Pool(parallel_processes)
     successes = pool.map(fetch_files, n_chunkify(parallel_processes, file_list))
