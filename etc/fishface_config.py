@@ -14,6 +14,8 @@ HOME = os.path.expanduser('~')
 VENV = path_join(HOME, 'venvs', 'FishFace2.venv')
 LOG_LEVEL = 'INFO'
 
+APPLICATION_USERNAME = fishface
+
 OVERALL_LOG_LEVEL = logging.DEBUG
 FILE_LOG_LEVEL = logging.DEBUG
 LOG_TO_CONSOLE = False
