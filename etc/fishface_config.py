@@ -76,7 +76,7 @@ CELERY_BROKER_URL += REDIS_HOSTNAME
 
 CELERY_RESULT_URL = CELERY_BROKER_URL
 
-CELERY_QUEUE_NAMES = 'drone django learn cjc results psu camera johnny_cache cluster_dispatch eph'
+CELERY_QUEUE_NAMES = 'drone django learn cjc results psu camera johnny_cache cluster_dispatch eph'.split(' ')
 
 CELERY_WORKER_CONCURRENCY = {
     'drone': 8,
