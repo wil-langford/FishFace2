@@ -1,17 +1,9 @@
-import os
 import multiprocessing
-from contextlib import closing
-
-import fabric.network as fn
-from fabric.state import env as fabric_env
 
 import celery
 from lib.fishface_celery import celery_app
 
 from lib.misc_utilities import n_chunkify
-import lib.cluster_utilities as lcu
-
-import etc.cluster_config as cl_conf
 
 #
 # Convenience functions
@@ -19,11 +11,14 @@ import etc.cluster_config as cl_conf
 
 
 def fetch_files(file_list):
-    global os
-    global cl_conf
-    global fn
-    global fabric_env
-    global lcu
+    import os
+    from contextlib import closing
+
+    import fabric.network as fn
+    import lib.cluster_utilities as lcu
+
+    import etc.cluster_config as cl_conf
+    from fabric.state import env as fabric_env
     fetch_successes = list()
     fetch_file_list = list()
 
