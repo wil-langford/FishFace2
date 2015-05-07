@@ -72,7 +72,9 @@ def image_string_to_array(image_string):
     return cv2.imdecode(image_array, 0)
 
 
-def remote_to_local_filename(remote_filename, local_media_parent=cl_conf.LOCAL_CACHE_DIR):
+def remote_to_local_filename(remote_filename, local_media_parent=None):
+    if local_media_parent is None:
+        local_media_parent = cl_conf.LOCAL_CACHE_DIR
     return os.path.join(
         local_media_parent,
         remote_filename[remote_filename.find('media'):]
