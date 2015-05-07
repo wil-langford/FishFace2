@@ -6,7 +6,8 @@ import fabric.network as fn
 from fabric.state import env as fabric_env
 
 import celery
-from lib.misc_utilities import n_chunkify, remote_to_local_filename
+from lib.misc_utilities import n_chunkify
+import lib.cluster_utilities as lcu
 
 import etc.cluster_config as cl_conf
 
@@ -21,7 +22,7 @@ def fetch_files(file_list):
 
     # determine what's already here
     for remote_filename in file_list:
-        local_filename = remote_to_local_filename(remote_filename)
+        local_filename = lcu.remote_to_local_filename(remote_filename)
         if os.path.isfile(local_filename):
             fetch_successes.append(True)
         else:

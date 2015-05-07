@@ -8,7 +8,7 @@ import math
 import cv2
 import numpy as np
 
-import lib.misc_utilities as lmu
+import lib.cluster_utilities as lcu
 from lib.workers.drone_tasks import mam_envelope, better_delta
 import etc.cluster_config as cl_conf
 
@@ -52,10 +52,10 @@ p = multiprocessing.Pool(ncores)
 def tagged_data_to_ellipse_box(job_spec):
     tag_id, remote_data_filename, remote_cal_filename, start, degrees, radius_of_roi = job_spec
 
-    with open(lmu.remote_to_local_filename(remote_data_filename), 'rb') as data_file:
+    with open(lcu.remote_to_local_filename(remote_data_filename), 'rb') as data_file:
         data_jpeg = data_file.read()
 
-    with open(lmu.remote_to_local_filename(remote_cal_filename), 'rb') as cal_file:
+    with open(lcu.remote_to_local_filename(remote_cal_filename), 'rb') as cal_file:
         cal_jpeg = cal_file.read()
 
     data = cv2.imdecode(np.fromstring(data_jpeg, np.uint8), cv2.CV_LOAD_IMAGE_GRAYSCALE)

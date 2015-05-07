@@ -8,7 +8,7 @@ import math
 import cv2
 import numpy as np
 
-import lib.misc_utilities as lmu
+import lib.cluster_utilities as lcu
 from lib.workers.drone_tasks import mam_envelope, better_delta
 import etc.cluster_config as cl_conf
 
@@ -52,8 +52,8 @@ p = multiprocessing.Pool(ncores)
 def find_ellipse_and_return_tag(args):
     (image_id, remote_data_filename, remote_cal_filename, envelope) = args
 
-    data_filename = lmu.remote_to_local_filename(remote_data_filename)
-    cal_filename = lmu.remote_to_local_filename(remote_cal_filename)
+    data_filename = lcu.remote_to_local_filename(remote_data_filename)
+    cal_filename = lcu.remote_to_local_filename(remote_cal_filename)
 
     delta = better_delta(
         cv2.imread(data_filename, 0),
