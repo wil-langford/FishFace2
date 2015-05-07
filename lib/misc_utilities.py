@@ -6,7 +6,6 @@ import os
 import numpy as np
 import cv2
 
-import etc.cluster_config as cl_conf
 
 def delay_until(unix_timestamp):
     now = time.time()
@@ -70,12 +69,3 @@ def image_string_to_array(image_string):
     else:
         raise Exception('Need string or numpy array, not {}'.format(image_string.__class__))
     return cv2.imdecode(image_array, 0)
-
-
-def remote_to_local_filename(remote_filename, local_media_parent=None):
-    if local_media_parent is None:
-        local_media_parent = cl_conf.LOCAL_CACHE_DIR
-    return os.path.join(
-        local_media_parent,
-        remote_filename[remote_filename.find('media'):]
-    )
