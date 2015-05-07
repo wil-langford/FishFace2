@@ -19,6 +19,11 @@ import etc.cluster_config as cl_conf
 
 
 def fetch_files(file_list):
+    global os
+    global cl_conf
+    global fn
+    global fabric_env
+    global lcu
     fetch_successes = list()
     fetch_file_list = list()
 
