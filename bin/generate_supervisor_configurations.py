@@ -46,7 +46,7 @@ def main():
 
     redis_config_string = textwrap.dedent("""
         [program:redis]
-        command=%(ENV_HOME)s/bin/redis-server {etc}/redis/redis.conf
+        command={bin}/redis-server {etc}/redis/redis.conf
         autostart=true
         autorestart=true
         user={username}
@@ -65,6 +65,26 @@ def main():
     with open(redis_conf_path, 'wt') as redis_conf_file:
         print 'Writing', redis_conf_path
         redis_conf_file.write(redis_config_string)
+
+    result_relay_config_string = textwrap.dedent("""
+        [program:result_relay]
+        command={bin}/cluster/cluster_result_relay.py
+        autostart=true
+        autorestart=true
+        user={username}
+        stdout_logfile={var_log}/result_relay.log
+        stderr_logfile={var_log}/result_relay.err
+        priority=70"""
+    ).format(
+        bin=ff_conf.BIN,
+        var_log=ff_conf.VAR_LOG,
+        username=ff_conf.APPLICATION_USERNAME,
+    )
+
+    result_relay_conf_path = os.path.join(ff_conf.ETC, 'supervisor.d', 'available', 'result_relay.conf')
+    with open(result_relay_conf_path, 'wt') as result_relay_conf_file:
+        print 'Writing', result_relay_conf_path
+        result_relay_conf_file.write(result_relay_config_string)
 
 
     for queue_name in ff_conf.CELERY_QUEUE_NAMES:
