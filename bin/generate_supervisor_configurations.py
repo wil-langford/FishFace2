@@ -1,3 +1,4 @@
+#!/bin/env python
 import os
 import etc.fishface_config as ff_conf
 import textwrap
