@@ -6,6 +6,8 @@ import fabric.network as fn
 from fabric.state import env as fabric_env
 
 import celery
+from lib.fishface_celery import celery_app
+
 from lib.misc_utilities import n_chunkify
 import lib.cluster_utilities as lcu
 

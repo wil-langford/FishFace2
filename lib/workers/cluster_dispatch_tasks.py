@@ -4,6 +4,7 @@ import json
 import subprocess
 
 import celery
+from lib.fishface_celery import celery_app
 
 import etc.cluster_config as cl_conf
 import etc.fishface_config as ff_conf
