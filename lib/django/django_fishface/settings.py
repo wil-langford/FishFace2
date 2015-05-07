@@ -58,12 +58,8 @@ TEMPLATE_DEBUG = False
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'fishfacedb',
-        'USER': 'fishfacedbuser',
-        'PASSWORD': DB_PASSWD,
-        'HOST': 'localhost',
-        'PORT': '',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'sqlite3.db'),
     },
 }
 
@@ -158,4 +154,8 @@ if LOG_TO_FILE:
 
     PRIMARY_LOGGER.addHandler(file_handler)
 
-from local_settings import *
+# Optional settings override
+try:
+    from local_settings import *
+except ImportError:
+    pass

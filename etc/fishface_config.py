@@ -8,7 +8,7 @@ import fractions
 import logging
 import numpy as np
 
-from lib.misc_utilities import return_text_file_contents, is_file
+import lib.misc_utilities as lmu
 
 HOME = os.path.expanduser('~')
 VENV = path_join(HOME, 'venvs', 'FishFace2.venv')
@@ -41,9 +41,9 @@ LOG_FILE_PATH = os.path.join(VAR_LOG, 'fishface.log')
 
 DJANGO_DIR = path_join(LIB, 'django')
 
-REAL_POWER_SUPPLY = not is_file(ETC, 'FAKE_POWER_SUPPLY')
+REAL_POWER_SUPPLY = not lmu.is_file(ETC, 'FAKE_POWER_SUPPLY')
 
-REAL_CAMERA = not is_file(ETC, 'FAKE_CAMERA')
+REAL_CAMERA = not lmu.is_file(ETC, 'FAKE_CAMERA')
 CAMERA_RESOLUTION = (512, 384)
 CAMERA_ROTATION = 180
 CAMERA_CONSISTENCY_SETTINGS = [
@@ -65,11 +65,11 @@ NORMALIZED_SHAPE = (384, 512)
 NORMALIZED_DTYPE = np.uint8
 
 redis_hostname_file_path = path_join(VAR_RUN, 'redis.hostname')
-REDIS_HOSTNAME = str(return_text_file_contents(redis_hostname_file_path))
+REDIS_HOSTNAME = str(lmu.return_text_file_contents(redis_hostname_file_path))
 REDIS_HOSTNAME = REDIS_HOSTNAME if REDIS_HOSTNAME else 'localhost'
 
 redis_password_file_path = path_join(ETC, 'redis', 'redis_password')
-REDIS_PASSWORD = str(return_text_file_contents(redis_password_file_path))
+REDIS_PASSWORD = str(lmu.return_text_file_contents(redis_password_file_path))
 
 CELERY_BROKER_URL = 'redis://' + ((':' + REDIS_PASSWORD + '@') if REDIS_PASSWORD else '')
 CELERY_BROKER_URL += REDIS_HOSTNAME
