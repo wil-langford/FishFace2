@@ -1,7 +1,7 @@
 #!/bin/env python
 
-#SBATCH --job-name=ellipse_search
-#SBATCH --output=/home/wsl/var/log/cluster/ellipse_search_%j.out
+#SBATCH --job-name=envelope_update
+#SBATCH --output=/home/wsl/var/log/cluster/envelope_update_%j.out
 #SBATCH --time=15:00
 #SBATCH --nodes=1
 #SBATCH --exclusive
