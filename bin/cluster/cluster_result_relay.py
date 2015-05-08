@@ -1,8 +1,8 @@
 #!/bin/env python
 import os
-import time
 import threading
 import json
+import collections
 
 from lib.fishface_celery import celery_app
 
@@ -15,21 +15,7 @@ relay_to = {
     'tagged_data_to_ellipse_envelope': 'results.update_multiple_envelopes',
 }
 
-def relay_result_file(filename):
-    print "Relaying results found in filename: {}".format(filename)
-
-    job_type = filename.split('_job_')[0]
-
-    file_path = os.path.join(cl_conf.JOB_FILE_DIR, filename)
-
-    with open(file_path, 'rt') as result_file:
-        result = json.loads(result_file.read())
-
-    celery_app.send_task(relay_to[job_type],
-                         args=(result,))
-
-    os.rename(file_path, file_path + '.relayed')
-
+results = collections.defaultdict(list)
 
 class RelayThread(threading.Thread):
     def __init__(self, *args, **kwargs):
@@ -47,7 +33,17 @@ class RelayThread(threading.Thread):
             if all_filenames:
                 print "Processing filenames: {}".format(all_filenames)
                 for filename in all_filenames:
-                    relay_result_file(filename)
+                    file_path = os.path.join(cl_conf.JOB_FILE_DIR, filename)
+                    job_type = filename.split('_job_')[0]
+                    with open(file_path, 'rt') as result_file:
+                        result = json.loads(result_file.read())
+
+                    os.rename(file_path, file_path + '.relayed')
+                    results[job_type].extend(result)
+
+                for job_type, result_list in results.iteritems():
+                    celery_app.send_task(relay_to[job_type],
+                                         args=(result_list,))
             else:
                 delay_for_seconds(5)
 
