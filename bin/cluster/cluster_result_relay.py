@@ -18,7 +18,7 @@ relay_to = {
 def relay_result_file(filename):
     print "Relaying results found in filename: {}".format(filename)
 
-    with open(filename, 'rt') as result_file:
+    with open(os.path.join(cl_conf.JOB_FILE_DIR, filename), 'rt') as result_file:
         result = json.loads(result_file.read())
 
     job_type = filename.split('_job_')[0]
