@@ -14,7 +14,7 @@ import etc.cluster_config as cl_conf
 
 #SBATCH --job-name=ellipse_search
 #SBATCH --output=/home/wsl/var/log/cluster/ellipse_search_%j.out
-#SBATCH --time=01:00
+#SBATCH --time=15:00
 #SBATCH --nodes=1
 #SBATCH --exclusive
 
