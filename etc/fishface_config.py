@@ -93,7 +93,7 @@ CJR_CREATION_TIMEOUT = 30
 CAMERA_QUEUE_PRELOAD = 15
 
 try:
-    from local_settings.py import *
+    from local_settings import *
 except ImportError:
     pass
 
