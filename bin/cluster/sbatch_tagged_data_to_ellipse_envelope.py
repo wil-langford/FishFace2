@@ -120,7 +120,9 @@ try:
     os.remove(jid_filename)
 
     sys.exit(0)
-except:
-    with open(job_spec_filename + '.error') as error_file:
+except Exception as exc:
+    with open(job_spec_filename + '.error', 'wt') as error_file:
         error_file.write(job_list_json)
+        error_file.write('\n\nEXCEPTION:\n\n')
+        error_file.write(exc)
     sys.exit(1)
