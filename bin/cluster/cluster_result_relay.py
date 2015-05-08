@@ -16,6 +16,11 @@ relay_to = {
 }
 
 def relay_result_file(filename):
+    with open(filename + '.jid', 'rt') as result_jid_file:
+        jid = result_jid_file.read()
+
+    print "Relaying results for JID {} with filename: {}".format(jid, filename)
+
     with open(filename, 'rt') as result_file:
         result = json.loads(result_file.read())
 
@@ -39,6 +44,7 @@ class RelayThread(threading.Thread):
                 break
 
             if all_filenames:
+                print "Processing filenames: {}".format(all_filenames)
                 for filename in all_filenames:
                     relay_result_file(filename)
             else:
