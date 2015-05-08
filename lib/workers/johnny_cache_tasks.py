@@ -1,11 +1,9 @@
-import multiprocessing
+from contextlib import closing
 
 import celery
 from lib.fishface_celery import celery_app
 
-from lib.misc_utilities import n_chunkify, is_file
-
-from contextlib import closing
+from lib.misc_utilities import is_file
 
 import fabric.network as fn
 import lib.cluster_utilities as lcu
@@ -14,10 +12,6 @@ import etc.cluster_config as cl_conf
 from fabric.state import env as fabric_env
 
 from lib.fishface_logging import logger
-
-#
-# Convenience functions
-#
 
 
 def fetch_files(file_list):
@@ -52,10 +46,9 @@ def fetch_files(file_list):
 
 
 @celery.shared_task(name='johnny_cache.cache_files')
-def cache_files(file_list, extra, parallel_processes=4):
-    parallel_processes = min(parallel_processes, len(file_list))
-    pool = multiprocessing.Pool(parallel_processes)
-    successes = pool.map(fetch_files, n_chunkify(parallel_processes, file_list))
+def cache_files(file_list, extra):
+    successes = fetch_files(file_list)
 
-    success = all(map(all, successes)) and sum(map(len, successes)) == len(file_list)
+    success = all(successes) and len(successes) == len(file_list)
+
     return success, extra
