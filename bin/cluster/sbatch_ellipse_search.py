@@ -9,8 +9,34 @@ import cv2
 import numpy as np
 
 import lib.cluster_utilities as lcu
-from lib.workers.drone_tasks import mam_envelope, better_delta
 import etc.cluster_config as cl_conf
+
+
+def min_avg_max(min_val, max_val, ints=True):
+    result = [
+        min_val,
+        (float(min_val) + max_val) / 2,
+        max_val,
+        ]
+
+    if ints:
+        result = map(int, result)
+
+    return result
+
+
+def mam_envelope(envelope, name, ints=True):
+    return min_avg_max(envelope[name + '_min'], envelope[name + '_max'], ints=ints)
+
+
+def better_delta(data, cal):
+    cal_over_data = (256*data / (cal.astype(np.uint16) + 1)).clip(0,255)
+    grain_extract_cal_data = (data - cal + 128).clip(0,255)
+    dodge_cod_ge = 255 - (cv2.divide((256 * grain_extract_cal_data),
+                                     cv2.subtract(255, cal_over_data) + 1)).clip(0,255)
+
+    return dodge_cod_ge.astype(np.uint8)
+
 
 #SBATCH --job-name=ellipse_search
 #SBATCH --output=/home/wsl/var/log/cluster/ellipse_search_%j.out
