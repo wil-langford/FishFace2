@@ -47,10 +47,10 @@ if not ncores:
         ncores = multiprocessing.cpu_count()
 
 # create pool of worker processess
-p = multiprocessing.Pool(ncores)
+pool = multiprocessing.Pool(ncores)
 
 
-def tagged_data_to_ellipse_box(job_spec):
+def tagged_data_to_ellipse_envelope(job_spec):
     tag_id, remote_data_filename, remote_cal_filename, start, degrees, radius_of_roi = job_spec
 
     with open(lcu.remote_to_local_filename(remote_data_filename), 'rb') as data_file:
@@ -106,7 +106,7 @@ def tagged_data_to_ellipse_box(job_spec):
 
 try:
     # apply work function in parallel
-    tags = p.map(tagged_data_to_ellipse_box, job_list)
+    tags = pool.map(tagged_data_to_ellipse_envelope, job_list)
 
     # write file and make sure it's completely written
     with open(result_partial_filename, 'wt') as result_file:
