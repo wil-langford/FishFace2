@@ -5,6 +5,7 @@
 #SBATCH --time=15:00
 #SBATCH --nodes=1
 #SBATCH --exclusive
+#SBATCH --partition=main,main2
 
 import os
 import sys

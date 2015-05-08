@@ -17,6 +17,7 @@ import etc.cluster_config as cl_conf
 #SBATCH --time=15:00
 #SBATCH --nodes=1
 #SBATCH --exclusive
+#SBATCH --partition=main,main2
 
 if len(sys.argv) > 1:
     job_spec_filename = sys.argv[1]
