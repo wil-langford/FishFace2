@@ -11,33 +11,6 @@ import numpy as np
 import lib.cluster_utilities as lcu
 import etc.cluster_config as cl_conf
 
-
-def min_avg_max(min_val, max_val, ints=True):
-    result = [
-        min_val,
-        (float(min_val) + max_val) / 2,
-        max_val,
-        ]
-
-    if ints:
-        result = map(int, result)
-
-    return result
-
-
-def mam_envelope(envelope, name, ints=True):
-    return min_avg_max(envelope[name + '_min'], envelope[name + '_max'], ints=ints)
-
-
-def better_delta(data, cal):
-    cal_over_data = (256*data / (cal.astype(np.uint16) + 1)).clip(0,255)
-    grain_extract_cal_data = (data - cal + 128).clip(0,255)
-    dodge_cod_ge = 255 - (cv2.divide((256 * grain_extract_cal_data),
-                                     cv2.subtract(255, cal_over_data) + 1)).clip(0,255)
-
-    return dodge_cod_ge.astype(np.uint8)
-
-
 #SBATCH --job-name=ellipse_search
 #SBATCH --output=/home/wsl/var/log/cluster/ellipse_search_%j.out
 #SBATCH --time=15:00
@@ -82,14 +55,14 @@ def find_ellipse_and_return_tag(args):
     data_filename = lcu.remote_to_local_filename(remote_data_filename)
     cal_filename = lcu.remote_to_local_filename(remote_cal_filename)
 
-    delta = better_delta(
+    delta = lcu.better_delta(
         cv2.imread(data_filename, 0),
         cv2.imread(cal_filename, 0)
     )
 
-    colors = mam_envelope(envelope, 'color')
-    majors = mam_envelope(envelope, 'major')
-    ratios = mam_envelope(envelope, 'ratio', ints=False)
+    colors = lcu.mam_envelope(envelope, 'color')
+    majors = lcu.mam_envelope(envelope, 'major')
+    ratios = lcu.mam_envelope(envelope, 'ratio', ints=False)
 
     results = list()
     for color in colors:

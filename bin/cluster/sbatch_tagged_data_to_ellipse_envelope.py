@@ -19,15 +19,6 @@ import lib.cluster_utilities as lcu
 import etc.cluster_config as cl_conf
 
 
-def better_delta(data, cal):
-    cal_over_data = (256*data / (cal.astype(np.uint16) + 1)).clip(0,255)
-    grain_extract_cal_data = (data - cal + 128).clip(0,255)
-    dodge_cod_ge = 255 - (cv2.divide((256 * grain_extract_cal_data),
-                                     cv2.subtract(255, cal_over_data) + 1)).clip(0,255)
-
-    return dodge_cod_ge.astype(np.uint8)
-
-
 if len(sys.argv) > 1:
     job_spec_filename = sys.argv[1]
     job_id = os.environ['SLURM_JOB_ID']
@@ -71,7 +62,7 @@ def tagged_data_to_ellipse_box(job_spec):
     data = cv2.imdecode(np.fromstring(data_jpeg, np.uint8), cv2.CV_LOAD_IMAGE_GRAYSCALE)
     cal = cv2.imdecode(np.fromstring(cal_jpeg, np.uint8), cv2.CV_LOAD_IMAGE_GRAYSCALE)
 
-    delta = better_delta(data, cal)
+    delta = lcu.better_delta(data, cal)
     start = np.array(start)
 
     adjust = np.array([int(radius_of_roi), int(radius_of_roi/2)], dtype=np.int32)
