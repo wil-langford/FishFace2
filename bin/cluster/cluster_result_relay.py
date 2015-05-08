@@ -16,7 +16,7 @@ relay_to = {
 }
 
 def relay_result_file(filename):
-    with open(filename + '.jid', 'rt') as result_jid_file:
+    with open(filename[:-7] + '.jid', 'rt') as result_jid_file:
         jid = result_jid_file.read()
 
     print "Relaying results for JID {} with filename: {}".format(jid, filename)
