@@ -188,7 +188,7 @@ def update_ellipse_parameters_with_tag(tag_id, radius_of_roi=100):
 
 
 @celery.shared_task(name='django.slurm_update_ellipse_parameters_with_tags')
-def update_ellipse_parameters_with_tags(all_tag_ids, radius_of_roi=100, per_chunk=16):
+def update_ellipse_parameters_with_tags(all_tag_ids, radius_of_roi=100, per_chunk=128):
     results = list()
 
     for tag_ids in chunkify(all_tag_ids, per_chunk):
@@ -218,7 +218,7 @@ def update_ellipse_parameters_with_tags(all_tag_ids, radius_of_roi=100, per_chun
 
 
 @celery.shared_task(name='django.slurm_automatically_tag_by_ellipse_search')
-def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=16):
+def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=128):
     results = list()
     for image_ids in chunkify(all_image_ids, per_chunk):
         taggables = list()
