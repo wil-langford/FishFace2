@@ -1,3 +1,4 @@
+import os
 import etc.cluster_config as cl_conf
 
 def remote_to_local_filename(remote_filename, local_media_parent=None):
