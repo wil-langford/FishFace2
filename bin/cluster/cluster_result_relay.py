@@ -15,16 +15,18 @@ relay_to = {
     'tagged_data_to_ellipse_envelope': 'results.update_multiple_envelopes',
 }
 
-def relay_result_file(filename):
-    print "Relaying results found in filename: {}".format(filename)
+def relay_result_file(file_path):
+    print "Relaying results found in filename: {}".format(file_path)
 
-    with open(os.path.join(cl_conf.JOB_FILE_DIR, filename), 'rt') as result_file:
+    with open(file_path, 'rt') as result_file:
         result = json.loads(result_file.read())
 
-    job_type = filename.split('_job_')[0]
+    job_type = file_path.split('_job_')[0]
 
     celery_app.send_task(relay_to[job_type],
                          args=(result,))
+
+    os.rename(file_path, file_path + '.relayed')
 
 
 class RelayThread(threading.Thread):
@@ -43,7 +45,7 @@ class RelayThread(threading.Thread):
             if all_filenames:
                 print "Processing filenames: {}".format(all_filenames)
                 for filename in all_filenames:
-                    relay_result_file(filename)
+                    relay_result_file(os.path.join(cl_conf.JOB_FILE_DIR, filename))
             else:
                 delay_for_seconds(5)
 
