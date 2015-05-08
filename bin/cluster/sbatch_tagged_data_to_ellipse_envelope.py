@@ -46,9 +46,6 @@ if not ncores:
     except KeyError:
         ncores = multiprocessing.cpu_count()
 
-# create pool of worker processess
-pool = multiprocessing.Pool(ncores)
-
 
 def tagged_data_to_ellipse_envelope(job_spec):
     tag_id, remote_data_filename, remote_cal_filename, start, degrees, radius_of_roi = job_spec
@@ -105,6 +102,9 @@ def tagged_data_to_ellipse_envelope(job_spec):
 
 
 try:
+    # create pool of worker processess
+    pool = multiprocessing.Pool(ncores)
+
     # apply work function in parallel
     tags = pool.map(tagged_data_to_ellipse_envelope, job_list)
 
