@@ -16,8 +16,16 @@ import cv2
 import numpy as np
 
 import lib.cluster_utilities as lcu
-from lib.workers.drone_tasks import better_delta
 import etc.cluster_config as cl_conf
+
+
+def better_delta(data, cal):
+    cal_over_data = (256*data / (cal.astype(np.uint16) + 1)).clip(0,255)
+    grain_extract_cal_data = (data - cal + 128).clip(0,255)
+    dodge_cod_ge = 255 - (cv2.divide((256 * grain_extract_cal_data),
+                                     cv2.subtract(255, cal_over_data) + 1)).clip(0,255)
+
+    return dodge_cod_ge.astype(np.uint8)
 
 
 if len(sys.argv) > 1:
