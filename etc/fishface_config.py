@@ -83,6 +83,7 @@ CELERY_QUEUE_NAMES = 'drone django learn cjc results psu camera johnny_cache clu
 CELERY_WORKER_CONCURRENCY = {
     'drone': 8,
     'results': 4,
+    'johnny_cache': 8,
 }
 
 ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1 = 2
