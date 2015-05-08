@@ -45,9 +45,6 @@ if not ncores:
     except KeyError:
         ncores = multiprocessing.cpu_count()
 
-# create pool of worker processess
-p = multiprocessing.Pool(ncores)
-
 
 def find_ellipse_and_return_tag(args):
     (image_id, remote_data_filename, remote_cal_filename, envelope) = args
@@ -170,6 +167,8 @@ def find_ellipse_and_return_tag(args):
 
     return tag
 
+# create pool of worker processess
+p = multiprocessing.Pool(ncores)
 
 try:
     # apply work function in parallel
