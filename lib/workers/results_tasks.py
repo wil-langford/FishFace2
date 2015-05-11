@@ -258,6 +258,16 @@ def update_multiple_envelopes(envelope_data):
         env = cooked_envelopes.get(cjr.id, None)
         if env is None:
             env = cjr.search_envelope
+            if env is None:
+                # crazy set of values pretty much guaranteed to be overwritten by the rest of this task.
+                env = {
+                    'major_min': 100,
+                    'major_max': 1,
+                    'ratio_min': 10.0,
+                    'ratio_max': 0.1,
+                    'color_min': 255,
+                    'color_max': 1,
+                }
             env['cjr'] = cjr
             cooked_envelopes[cjr.id] = env
 
