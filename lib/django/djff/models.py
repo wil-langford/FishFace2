@@ -220,6 +220,12 @@ class CaptureJobRecord(models.Model):
 
         return envelope
 
+    def reset_search_envelope(self):
+        attribs = 'major color ratio'.split(' ')
+        names = ([x + '_min' for x in attribs] + [x + '_max' for x in attribs])
+        for name in names:
+            setattr(self, name, None)
+
     def __unicode__(self):
         return u'CaptureJobRecord {} (XP-{}_CJR_{})'.format(self.id,
                                                             self.xp.id,
@@ -501,6 +507,7 @@ class ManualTag(models.Model):
         vector = np.array(self.int_start) - np.array(self.int_end)
         length = math.sqrt(np.sum(vector ** 2))
         return round(length, 2)
+
 
 class EllipseSearchTag(models.Model):
     image = models.ForeignKey(Image)
