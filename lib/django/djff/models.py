@@ -215,7 +215,7 @@ class CaptureJobRecord(models.Model):
                         envelope[name] = int(envelope[name])
 
             if envelope[name] is None:
-                logger.error("Couldn't get the search envelope for CJR ID: {}".format(self.id))
+                logger.warning("Couldn't get the search envelope for CJR ID: {}".format(self.id))
                 return None
 
         return envelope
