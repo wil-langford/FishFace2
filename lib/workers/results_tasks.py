@@ -264,7 +264,7 @@ def update_multiple_envelopes(envelope_data):
         new_major = max(ellipse_size)
         new_ratio = float(new_major) / min(ellipse_size)
 
-        new_color = min(new_color, 1)
+        new_color = max(new_color, 1)
 
         if new_major < env['major_min']:
             env['major_min'] = new_major
