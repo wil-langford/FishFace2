@@ -236,7 +236,7 @@ def update_cjr_ellipse_envelope(args):
         cjr.color_max = color
 
     if cjr.color_min is None or color < cjr.color_min:
-        cjr.color_min = color
+        cjr.color_min = min(color,1)
 
     if cjr.ratio_max is None or ratio > cjr.ratio_max:
         cjr.ratio_max = ratio
