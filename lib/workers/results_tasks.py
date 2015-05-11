@@ -248,7 +248,7 @@ def update_cjr_ellipse_envelope(args):
     cjr.save()
 
 
-@celery.shared_task(name='results.update_multiple_envelopes')
+@celery.shared_task(name='results.update_multiple_envelopes', rate_limit='1/m')
 def update_multiple_envelopes(envelope_data):
     cooked_envelopes = dict()
 

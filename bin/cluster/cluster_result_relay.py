@@ -45,7 +45,7 @@ class RelayThread(threading.Thread):
                     celery_app.send_task(relay_to[job_type],
                                          args=(result_list,))
             else:
-                delay_for_seconds(5)
+                delay_for_seconds(cl_conf.RESULT_RELAY_DELAY)
 
     def abort(self):
         self._keep_looping = False
