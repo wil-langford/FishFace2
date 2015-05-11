@@ -226,6 +226,8 @@ class CaptureJobRecord(models.Model):
         for name in names:
             setattr(self, name, None)
 
+        self.save()
+
     def __unicode__(self):
         return u'CaptureJobRecord {} (XP-{}_CJR_{})'.format(self.id,
                                                             self.xp.id,
