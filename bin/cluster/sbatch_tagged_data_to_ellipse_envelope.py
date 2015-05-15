@@ -1,22 +1,23 @@
 #!/bin/env python
+
+#SBATCH --job-name=envelope_update
+#SBATCH --output=/home/wsl/var/log/cluster/envelope_update_%j.out
+#SBATCH --time=15:00
+#SBATCH --nodes=1
+#SBATCH --exclusive
+#SBATCH --partition=main,main2
+
 import os
 import sys
 import multiprocessing
 import json
-import math
 
 import cv2
 import numpy as np
 
-from lib.misc_utilities import remote_to_local_filename
-from lib.workers.drone_tasks import mam_envelope, better_delta
+import lib.cluster_utilities as lcu
 import etc.cluster_config as cl_conf
 
-#SBATCH --job-name=ellipse_search
-#SBATCH --output=/home/wsl/var/log/cluster/ellipse_search_%j.out
-#SBATCH --time=01:00
-#SBATCH --nodes=1
-#SBATCH --exclusive
 
 if len(sys.argv) > 1:
     job_spec_filename = sys.argv[1]
@@ -45,23 +46,20 @@ if not ncores:
     except KeyError:
         ncores = multiprocessing.cpu_count()
 
-# create pool of worker processess
-p = multiprocessing.Pool(ncores)
 
-
-def tagged_data_to_ellipse_box(job_spec):
+def tagged_data_to_ellipse_envelope(job_spec):
     tag_id, remote_data_filename, remote_cal_filename, start, degrees, radius_of_roi = job_spec
 
-    with open(remote_to_local_filename(remote_data_filename), 'rb') as data_file:
+    with open(lcu.remote_to_local_filename(remote_data_filename), 'rb') as data_file:
         data_jpeg = data_file.read()
 
-    with open(remote_to_local_filename(remote_cal_filename), 'rb') as cal_file:
+    with open(lcu.remote_to_local_filename(remote_cal_filename), 'rb') as cal_file:
         cal_jpeg = cal_file.read()
 
     data = cv2.imdecode(np.fromstring(data_jpeg, np.uint8), cv2.CV_LOAD_IMAGE_GRAYSCALE)
     cal = cv2.imdecode(np.fromstring(cal_jpeg, np.uint8), cv2.CV_LOAD_IMAGE_GRAYSCALE)
 
-    delta = better_delta(data, cal)
+    delta = lcu.better_delta(data, cal)
     start = np.array(start)
 
     adjust = np.array([int(radius_of_roi), int(radius_of_roi/2)], dtype=np.int32)
@@ -104,8 +102,11 @@ def tagged_data_to_ellipse_box(job_spec):
 
 
 try:
+    # create pool of worker processess
+    pool = multiprocessing.Pool(ncores)
+
     # apply work function in parallel
-    tags = p.map(tagged_data_to_ellipse_box, job_list)
+    tags = pool.map(tagged_data_to_ellipse_envelope, job_list)
 
     # write file and make sure it's completely written
     with open(result_partial_filename, 'wt') as result_file:
@@ -119,7 +120,9 @@ try:
     os.remove(jid_filename)
 
     sys.exit(0)
-except:
-    with open(job_spec_filename + '.error') as error_file:
+except Exception as exc:
+    with open(job_spec_filename + '.error', 'wt') as error_file:
         error_file.write(job_list_json)
+        error_file.write('\n\nEXCEPTION:\n\n')
+        error_file.write(exc)
     sys.exit(1)

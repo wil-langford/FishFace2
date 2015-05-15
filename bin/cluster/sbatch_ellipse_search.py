@@ -8,15 +8,15 @@ import math
 import cv2
 import numpy as np
 
-from lib.misc_utilities import remote_to_local_filename
-from lib.workers.drone_tasks import mam_envelope, better_delta
+import lib.cluster_utilities as lcu
 import etc.cluster_config as cl_conf
 
 #SBATCH --job-name=ellipse_search
 #SBATCH --output=/home/wsl/var/log/cluster/ellipse_search_%j.out
-#SBATCH --time=01:00
+#SBATCH --time=15:00
 #SBATCH --nodes=1
 #SBATCH --exclusive
+#SBATCH --partition=main,main2
 
 if len(sys.argv) > 1:
     job_spec_filename = sys.argv[1]
@@ -45,24 +45,21 @@ if not ncores:
     except KeyError:
         ncores = multiprocessing.cpu_count()
 
-# create pool of worker processess
-p = multiprocessing.Pool(ncores)
-
 
 def find_ellipse_and_return_tag(args):
     (image_id, remote_data_filename, remote_cal_filename, envelope) = args
 
-    data_filename = remote_to_local_filename(remote_data_filename)
-    cal_filename = remote_to_local_filename(remote_cal_filename)
+    data_filename = lcu.remote_to_local_filename(remote_data_filename)
+    cal_filename = lcu.remote_to_local_filename(remote_cal_filename)
 
-    delta = better_delta(
+    delta = lcu.better_delta(
         cv2.imread(data_filename, 0),
         cv2.imread(cal_filename, 0)
     )
 
-    colors = mam_envelope(envelope, 'color')
-    majors = mam_envelope(envelope, 'major')
-    ratios = mam_envelope(envelope, 'ratio', ints=False)
+    colors = lcu.mam_envelope(envelope, 'color')
+    majors = lcu.mam_envelope(envelope, 'major')
+    ratios = lcu.mam_envelope(envelope, 'ratio', ints=False)
 
     results = list()
     for color in colors:
@@ -170,6 +167,8 @@ def find_ellipse_and_return_tag(args):
 
     return tag
 
+# create pool of worker processess
+p = multiprocessing.Pool(ncores)
 
 try:
     # apply work function in parallel
@@ -187,7 +186,9 @@ try:
     os.remove(jid_filename)
 
     sys.exit(0)
-except:
-    with open(job_spec_filename + '.error') as error_file:
+except Exception as exc:
+    with open(job_spec_filename + '.error', 'wt') as error_file:
         error_file.write(job_list_json)
+        error_file.write('\n\nEXCEPTION:\n\n')
+        error_file.write(str(exc))
     sys.exit(1)

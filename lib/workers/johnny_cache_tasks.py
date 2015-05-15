@@ -1,18 +1,17 @@
-import os
-import multiprocessing
 from contextlib import closing
 
-import fabric.network as fn
-from fabric.state import env as fabric_env
-
 import celery
-from lib.misc_utilities import n_chunkify, remote_to_local_filename
+from lib.fishface_celery import celery_app
+
+from lib.misc_utilities import is_file
+
+import fabric.network as fn
+import lib.cluster_utilities as lcu
 
 import etc.cluster_config as cl_conf
+from fabric.state import env as fabric_env
 
-#
-# Convenience functions
-#
+from lib.fishface_logging import logger
 
 
 def fetch_files(file_list):
@@ -21,8 +20,8 @@ def fetch_files(file_list):
 
     # determine what's already here
     for remote_filename in file_list:
-        local_filename = remote_to_local_filename(remote_filename)
-        if os.path.isfile(local_filename):
+        local_filename = lcu.remote_to_local_filename(remote_filename)
+        if is_file(local_filename):
             fetch_successes.append(True)
         else:
             fetch_file_list.append((remote_filename, local_filename))
@@ -36,13 +35,20 @@ def fetch_files(file_list):
                 for remote_filename, local_filename in fetch_file_list:
                     with closing(sftp.open(remote_filename)) as r_file:
                         with open(local_filename, 'wb') as l_file:
-                            l_file.write(r_file.read())
+                            logger("Fetching file: {} to: {}".format(remote_filename, local_filename))
+                            try:
+                                l_file.write(r_file.read())
+                                fetch_successes.append(True)
+                            except IOError:
+                                fetch_successes.append(False)
+
+    return fetch_successes
 
 
 @celery.shared_task(name='johnny_cache.cache_files')
-def cache_files(file_list, extra, parallel_processes=4):
-    pool = multiprocessing.Pool(parallel_processes)
-    successes = pool.map(fetch_files, n_chunkify(parallel_processes, file_list))
+def cache_files(file_list, extra):
+    successes = fetch_files(file_list)
 
-    success = all(map(all, successes)) and sum(map(len, successes)) == len(file_list)
+    success = all(successes) and len(successes) == len(file_list)
+
     return success, extra

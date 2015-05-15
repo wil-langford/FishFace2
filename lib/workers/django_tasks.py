@@ -188,30 +188,37 @@ def update_ellipse_parameters_with_tag(tag_id, radius_of_roi=100):
 
 
 @celery.shared_task(name='django.slurm_update_ellipse_parameters_with_tags')
-def update_ellipse_parameters_with_tags(tag_ids, radius_of_roi=100):
-    jobs = list()
-    cachable_filenames = set()
+def update_ellipse_parameters_with_tags(all_tag_ids, radius_of_roi=100, per_chunk=ff_conf.ENVELOPE_JOBS_PER_CHUNK):
+    results = list()
 
+    for tag_ids in chunkify(all_tag_ids, per_chunk):
 
-    for tag_id in tag_ids:
-        tag = dm.ManualTag.objects.get(pk=tag_id)
-        data_filename = tag.image.image_file.file.name
-        cal_filename = tag.image.cjr.cal_image.image_file.file.name
+        jobs = list()
+        cachable_filenames = set()
 
-        cachable_filenames.add(data_filename)
-        cachable_filenames.add(cal_filename)
+        for tag_id in tag_ids:
+            tag = dm.ManualTag.objects.get(pk=tag_id)
+            data_filename = tag.image.image_file.file.name
+            cal_filename = tag.image.cjr.cal_image.image_file.file.name
 
-        jobs.append((tag_id, data_filename, cal_filename, tag.int_start, tag.degrees, radius_of_roi))
+            cachable_filenames.add(data_filename)
+            cachable_filenames.add(cal_filename)
 
-    return (
-            celery_app.signature('johnny_cache.ellipse_search', args=(list(cachable_filenames),
-                                                                      jobs)) |
-            celery_app.signature('cluster_dispatch.ellipse_search')
-    ).apply_async()
+            jobs.append((tag_id, data_filename, cal_filename, tag.int_start, tag.degrees, radius_of_roi))
+
+        results.append(
+            (
+                celery_app.signature('johnny_cache.cache_files', args=(list(cachable_filenames),
+                                                                          jobs)) |
+                celery_app.signature('cluster_dispatch.tagged_data_to_ellipse_envelope')
+            ).apply_async()
+        )
+
+    return results
 
 
 @celery.shared_task(name='django.slurm_automatically_tag_by_ellipse_search')
-def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=16):
+def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=ff_conf.ELLIPSE_JOBS_PER_CHUNK):
     results = list()
     for image_ids in chunkify(all_image_ids, per_chunk):
         taggables = list()
@@ -228,7 +235,7 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=16):
 
         results.append(
             (
-                celery_app.signature('johnny_cache.ellipse_search', args=(list(cachable_filenames),
+                celery_app.signature('johnny_cache.cache_files', args=(list(cachable_filenames),
                                                                           taggables)) |
                 celery_app.signature('cluster_dispatch.ellipse_search')
             ).apply_async()

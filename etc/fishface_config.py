@@ -8,11 +8,13 @@ import fractions
 import logging
 import numpy as np
 
-from lib.misc_utilities import return_text_file_contents, is_file
+import lib.misc_utilities as lmu
 
 HOME = os.path.expanduser('~')
 VENV = path_join(HOME, 'venvs', 'FishFace2.venv')
 LOG_LEVEL = 'INFO'
+
+APPLICATION_USERNAME = 'fishface'
 
 OVERALL_LOG_LEVEL = logging.DEBUG
 FILE_LOG_LEVEL = logging.DEBUG
@@ -41,9 +43,9 @@ LOG_FILE_PATH = os.path.join(VAR_LOG, 'fishface.log')
 
 DJANGO_DIR = path_join(LIB, 'django')
 
-REAL_POWER_SUPPLY = not is_file(ETC, 'FAKE_POWER_SUPPLY')
+REAL_POWER_SUPPLY = not lmu.is_file(ETC, 'FAKE_POWER_SUPPLY')
 
-REAL_CAMERA = not is_file(ETC, 'FAKE_CAMERA')
+REAL_CAMERA = not lmu.is_file(ETC, 'FAKE_CAMERA')
 CAMERA_RESOLUTION = (512, 384)
 CAMERA_ROTATION = 180
 CAMERA_CONSISTENCY_SETTINGS = [
@@ -65,22 +67,23 @@ NORMALIZED_SHAPE = (384, 512)
 NORMALIZED_DTYPE = np.uint8
 
 redis_hostname_file_path = path_join(VAR_RUN, 'redis.hostname')
-REDIS_HOSTNAME = str(return_text_file_contents(redis_hostname_file_path))
+REDIS_HOSTNAME = str(lmu.return_text_file_contents(redis_hostname_file_path))
 REDIS_HOSTNAME = REDIS_HOSTNAME if REDIS_HOSTNAME else 'localhost'
 
 redis_password_file_path = path_join(ETC, 'redis', 'redis_password')
-REDIS_PASSWORD = str(return_text_file_contents(redis_password_file_path))
+REDIS_PASSWORD = str(lmu.return_text_file_contents(redis_password_file_path))
 
 CELERY_BROKER_URL = 'redis://' + ((':' + REDIS_PASSWORD + '@') if REDIS_PASSWORD else '')
 CELERY_BROKER_URL += REDIS_HOSTNAME
 
 CELERY_RESULT_URL = CELERY_BROKER_URL
 
-CELERY_QUEUE_NAMES = 'drone django learn cjc results psu camera johnny_cache cluster_dispatch eph'
+CELERY_QUEUE_NAMES = 'drone django learn cjc results psu camera johnny_cache cluster_dispatch eph'.split(' ')
 
 CELERY_WORKER_CONCURRENCY = {
     'drone': 8,
     'results': 4,
+    'johnny_cache': 8,
 }
 
 ML_MINIMUM_TAG_VERIFICATIONS_DURING_STAGE_1 = 2
@@ -90,8 +93,11 @@ ML_STAGE_1_IMAGES_PER_CHUNK = 25
 CJR_CREATION_TIMEOUT = 30
 CAMERA_QUEUE_PRELOAD = 15
 
+ELLIPSE_JOBS_PER_CHUNK = 256
+ENVELOPE_JOBS_PER_CHUNK = 256
+
 try:
-    from local_settings.py import *
+    from local_settings import *
 except ImportError:
     pass
 

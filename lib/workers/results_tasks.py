@@ -1,6 +1,7 @@
 import os
 import datetime
 import io
+import collections
 
 import pytz
 
@@ -236,7 +237,7 @@ def update_cjr_ellipse_envelope(args):
         cjr.color_max = color
 
     if cjr.color_min is None or color < cjr.color_min:
-        cjr.color_min = color
+        cjr.color_min = min(color,1)
 
     if cjr.ratio_max is None or ratio > cjr.ratio_max:
         cjr.ratio_max = ratio
@@ -247,10 +248,56 @@ def update_cjr_ellipse_envelope(args):
     cjr.save()
 
 
-@celery.shared_task(name='results.update_multiple_envelopes')
-def update_multiple_envelopes(envelope_list):
-    for envelope in envelope_list:
-        update_cjr_ellipse_envelope(envelope)
+@celery.shared_task(name='results.update_multiple_envelopes', rate_limit='1/m')
+def update_multiple_envelopes(envelope_data):
+    cooked_envelopes = dict()
+
+    cjrs = [dm.ManualTag.objects.get(pk=envelope_datum[0]).image.cjr for envelope_datum in envelope_data]
+
+    for (tag_id, ellipse_size, new_color), cjr in zip(envelope_data, cjrs):
+        env = cooked_envelopes.get(cjr.id, None)
+        if env is None:
+            env = cjr.search_envelope
+            if env is None:
+                # crazy set of values pretty much guaranteed to be overwritten by the rest of this task.
+                env = {
+                    'major_min': 100,
+                    'major_max': 1,
+                    'ratio_min': 10.0,
+                    'ratio_max': 0.1,
+                    'color_min': 255,
+                    'color_max': 1,
+                }
+            env['cjr'] = cjr
+            cooked_envelopes[cjr.id] = env
+
+        new_major = max(ellipse_size)
+        new_ratio = float(new_major) / min(ellipse_size)
+
+        new_color = max(new_color, 1)
+
+        if new_major < env['major_min']:
+            env['major_min'] = new_major
+        if new_major > env['major_max']:
+            env['major_max'] = new_major
+
+        if new_ratio < env['ratio_min']:
+            env['ratio_min'] = new_ratio
+        if new_ratio > env['ratio_max']:
+            env['ratio_max'] = new_ratio
+
+        if new_color < env['color_min']:
+            env['color_min'] = new_color
+        if new_color > env['color_max']:
+            env['color_max'] = new_color
+
+    for env in cooked_envelopes.itervalues():
+        cjr = env['cjr']
+        del env['cjr']
+        for key, value in env.iteritems():
+            setattr(cjr, key, value)
+        cjr.save()
+
 
 
 class AnalysisImportError(Exception):

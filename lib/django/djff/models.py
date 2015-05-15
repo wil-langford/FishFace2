@@ -215,10 +215,18 @@ class CaptureJobRecord(models.Model):
                         envelope[name] = int(envelope[name])
 
             if envelope[name] is None:
-                logger.error("Couldn't get the search envelope for CJR ID: {}".format(self.id))
+                logger.warning("Couldn't get the search envelope for CJR ID: {}".format(self.id))
                 return None
 
         return envelope
+
+    def reset_search_envelope(self):
+        attribs = 'major color ratio'.split(' ')
+        names = ([x + '_min' for x in attribs] + [x + '_max' for x in attribs])
+        for name in names:
+            setattr(self, name, None)
+
+        self.save()
 
     def __unicode__(self):
         return u'CaptureJobRecord {} (XP-{}_CJR_{})'.format(self.id,
@@ -501,6 +509,7 @@ class ManualTag(models.Model):
         vector = np.array(self.int_start) - np.array(self.int_end)
         length = math.sqrt(np.sum(vector ** 2))
         return round(length, 2)
+
 
 class EllipseSearchTag(models.Model):
     image = models.ForeignKey(Image)

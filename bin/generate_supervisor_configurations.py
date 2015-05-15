@@ -1,3 +1,4 @@
+#!/bin/env python
 import os
 import etc.fishface_config as ff_conf
 import textwrap
@@ -7,7 +8,7 @@ def main():
     supervisor_config_string = textwrap.dedent("""
         [unix_http_server]
         file={var_run}/supervisor.sock    ; (the path to the socket file)
-        chown=fishface:fishface                    ; socket file uid:gid owner
+        chown={username}:{username}                    ; socket file uid:gid owner
 
         [supervisord]
         logfile={var_log}/supervisord.log ; (main log file;default $CWD/supervisord.log)
@@ -18,7 +19,7 @@ def main():
         nodaemon=false                             ; (start in foreground if true;default false)
         minfds=1024                                ; (min. avail startup file descriptors;default 1024)
         minprocs=200                               ; (min. avail process descriptors;default 200)
-        user=fishface                              ; (default is current user, required if root)
+        user={username}                            ; (default is current user, required if root)
         directory={var}                   ; (default is not to cd during start)
         childlogdir={var_log}             ; ('AUTO' child log dir, default $TEMP)
 
@@ -34,6 +35,7 @@ def main():
         files = supervisor.d/enabled/*.conf"""
     ).format(
         var=ff_conf.VAR,
+        username=ff_conf.APPLICATION_USERNAME,
         var_log=ff_conf.VAR_LOG,
         var_run=ff_conf.VAR_RUN,
     )
@@ -45,10 +47,10 @@ def main():
 
     redis_config_string = textwrap.dedent("""
         [program:redis]
-        command=%(ENV_HOME)s/bin/redis-server {etc}/redis/redis.conf
+        command={bin}/redis-server {etc}/redis/redis.conf
         autostart=true
         autorestart=true
-        user=fishface
+        user={username}
         stdout_logfile={var_log}/redis.log
         stderr_logfile={var_log}/redis.err
         priority=50
@@ -56,13 +58,34 @@ def main():
     ).format(
         bin=ff_conf.BIN,
         etc=ff_conf.ETC,
-        var_log=ff_conf.VAR_LOG
+        var_log=ff_conf.VAR_LOG,
+        username=ff_conf.APPLICATION_USERNAME,
     )
 
     redis_conf_path = os.path.join(ff_conf.ETC, 'supervisor.d', 'available', 'redis_server.conf')
     with open(redis_conf_path, 'wt') as redis_conf_file:
         print 'Writing', redis_conf_path
         redis_conf_file.write(redis_config_string)
+
+    result_relay_config_string = textwrap.dedent("""
+        [program:result_relay]
+        command={bin}/cluster/cluster_result_relay.py
+        autostart=true
+        autorestart=true
+        user={username}
+        stdout_logfile={var_log}/result_relay.log
+        stderr_logfile={var_log}/result_relay.err
+        priority=70"""
+    ).format(
+        bin=ff_conf.BIN,
+        var_log=ff_conf.VAR_LOG,
+        username=ff_conf.APPLICATION_USERNAME,
+    )
+
+    result_relay_conf_path = os.path.join(ff_conf.ETC, 'supervisor.d', 'available', 'result_relay.conf')
+    with open(result_relay_conf_path, 'wt') as result_relay_conf_file:
+        print 'Writing', result_relay_conf_path
+        result_relay_conf_file.write(result_relay_config_string)
 
 
     for queue_name in ff_conf.CELERY_QUEUE_NAMES:
@@ -71,7 +94,7 @@ def main():
         [program:{worker}]
         command=%(ENV_HOME)s/.pyenv/shims/celery worker --app=lib.workers.{worker}_tasks -l {log_level} -Q {worker} -n '{worker}.%%h' --concurrency={concurrency} -O fair {threads}
         directory={root}
-        user=fishface
+        user={username}
         numprocs=1
         stdout_logfile={var_log}/workers/{worker}.log
         stderr_logfile={var_log}/workers/{worker}.err
@@ -85,6 +108,7 @@ def main():
             log_level=ff_conf.LOG_LEVEL,
             root=ff_conf.ROOT,
             var_log=ff_conf.VAR_LOG,
+            username=ff_conf.APPLICATION_USERNAME,
             worker=queue_name,
             concurrency=ff_conf.CELERY_WORKER_CONCURRENCY.get(queue_name, 1),
             threads=('' if ff_conf.CELERY_WORKER_CONCURRENCY.get(queue_name, 1) > 1 else '-P solo'),

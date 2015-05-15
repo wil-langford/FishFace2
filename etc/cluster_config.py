@@ -9,6 +9,9 @@ JOB_FILE_DIR = os.path.join(ff_conf.VAR, 'lib', 'cluster_jobs')
 # This will get determined automatically if you leave it as None
 SLURM_COMPUTE_NODE_CORES = None
 
+# We want the results to stack up a bit so we can get them into fewer relayed tasks.
+RESULT_RELAY_DELAY = 15
+
 # These might be overridden in cluster_local_config.py
 SCP_USER = 'fishface'
 SCP_HOST = 'localhost'
