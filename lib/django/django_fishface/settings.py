@@ -110,7 +110,7 @@ FILENAME_DATE_FORMAT = "%Y-%m-%d-%H%M%S"
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.6/howto/static-files/
 
-STATIC_ROOT = os.path.join('djff/static/')
+STATIC_ROOT = os.path.join(ff_conf.LIB, 'django', 'static')
 STATIC_URL = '/static/'
 
 MEDIA_ROOT = '/mnt/server_storage/media/'
@@ -148,7 +148,7 @@ if LOG_TO_CONSOLE:
     PRIMARY_LOGGER.addHandler(console_handler)
 
 if LOG_TO_FILE:
-    file_handler = logging.FileHandler(os.path.join(ff_conf.VAR_LOG, 'django_fishface.log'))
+    file_handler = logging.FileHandler(os.path.join(ff_conf.VAR_LOG, 'fishface.log'))
     file_handler.setLevel(FILE_LOG_LEVEL)
     file_handler.setFormatter(formatter)
 
