@@ -26,7 +26,11 @@ def min_avg_max(min_val, max_val, ints=True):
 
 
 def mam_envelope(envelope, name, ints=True):
-    return min_avg_max(envelope[name + '_min'], envelope[name + '_max'], ints=ints)
+    n, x = envelope[name + '_min'], envelope[name + '_min']
+    if n == x:
+        return [n]
+    else:
+        return min_avg_max(n, x, ints=ints)
 
 
 def better_delta(data, cal):
