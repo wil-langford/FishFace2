@@ -223,6 +223,17 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=ff_conf.ELLIPSE
     for image_ids in chunkify(all_image_ids, per_chunk):
         taggables = list()
         cachable_filenames = set()
+
+        # TODO: remove after ellipse calibration is working
+        search_envelope = {
+            'major_min': 10,
+            'major_max': 30,
+            'ratio_min': 2.1,
+            'ratio_max': 2.1,
+            'color_min': 60,
+            'color_max': 180,
+        }
+
         for image in list(dm.Image.objects.filter(id__in=image_ids)):
             data_filename = image.image_file.file.name
 
@@ -231,7 +242,9 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=ff_conf.ELLIPSE
             cachable_filenames.add(data_filename)
             cachable_filenames.add(cal_filename)
 
-            taggables.append((image.id, data_filename, cal_filename, image.search_envelope))
+            # TODO: fix this after ellipse calibration is working
+            # taggables.append((image.id, data_filename, cal_filename, image.search_envelope))
+            taggables.append((image.id, data_filename, cal_filename, search_envelope))
 
         results.append(
             (
