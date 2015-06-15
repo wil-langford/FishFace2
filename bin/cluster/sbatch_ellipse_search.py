@@ -75,11 +75,14 @@ def find_ellipse_and_return_tag(args):
                         'angle': angle,
                         'startAngle': 0,
                         'endAngle': 360,
-                        'color': int(color),
+                        'color': color,
                         'thickness': -1,
                     }
                     cv2.ellipse(**ellipse_params)
+                    if not np.count_nonzero(template):
+                        raise Exception("Template is all zeroes. Ellipse_params: {}".format(ellipse_params))
                     non_zeroes = np.where(template != 0)
+
                     nz_mins = np.amin(non_zeroes, axis=1)
                     nz_maxes = np.amax(non_zeroes, axis=1)
                     template = template[nz_mins[0]:nz_maxes[0] + 1, nz_mins[1]:nz_maxes[1] + 1]
