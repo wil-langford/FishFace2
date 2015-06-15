@@ -16,9 +16,11 @@ def ping():
 
 @celery.shared_task(name='cluster_dispatch.ellipse_search')
 def ellipse_search(args):
-    success, taggables = args
-    if not success:
-        return False
+    # TODO: revert when short-term results no longer a priority
+    # success, taggables = args
+    # if not success:
+    #     return False
+    taggables = args
 
     with tempfile.NamedTemporaryFile(mode='wt', delete=False, dir=cl_conf.JOB_FILE_DIR,
                                      prefix='ellipse_search_job_', ) as job_file:
