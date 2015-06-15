@@ -371,13 +371,13 @@ class Image(models.Model):
 
     @property
     def jpeg(self):
-        with open(self.image_file.file.name, 'rb') as data_file:
+        with open(self.image_file.name, 'rb') as data_file:
             data = data_file.read()
         return data
 
     @property
     def cal_jpeg(self):
-        with open(self.cjr.cal_image.image_file.file.name, 'rb') as cal_file:
+        with open(self.cjr.cal_image.image_file.name, 'rb') as cal_file:
             cal = cal_file.read()
         return cal
 

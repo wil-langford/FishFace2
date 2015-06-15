@@ -161,7 +161,7 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=16):
         for image in list(dm.Image.objects.filter(id__in=image_ids)):
             data = image.jpeg
 
-            cal_name = image.cjr.cal_image.image_file.file.name
+            cal_name = image.cjr.cal_image.image_file.name
             if cal_name not in cals:
                 cals[cal_name] = image.cal_jpeg
 
@@ -179,9 +179,9 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=16):
 @celery.shared_task(name='django.update_ellipse_parameters_with_tag')
 def update_ellipse_parameters_with_tag(tag_id, radius_of_roi=100):
     tag = dm.ManualTag.objects.get(pk=tag_id)
-    with open(tag.image.image_file.file.name, 'rb') as data_file:
+    with open(tag.image.image_file.name, 'rb') as data_file:
         data = data_file.read()
-    with open(tag.image.cjr.cal_image.image_file.file.name, 'rb') as cal_file:
+    with open(tag.image.cjr.cal_image.image_file.name, 'rb') as cal_file:
         cal = cal_file.read()
 
     return (tag_id, data, cal, tag.int_start, tag.degrees, radius_of_roi)
@@ -198,8 +198,8 @@ def update_ellipse_parameters_with_tags(all_tag_ids, radius_of_roi=100, per_chun
 
         for tag_id in tag_ids:
             tag = dm.ManualTag.objects.get(pk=tag_id)
-            data_filename = tag.image.image_file.file.name
-            cal_filename = tag.image.cjr.cal_image.image_file.file.name
+            data_filename = tag.image.image_file.name
+            cal_filename = tag.image.cjr.cal_image.image_file.name
 
             cachable_filenames.add(data_filename)
             cachable_filenames.add(cal_filename)
@@ -235,9 +235,9 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=ff_conf.ELLIPSE
         }
 
         for image in list(dm.Image.objects.filter(id__in=image_ids)):
-            data_filename = image.image_file.file.name
+            data_filename = image.image_file.name
 
-            cal_filename = image.cjr.cal_image.image_file.file.name
+            cal_filename = image.cjr.cal_image.image_file.name
 
             cachable_filenames.add(data_filename)
             cachable_filenames.add(cal_filename)
