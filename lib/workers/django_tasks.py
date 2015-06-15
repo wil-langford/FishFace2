@@ -255,9 +255,9 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=ff_conf.ELLIPSE
         #     ).apply_async()
         # )
 
-        results.append(celery_app.signature(
+        results.append(celery_app.send_task(
             'cluster_dispatch.ellipse_search',
-            args=(True, taggables)).apply_async())
+            args=((True, taggables))))
 
     return results
 
