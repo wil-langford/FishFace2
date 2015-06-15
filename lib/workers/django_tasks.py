@@ -246,13 +246,16 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=ff_conf.ELLIPSE
             # taggables.append((image.id, data_filename, cal_filename, image.search_envelope))
             taggables.append((image.id, data_filename, cal_filename, search_envelope))
 
-        results.append(
-            (
-                celery_app.signature('johnny_cache.cache_files', args=(list(cachable_filenames),
-                                                                          taggables)) |
-                celery_app.signature('cluster_dispatch.ellipse_search')
-            ).apply_async()
-        )
+        # TODO: fix this after caching is re-enabled
+        # results.append(
+        #     (
+        #         celery_app.signature('johnny_cache.cache_files', args=(list(cachable_filenames),
+        #                                                                   taggables)) |
+        #         celery_app.signature('cluster_dispatch.ellipse_search')
+        #     ).apply_async()
+        # )
+
+        results.append(celery_app.signature('cluster_dispatch.ellipse_search', args=(True, taggables)))
 
     return results
 
