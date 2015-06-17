@@ -226,8 +226,8 @@ def automatically_tag_by_ellipse_search(all_image_ids, per_chunk=ff_conf.ELLIPSE
 
         # TODO: remove after ellipse calibration is working
         search_envelope = {
-            'major_min': 10,
-            'major_max': 30,
+            'major_min': 20,
+            'major_max': 36,
             'ratio_min': 2.1,
             'ratio_max': 2.1,
             'color_min': 60,
