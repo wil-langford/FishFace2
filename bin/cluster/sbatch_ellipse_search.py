@@ -194,4 +194,5 @@ except Exception as exc:
         error_file.write(job_list_json)
         error_file.write('\n\nEXCEPTION:\n\n')
         error_file.write(str(exc))
-    sys.exit(1)
+    # sys.exit(1)
+    raise
