@@ -4,6 +4,7 @@ import sys
 import multiprocessing
 import json
 import math
+import traceback
 
 import cv2
 import numpy as np
@@ -191,8 +192,12 @@ try:
     sys.exit(0)
 except Exception as exc:
     with open(job_spec_filename + '.error', 'wt') as error_file:
-        error_file.write(job_list_json)
         error_file.write('\n\nEXCEPTION:\n\n')
         error_file.write(str(exc))
+        error_file.write('\n\n')
+        error_file.write("".join(traceback.format_exception(*sys.exc_info())))
+        error_file.write('\n\n')
+        error_file.write('JOB LIST\n\n')
+        error_file.write(job_list_json)
     # sys.exit(1)
     raise
