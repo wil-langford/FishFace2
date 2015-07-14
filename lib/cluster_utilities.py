@@ -32,12 +32,12 @@ def mam_envelope(envelope, name, ints=True):
 
 def image_read(path_name, flags=0):
     if not os.path.isfile(path_name):
-        raise Exception("File to read is not a file or is not found.")
+        raise Exception("File to read is not a file or is not found: {}".format(path_name))
 
     return_value = cv2.imread(path_name, flags=flags)
 
     if return_value is None:
-        raise Exception("cv2.imread returned a None value.")
+        raise Exception("cv2.imread returned a None value for filename: {}".format(path_name))
 
     return return_value
 
