@@ -54,8 +54,8 @@ def find_ellipse_and_return_tag(args):
     cal_filename = lcu.remote_to_local_filename(remote_cal_filename)
 
     delta = lcu.better_delta(
-        cv2.imread(data_filename, 0),
-        cv2.imread(cal_filename, 0)
+        lcu.image_read(data_filename),
+        lcu.image_read(cal_filename)
     )
 
     colors = lcu.mam_envelope(envelope, 'color')
