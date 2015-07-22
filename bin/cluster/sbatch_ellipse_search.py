@@ -19,33 +19,6 @@ import etc.cluster_config as cl_conf
 #SBATCH --exclusive
 #SBATCH --partition=main,main2
 
-if len(sys.argv) > 1:
-    job_spec_filename = sys.argv[1]
-    job_id = os.environ['SLURM_JOB_ID']
-    result_filename = job_spec_filename + '.result'
-    result_partial_filename = result_filename + '.part'
-    jid_filename = job_spec_filename + '.jid'
-
-    with open(jid_filename, 'wt') as jid_file:
-        jid_file.write(job_id)
-
-    with open(job_spec_filename, 'rt') as job_spec_file:
-        job_list_json = job_spec_file.read()
-
-    job_list = json.loads(job_list_json)
-else:
-    print 'You need to specify a job_spec_filename on the command line as the sole argument.'
-    sys.exit()
-
-# get number of cores available to job
-ncores = cl_conf.SLURM_COMPUTE_NODE_CORES
-
-if not ncores:
-    try:
-        ncores = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
-    except KeyError:
-        ncores = multiprocessing.cpu_count()
-
 
 def find_ellipse_and_return_tag(args):
     (image_id, remote_data_filename, remote_cal_filename, envelope) = args
@@ -171,33 +144,64 @@ def find_ellipse_and_return_tag(args):
 
     return tag
 
-# create pool of worker processess
-p = multiprocessing.Pool(ncores)
+def main():
+    if len(sys.argv) > 1:
+        job_spec_filename = sys.argv[1]
+        job_id = os.environ['SLURM_JOB_ID']
+        result_filename = job_spec_filename + '.result'
+        result_partial_filename = result_filename + '.part'
+        jid_filename = job_spec_filename + '.jid'
 
-try:
-    # apply work function in parallel
-    tags = p.map(find_ellipse_and_return_tag, job_list)
+        with open(jid_filename, 'wt') as jid_file:
+            jid_file.write(job_id)
 
-    # write file and make sure it's completely written
-    with open(result_partial_filename, 'wt') as result_file:
-        result_file.write(json.dumps(tags))
-        result_file.flush()
-        os.fsync(result_file.fileno())
+        with open(job_spec_filename, 'rt') as job_spec_file:
+            job_list_json = job_spec_file.read()
 
-    # rename the file so that the result collector will pick it up
-    os.rename(result_partial_filename, result_filename)
-    os.remove(job_spec_filename)
-    os.remove(jid_filename)
+        job_list = json.loads(job_list_json)
+    else:
+        print 'You need to specify a job_spec_filename on the command line as the sole argument.'
+        sys.exit()
 
-    sys.exit(0)
-except Exception as exc:
-    with open(job_spec_filename + '.error', 'wt') as error_file:
-        error_file.write('\n\nEXCEPTION:\n\n')
-        error_file.write(str(exc))
-        error_file.write('\n\n')
-        error_file.write("".join(traceback.format_exception(*sys.exc_info())))
-        error_file.write('\n\n')
-        error_file.write('JOB LIST\n\n')
-        error_file.write(job_list_json)
-    # sys.exit(1)
-    raise
+    # get number of cores available to job
+    ncores = cl_conf.SLURM_COMPUTE_NODE_CORES
+
+    if not ncores:
+        try:
+            ncores = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
+        except KeyError:
+            ncores = multiprocessing.cpu_count()
+
+    # create pool of worker processess
+    p = multiprocessing.Pool(ncores)
+
+    try:
+        # apply work function in parallel
+        tags = p.map(find_ellipse_and_return_tag, job_list)
+
+        # write file and make sure it's completely written
+        with open(result_partial_filename, 'wt') as result_file:
+            result_file.write(json.dumps(tags))
+            result_file.flush()
+            os.fsync(result_file.fileno())
+
+        # rename the file so that the result collector will pick it up
+        os.rename(result_partial_filename, result_filename)
+        os.remove(job_spec_filename)
+        os.remove(jid_filename)
+
+        sys.exit(0)
+    except Exception as exc:
+        with open(job_spec_filename + '.error', 'wt') as error_file:
+            error_file.write('\n\nEXCEPTION:\n\n')
+            error_file.write(str(exc))
+            error_file.write('\n\n')
+            error_file.write("".join(traceback.format_exception(*sys.exc_info())))
+            error_file.write('\n\n')
+            error_file.write('JOB LIST\n\n')
+            error_file.write(job_list_json)
+        # sys.exit(1)
+        raise
+
+if __name__ == '__main__':
+    main()
