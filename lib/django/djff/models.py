@@ -753,3 +753,10 @@ def tag_delete(sender, instance, **kwargs):
 
     instance.image.bad_tags += 1
     instance.image.save()
+
+
+@django.dispatch.dispatcher.receiver(ddms.post_save, sender=ManualTag)
+def image_delete(sender, instance, **kwargs):
+    PriorityManualImage.objects.filter(image_id=instance.image.id).delete()
+
+
