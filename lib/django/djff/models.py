@@ -735,10 +735,9 @@ class PriorityManualImage(models.Model):
         if untagged_images.count() == 0:
             return Image.untagged_image(payload)
         else:
-            max_id = untagged_images.aggregate(ddm.Max('id')).values()[0]
-            min_id = math.ceil(max_id*random.random())
-            untagged_image = untagged_images.filter(id__gte=min_id)[0]
-            return {'id': untagged_image.id,
+            highest_priority = untagged_images.aggregate(ddm.Min('priority')).values()[0]
+            untagged_image_ids = [x.id for x in untagged_images.filter(priority=highest_priority)]
+            return {'id': random.choice(untagged_image_ids),
                     'valid': True}
 
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
