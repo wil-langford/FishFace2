@@ -730,7 +730,7 @@ class PriorityManualImage(models.Model):
 
     @classmethod
     def untagged_image(cls, payload):
-        untagged_images = cls.objects.exclude(xp__name__contains='TEST_DATA')
+        untagged_images = cls.objects.all()
 
         if untagged_images.count() == 0:
             return Image.untagged_image(payload)
