@@ -206,6 +206,10 @@ def tag_submit(request):
         return_value['researcher_bad_rate'] = researcher.antiaccuracy_score
 
         return_value.update(PriorityManualImage.untagged_image(payload))
+        if return_value['id']:
+            untagged_image = Image.objects.get(pk=return_value['id'])
+            return_value['url'] = '{}{}'.format(settings.MEDIA_URL,
+                                                untagged_image.image_file)
 
     else:
         return_value['valid'] = False
