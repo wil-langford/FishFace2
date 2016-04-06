@@ -33,6 +33,7 @@ from lib.django.djff.models import (
     ManualTag,
     ManualVerification,
     CaptureJobQueue,
+    PriorityManualImage,
 )
 
 from lib.fishface_celery import celery_app
@@ -204,23 +205,13 @@ def tag_submit(request):
         return_value['researcher_good_rate'] = researcher.accuracy_score
         return_value['researcher_bad_rate'] = researcher.antiaccuracy_score
 
-        untagged_images = Image.objects.filter(is_cal_image=False).exclude(
-            xp__name__contains='TEST_DATA').exclude(
-            manualtag__researcher__id__exact=int(payload['researcher_id']))
-
-        if untagged_images.count() == 0:
-            return_value['valid'] = False
-            return_value['reason'] = 'zero_untagged'
-        else:
-            return_value['untagged_images_count'] = untagged_images.count()
-            max_id = untagged_images.aggregate(ddm.Max('id')).values()[0]
-            min_id = math.ceil(max_id*random.random())
-            untagged_image = untagged_images.filter(id__gte=min_id)[0]
-
-            return_value.update({
-                'id': untagged_image.id,
-                'url': '{}{}'.format(settings.MEDIA_URL, untagged_image.image_file),
-            })
+        return_value.update(PriorityManualImage.untagged_image(payload))
+        if return_value['valid'] and int(return_value['id']):
+            logger.debug('looking up details of image id: {}'.format(
+                return_value['id']))
+            untagged_image = Image.objects.get(pk=int(return_value['id']))
+            return_value['url'] = '{}{}'.format(settings.MEDIA_URL,
+                                                untagged_image.image_file)
 
     else:
         return_value['valid'] = False

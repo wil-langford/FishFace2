@@ -1,6 +1,7 @@
 import math
 import datetime
 import collections
+import random
 
 from django.db import models
 import django.dispatch.dispatcher
@@ -389,6 +390,22 @@ class Image(models.Model):
             logger.error("Cal images have no search envelopes.")
             return False
 
+    @classmethod
+    def untagged_image(cls, payload):
+        untagged_images = cls.objects.filter(is_cal_image=False).exclude(
+                xp__name__contains='TEST_DATA').exclude(
+                manualtag__researcher__id__exact=int(payload['researcher_id']))
+
+        if untagged_images.count() == 0:
+            return {'valid': False,
+                    'reason': 'zero_untagged'}
+        else:
+            max_id = untagged_images.aggregate(ddm.Max('id')).values()[0]
+            min_id = math.ceil(max_id*random.random())
+            untagged_image = untagged_images.filter(id__gte=min_id)[0]
+            return {'id': untagged_image.id,
+                    'valid': True}
+
 
 class ImageAnalysis(models.Model):
     # link to a specific image
@@ -707,6 +724,23 @@ class ClassificationDeltaSet(models.Model):
     deltas = jsonfield.JSONField('the set of deltas')
 
 
+class PriorityManualImage(models.Model):
+    image = models.ForeignKey(Image)
+    priority = models.IntegerField("the priority of this image for tagging (lower number means gets tagged sooner, default 5)", default=5)
+
+    @classmethod
+    def untagged_image(cls, payload):
+        untagged_images = cls.objects.all()
+
+        if untagged_images.count() == 0:
+            return Image.untagged_image(payload)
+        else:
+            highest_priority = untagged_images.aggregate(ddm.Min('priority')).values()[0]
+            untagged_image_ids = [x.image_id for x in untagged_images.filter(priority=highest_priority)]
+            return {'id': random.choice(untagged_image_ids),
+                    'valid': True}
+
+
 @django.dispatch.dispatcher.receiver(ddms.post_delete, sender=Image)
 def image_delete(sender, instance, **kwargs):
     # pass False so ImageField won't save the model
@@ -720,3 +754,10 @@ def tag_delete(sender, instance, **kwargs):
 
     instance.image.bad_tags += 1
     instance.image.save()
+
+
+@django.dispatch.dispatcher.receiver(ddms.post_save, sender=ManualTag)
+def image_delete(sender, instance, **kwargs):
+    PriorityManualImage.objects.filter(image_id=instance.image.id).delete()
+
+
