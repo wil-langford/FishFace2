@@ -1,0 +1,25 @@
+package merrellyze;
+
+
+service autotag {
+    rpc autotag_cjrs(autotag_cjr_request) returns (autotag_cjr_reply) {}
+}
+
+
+message autotag_cjr {
+    optional int32 cjr_id = 1 [default = -1];
+}
+
+message autotag_cjr_request {
+    repeated autotag_cjr_request cjrs = 1;
+    optional double request_generation_dtg = 2 [default = -1];
+}
+
+message autotag_cjr_reply {
+    enum response_code {
+        SUCCESS = 1;
+        ERROR = 2;
+    }
+    optional response_code response = 1;
+    optional int32 job_id = 2;
+}
