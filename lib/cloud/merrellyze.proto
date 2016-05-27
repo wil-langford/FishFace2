@@ -1,25 +1,38 @@
+syntax = "proto3";
 package merrellyze;
 
-
-service autotag {
-    rpc autotag_cjrs(autotag_cjr_request) returns (autotag_cjr_reply) {}
+service EllipseSearcher {
+    rpc EllipseSearch (EllipseSearchRequest) returns
+    (EllipseSearchResponse) {}
 }
 
 
-message autotag_cjr {
-    optional int32 cjr_id = 1 [default = -1];
+message Image {
+    int32 id = 1;
+    string path = 3;
 }
 
-message autotag_cjr_request {
-    repeated autotag_cjr_request cjrs = 1;
-    optional double request_generation_dtg = 2 [default = -1];
+message CaptureJobRecord {
+    int32 id = 1;
+    repeated Image image = 2;
 }
 
-message autotag_cjr_reply {
-    enum response_code {
-        SUCCESS = 1;
-        ERROR = 2;
-    }
-    optional response_code response = 1;
-    optional int32 job_id = 2;
+message EllipseSearchRequest {
+    repeated CaptureJobRecord cjr = 1;
+}
+
+
+message Location {
+    int32 x = 1;
+    int32 y = 2;
+}
+
+message EllipseTag {
+    int32 image_id = 1;
+    Location start = 2;
+    Location end = 3;
+}
+
+message EllipseSearchResponse {
+    repeated EllipseTag tag = 1;
 }
