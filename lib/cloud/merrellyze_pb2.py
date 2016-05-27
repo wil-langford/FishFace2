@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='merrellyze.proto',
   package='merrellyze',
   syntax='proto3',
-  serialized_pb=_b('\n\x10merrellyze.proto\x12\nmerrellyze\"!\n\x05Image\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04path\x18\x03 \x01(\t\"@\n\x10\x43\x61ptureJobRecord\x12\n\n\x02id\x18\x01 \x01(\x05\x12 \n\x05image\x18\x02 \x03(\x0b\x32\x11.merrellyze.Image\"A\n\x14\x45llipseSearchRequest\x12)\n\x03\x63jr\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\"4\n\x15\x45rrorCJREllipseSearch\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x8c\x01\n\x15\x45llipseSearchResponse\x12\x36\n\x10\x63jrs_in_progress\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\x12;\n\x10\x63jrs_with_errors\x18\x02 \x03(\x0b\x32!.merrellyze.ErrorCJREllipseSearch\":\n\rResultRequest\x12)\n\x03\x63jr\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\" \n\x08Location\x12\t\n\x01x\x18\x01 \x01(\x05\x12\t\n\x01y\x18\x02 \x01(\x05\"f\n\nEllipseTag\x12\x10\n\x08image_id\x18\x01 \x01(\x05\x12#\n\x05start\x18\x02 \x01(\x0b\x32\x14.merrellyze.Location\x12!\n\x03\x65nd\x18\x03 \x01(\x0b\x32\x14.merrellyze.Location\"@\n\rEllipseTagCJR\x12\n\n\x02id\x18\x01 \x03(\x05\x12#\n\x03tag\x18\x02 \x03(\x0b\x32\x16.merrellyze.EllipseTag\"p\n\x0eResultResponse\x12(\n\x05ready\x18\x01 \x03(\x0b\x32\x19.merrellyze.EllipseTagCJR\x12\x34\n\tnot_ready\x18\x02 \x01(\x0b\x32!.merrellyze.EllipseSearchResponse2i\n\x0f\x45llipseSearcher\x12V\n\rEllipseSearch\x12 .merrellyze.EllipseSearchRequest\x1a!.merrellyze.EllipseSearchResponse\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x10merrellyze.proto\x12\nmerrellyze\"!\n\x05Image\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04path\x18\x03 \x01(\t\"@\n\x10\x43\x61ptureJobRecord\x12\n\n\x02id\x18\x01 \x01(\x05\x12 \n\x05image\x18\x02 \x03(\x0b\x32\x11.merrellyze.Image\"A\n\x14\x45llipseSearchRequest\x12)\n\x03\x63jr\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\"4\n\x15\x45rrorCJREllipseSearch\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x8c\x01\n\x15\x45llipseSearchResponse\x12\x36\n\x10\x63jrs_in_progress\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\x12;\n\x10\x63jrs_with_errors\x18\x02 \x03(\x0b\x32!.merrellyze.ErrorCJREllipseSearch\":\n\rResultRequest\x12)\n\x03\x63jr\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\" \n\x08Location\x12\t\n\x01x\x18\x01 \x01(\x05\x12\t\n\x01y\x18\x02 \x01(\x05\"f\n\nEllipseTag\x12\x10\n\x08image_id\x18\x01 \x01(\x05\x12#\n\x05start\x18\x02 \x01(\x0b\x32\x14.merrellyze.Location\x12!\n\x03\x65nd\x18\x03 \x01(\x0b\x32\x14.merrellyze.Location\"@\n\rEllipseTagCJR\x12\n\n\x02id\x18\x01 \x03(\x05\x12#\n\x03tag\x18\x02 \x03(\x0b\x32\x16.merrellyze.EllipseTag\"p\n\x0eResultResponse\x12(\n\x05ready\x18\x01 \x03(\x0b\x32\x19.merrellyze.EllipseTagCJR\x12\x34\n\tnot_ready\x18\x02 \x01(\x0b\x32!.merrellyze.EllipseSearchResponse2i\n\x0f\x45llipseSearcher\x12V\n\rEllipseSearch\x12 .merrellyze.EllipseSearchRequest\x1a!.merrellyze.EllipseSearchResponse\"\x00\x32W\n\rResultFetcher\x12\x46\n\x0bResultFetch\x12\x19.merrellyze.ResultRequest\x1a\x1a.merrellyze.ResultResponse\"\x00\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -533,4 +533,43 @@ def beta_create_EllipseSearcher_stub(channel, host=None, metadata_transformer=No
   }
   stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
   return beta_implementations.dynamic_stub(channel, 'merrellyze.EllipseSearcher', cardinalities, options=stub_options)
+
+
+class BetaResultFetcherServicer(object):
+  def ResultFetch(self, request, context):
+    context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
+
+
+class BetaResultFetcherStub(object):
+  def ResultFetch(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
+    raise NotImplementedError()
+  ResultFetch.future = None
+
+
+def beta_create_ResultFetcher_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
+  request_deserializers = {
+    ('merrellyze.ResultFetcher', 'ResultFetch'): ResultRequest.FromString,
+  }
+  response_serializers = {
+    ('merrellyze.ResultFetcher', 'ResultFetch'): ResultResponse.SerializeToString,
+  }
+  method_implementations = {
+    ('merrellyze.ResultFetcher', 'ResultFetch'): face_utilities.unary_unary_inline(servicer.ResultFetch),
+  }
+  server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
+  return beta_implementations.server(method_implementations, options=server_options)
+
+
+def beta_create_ResultFetcher_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
+  request_serializers = {
+    ('merrellyze.ResultFetcher', 'ResultFetch'): ResultRequest.SerializeToString,
+  }
+  response_deserializers = {
+    ('merrellyze.ResultFetcher', 'ResultFetch'): ResultResponse.FromString,
+  }
+  cardinalities = {
+    'ResultFetch': cardinality.Cardinality.UNARY_UNARY,
+  }
+  stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
+  return beta_implementations.dynamic_stub(channel, 'merrellyze.ResultFetcher', cardinalities, options=stub_options)
 # @@protoc_insertion_point(module_scope)

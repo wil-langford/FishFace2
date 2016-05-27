@@ -2,8 +2,11 @@ syntax = "proto3";
 package merrellyze;
 
 service EllipseSearcher {
-    rpc EllipseSearch (EllipseSearchRequest) returns
-    (EllipseSearchResponse) {}
+    rpc EllipseSearch (EllipseSearchRequest) returns (EllipseSearchResponse) {}
+}
+
+service ResultFetcher {
+    rpc ResultFetch (ResultRequest) returns (ResultResponse) {}
 }
 
 
