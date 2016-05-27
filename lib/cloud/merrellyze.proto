@@ -22,6 +22,21 @@ message EllipseSearchRequest {
 }
 
 
+message ErrorCJREllipseSearch {
+    int32 id = 1;
+    string message = 2;
+}
+
+message EllipseSearchResponse {
+    repeated CaptureJobRecord cjrs_in_progress = 1;
+    repeated ErrorCJREllipseSearch cjrs_with_errors = 2;
+}
+
+
+message ResultRequest {
+    repeated CaptureJobRecord cjr = 1;
+}
+
 message Location {
     int32 x = 1;
     int32 y = 2;
@@ -33,6 +48,12 @@ message EllipseTag {
     Location end = 3;
 }
 
-message EllipseSearchResponse {
-    repeated EllipseTag tag = 1;
+message EllipseTagCJR {
+    repeated int32 id = 1;
+    repeated EllipseTag tag = 2;
+}
+
+message ResultResponse {
+    repeated EllipseTagCJR ready = 1;
+    EllipseSearchResponse not_ready = 2;
 }
