@@ -12,12 +12,14 @@ service ResultFetcher {
 
 message Image {
     int32 id = 1;
-    string path = 3;
+    string path = 2;
+    Image cal = 3;
 }
 
 message CaptureJobRecord {
     int32 id = 1;
-    repeated Image image = 2;
+    Image cal_image = 2;
+    repeated Image images = 3;
 }
 
 message EllipseSearchRequest {
@@ -49,6 +51,9 @@ message EllipseTag {
     int32 image_id = 1;
     Location start = 2;
     Location end = 3;
+    float score = 4;
+    string tagging_method = 5;
+    int32 revision = 6;
 }
 
 message EllipseTagCJR {
