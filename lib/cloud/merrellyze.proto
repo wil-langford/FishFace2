@@ -9,7 +9,6 @@ service ResultFetcher {
     rpc ResultFetch (ResultRequest) returns (ResultResponse) {}
 }
 
-
 message Image {
     int32 id = 1;
     string path = 2;
@@ -56,12 +55,6 @@ message EllipseTag {
     int32 revision = 6;
 }
 
-message EllipseTagCJR {
-    repeated int32 id = 1;
-    repeated EllipseTag tag = 2;
-}
-
 message ResultResponse {
-    repeated EllipseTagCJR ready = 1;
-    EllipseSearchResponse not_ready = 2;
+    repeated EllipseTag tags = 1;
 }
