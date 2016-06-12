@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='merrellyze.proto',
   package='merrellyze',
   syntax='proto3',
-  serialized_pb=_b('\n\x10merrellyze.proto\x12\nmerrellyze\"V\n\x05Image\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04path\x18\x02 \x01(\t\x12\x1e\n\x03\x63\x61l\x18\x03 \x01(\x0b\x32\x11.merrellyze.Image\x12\x13\n\x0brequest_tag\x18\x04 \x01(\t\"g\n\x10\x43\x61ptureJobRecord\x12\n\n\x02id\x18\x01 \x01(\x05\x12$\n\tcal_image\x18\x02 \x01(\x0b\x32\x11.merrellyze.Image\x12!\n\x06images\x18\x03 \x03(\x0b\x32\x11.merrellyze.Image\"W\n\x14\x45llipseSearchRequest\x12*\n\x04\x63jrs\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\x12\x13\n\x0brequest_tag\x18\x02 \x01(\t\"4\n\x15\x45rrorCJREllipseSearch\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x8c\x01\n\x15\x45llipseSearchResponse\x12\x36\n\x10\x63jrs_in_progress\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\x12;\n\x10\x63jrs_with_errors\x18\x02 \x03(\x0b\x32!.merrellyze.ErrorCJREllipseSearch\":\n\rResultRequest\x12)\n\x03\x63jr\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\" \n\x08Location\x12\t\n\x01x\x18\x01 \x01(\x05\x12\t\n\x01y\x18\x02 \x01(\x05\"\xb4\x01\n\nEllipseTag\x12\x10\n\x08image_id\x18\x01 \x01(\x05\x12#\n\x05start\x18\x02 \x01(\x0b\x32\x14.merrellyze.Location\x12!\n\x03\x65nd\x18\x03 \x01(\x0b\x32\x14.merrellyze.Location\x12\r\n\x05score\x18\x04 \x01(\x02\x12\x16\n\x0etagging_method\x18\x05 \x01(\t\x12\x10\n\x08revision\x18\x06 \x01(\x05\x12\x13\n\x0brequest_tag\x18\x07 \x01(\t\"6\n\x0eResultResponse\x12$\n\x04tags\x18\x01 \x03(\x0b\x32\x16.merrellyze.EllipseTag2i\n\x0f\x45llipseSearcher\x12V\n\rEllipseSearch\x12 .merrellyze.EllipseSearchRequest\x1a!.merrellyze.EllipseSearchResponse\"\x00\x32W\n\rResultFetcher\x12\x46\n\x0bResultFetch\x12\x19.merrellyze.ResultRequest\x1a\x1a.merrellyze.ResultResponse\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x10merrellyze.proto\x12\nmerrellyze\"U\n\x05Image\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04path\x18\x02 \x01(\t\x12\x1e\n\x03\x63\x61l\x18\x03 \x01(\x0b\x32\x11.merrellyze.Image\x12\x12\n\nrequest_id\x18\x04 \x01(\t\"g\n\x10\x43\x61ptureJobRecord\x12\n\n\x02id\x18\x01 \x01(\x05\x12$\n\tcal_image\x18\x02 \x01(\x0b\x32\x11.merrellyze.Image\x12!\n\x06images\x18\x03 \x03(\x0b\x32\x11.merrellyze.Image\"V\n\x14\x45llipseSearchRequest\x12\x12\n\nrequest_id\x18\x01 \x01(\t\x12*\n\x04\x63jrs\x18\x02 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\"4\n\x15\x45rrorCJREllipseSearch\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x8c\x01\n\x15\x45llipseSearchResponse\x12\x36\n\x10\x63jrs_in_progress\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\x12;\n\x10\x63jrs_with_errors\x18\x02 \x03(\x0b\x32!.merrellyze.ErrorCJREllipseSearch\":\n\rResultRequest\x12)\n\x03\x63jr\x18\x01 \x03(\x0b\x32\x1c.merrellyze.CaptureJobRecord\" \n\x08Location\x12\t\n\x01x\x18\x01 \x01(\x05\x12\t\n\x01y\x18\x02 \x01(\x05\"\xb3\x01\n\nEllipseTag\x12\x10\n\x08image_id\x18\x01 \x01(\x05\x12#\n\x05start\x18\x02 \x01(\x0b\x32\x14.merrellyze.Location\x12!\n\x03\x65nd\x18\x03 \x01(\x0b\x32\x14.merrellyze.Location\x12\r\n\x05score\x18\x04 \x01(\x02\x12\x16\n\x0etagging_method\x18\x05 \x01(\t\x12\x10\n\x08revision\x18\x06 \x01(\x05\x12\x12\n\nrequest_id\x18\x07 \x01(\t\"6\n\x0eResultResponse\x12$\n\x04tags\x18\x01 \x03(\x0b\x32\x16.merrellyze.EllipseTag2i\n\x0f\x45llipseSearcher\x12V\n\rEllipseSearch\x12 .merrellyze.EllipseSearchRequest\x1a!.merrellyze.EllipseSearchResponse\"\x00\x32W\n\rResultFetcher\x12\x46\n\x0bResultFetch\x12\x19.merrellyze.ResultRequest\x1a\x1a.merrellyze.ResultResponse\"\x00\x62\x06proto3')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
@@ -55,7 +55,7 @@ _IMAGE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='request_tag', full_name='merrellyze.Image.request_tag', index=3,
+      name='request_id', full_name='merrellyze.Image.request_id', index=3,
       number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -74,7 +74,7 @@ _IMAGE = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=32,
-  serialized_end=118,
+  serialized_end=117,
 )
 
 
@@ -118,8 +118,8 @@ _CAPTUREJOBRECORD = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=120,
-  serialized_end=223,
+  serialized_start=119,
+  serialized_end=222,
 )
 
 
@@ -131,16 +131,16 @@ _ELLIPSESEARCHREQUEST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='cjrs', full_name='merrellyze.EllipseSearchRequest.cjrs', index=0,
-      number=1, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
+      name='request_id', full_name='merrellyze.EllipseSearchRequest.request_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='request_tag', full_name='merrellyze.EllipseSearchRequest.request_tag', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
+      name='cjrs', full_name='merrellyze.EllipseSearchRequest.cjrs', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -156,8 +156,8 @@ _ELLIPSESEARCHREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=225,
-  serialized_end=312,
+  serialized_start=224,
+  serialized_end=310,
 )
 
 
@@ -194,8 +194,8 @@ _ERRORCJRELLIPSESEARCH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=314,
-  serialized_end=366,
+  serialized_start=312,
+  serialized_end=364,
 )
 
 
@@ -232,8 +232,8 @@ _ELLIPSESEARCHRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=369,
-  serialized_end=509,
+  serialized_start=367,
+  serialized_end=507,
 )
 
 
@@ -263,8 +263,8 @@ _RESULTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=511,
-  serialized_end=569,
+  serialized_start=509,
+  serialized_end=567,
 )
 
 
@@ -301,8 +301,8 @@ _LOCATION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=571,
-  serialized_end=603,
+  serialized_start=569,
+  serialized_end=601,
 )
 
 
@@ -356,7 +356,7 @@ _ELLIPSETAG = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='request_tag', full_name='merrellyze.EllipseTag.request_tag', index=6,
+      name='request_id', full_name='merrellyze.EllipseTag.request_id', index=6,
       number=7, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -374,8 +374,8 @@ _ELLIPSETAG = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=606,
-  serialized_end=786,
+  serialized_start=604,
+  serialized_end=783,
 )
 
 
@@ -405,8 +405,8 @@ _RESULTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=788,
-  serialized_end=842,
+  serialized_start=785,
+  serialized_end=839,
 )
 
 _IMAGE.fields_by_name['cal'].message_type = _IMAGE
