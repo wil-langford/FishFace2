@@ -8,15 +8,13 @@ class EllipseSearchServer(merrellyze_pb2.BetaEllipseSearcherServicer):
         self.queue = taskqueue.Queue(name='ellipse_search')
 
     @staticmethod
-    def _taskify(image, cal):
+    def _taskify(image, cal, request_id):
         image.cal = cal
+        image.request_tag = request_id
         return merrellyze_pb2.Image.SerializeToString(image)
 
     def EllipseSearch(self, request, context):
-        ## tagging is a beta feature and the documentation is a bit sparse.
-        ## however, I'm already pretty sure that I'll want to use the DTG of the
-        ## request RPC as the tag to group tasks.
-        # tag = datetime.datetime.now().isoformat()
+        request_id = request.request_id
 
         response = merrellyze_pb2.EllipseSearchResponse()
 
@@ -24,10 +22,11 @@ class EllipseSearchServer(merrellyze_pb2.BetaEllipseSearcherServicer):
             try:
                 cal = cjr.cal_image
                 self.queue.add(taskqueue.Task(method='PULL',
-                                              payload=self._taskify(image, cal))
+                                              payload=self._taskify(image, cal,
+                                                                    request_id))
                                for image in cjr.images)
                 cjr_only_id = merrellyze_pb2.CaptureJobRecord()
-                cjr_only_id = cjr.id
+                cjr_only_id.id = cjr.id
                 response.cjrs_in_progress.add(cjr_only_id)
             except MerrellyzeError as e:
                 error_response = merrellyze_pb2.ErrorCJREllipseSearch
@@ -49,7 +48,7 @@ class ResultFetchServer(merrellyze_pb2.BetaResultFetcherServicer):
                                               payload=self._taskify(image, cal))
                                for image in cjr.images)
         else:
-            self.queue.lease_tasks(300, 500, deadline=10)
+            self.queue.lease_tasks(90, 1000, deadline=10)
 
 
 

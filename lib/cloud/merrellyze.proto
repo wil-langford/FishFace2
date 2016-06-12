@@ -13,6 +13,7 @@ message Image {
     int32 id = 1;
     string path = 2;
     Image cal = 3;
+    string request_id = 4;
 }
 
 message CaptureJobRecord {
@@ -22,9 +23,9 @@ message CaptureJobRecord {
 }
 
 message EllipseSearchRequest {
-    repeated CaptureJobRecord cjr = 1;
+    string request_id = 1;
+    repeated CaptureJobRecord cjrs = 2;
 }
-
 
 message ErrorCJREllipseSearch {
     int32 id = 1;
@@ -53,6 +54,7 @@ message EllipseTag {
     float score = 4;
     string tagging_method = 5;
     int32 revision = 6;
+    string request_id = 7;
 }
 
 message ResultResponse {

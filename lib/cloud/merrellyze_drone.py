@@ -1,4 +1,6 @@
 import math
+import time
+import datetime
 
 import cv2
 import numpy as np
@@ -27,15 +29,29 @@ class MerrellyzeDroneServer():
         self.rqueue = taskqueue.Queue(name='fresh_results')
 
         self._keep_running = True
+        self._started_waiting_at = None
+
+    def _am_i_done(self):
+        if self._started_waiting_at - datetime.datetime.now() > 300:
+            self._keep_running = False
 
     def run(self):
         while self._keep_running:
-            while True:
+            tasks = ''
+            self._started_waiting_at = datetime.datetime.now()
+
+            while len(tasks)==0 and self._keep_running:
                 tasks = self.equeue.lease_tasks(100,10)
-                if len(tasks)>0:
-                    break
+                time.sleep(10)
+                self._am_i_done()
+
+            task_successes = list()
+
             for task in tasks:
-                self.find_ellipse(task)
+                if self.find_ellipse(task):
+                    task_successes.append(task)
+
+            self.equeue.delete_tasks(task_successes)
 
 
     def find_ellipse(self, task):
@@ -163,18 +179,26 @@ class MerrellyzeDroneServer():
         sin_a = math.sin(math.radians(angle))
         cos_a = math.cos(math.radians(angle))
 
-        start = tuple(map(int, (center[0] - length * 0.25 * cos_a,
-                                center[1] - length * 0.25 * sin_a)))
-        end = tuple(map(int, (center[0] - length * cos_a,
-                              center[1] - length * sin_a)))
+        start = merrellyze_pb2.Location()
+        end = merrellyze_pb2.Location()
 
-        tag = merrellyze_pb2.EllipseTag(**{
-            'image_id': image.id,
-            'start': start,
-            'end': end,
-            'score': score,
-            'tagging_method': tagging_method,
-            'revision': revision,
-        })
+        start.x, start.y = tuple(map(int, (center[0] - length * 0.25 * cos_a,
+                                           center[1] - length * 0.25 * sin_a)))
+        end.x, end.y = tuple(map(int, (center[0] - length * cos_a,
+                                       center[1] - length * sin_a)))
 
-        return tag
+        tag = merrellyze_pb2.EllipseTag()
+        tag.image_id = image.id
+        tag.start = start
+        tag.end = end
+        tag.score = score
+        tag.tagging_method = tagging_method
+        tag.revision = revision
+        tag.request_tag = image.request_id
+
+        response = merrellyze_pb2.ResultResponse()
+        response.tags.add(tag)
+
+        self.rqueue.add(merrellyze_pb2.ResultResponse.SerializeToString(response))
+
+        return True
